@@ -1,13 +1,42 @@
+"""
+Turbine Boundary Conditions - Fuel-Dependent Thermodynamics
+============================================================
+
+This module extracts turbine boundary conditions from ICAO data and
+supports fuel-dependent thermodynamic properties from Cantera combustion.
+
+Key Change:
+- Thermodynamic properties (cp, R, gamma) can now be passed in from
+  combustor output instead of using hardcoded air-like values
+- Enables realistic modeling of different fuel blends
+"""
+
 import pandas as pd
 import numpy as np
 import cantera as ct
+from typing import Dict, Any, Optional
 
-def extract_turbine_conditions(icao_csv_path, engine_id='Trent 1000-AE3', mode='TAKE-OFF'):
+def extract_turbine_conditions(
+    icao_csv_path: str,
+    engine_id: str = 'Trent 1000-AE3',
+    mode: str = 'TAKE-OFF',
+    thermo_props: Optional[Dict[str, float]] = None
+):
     """
     Extract turbine inlet/outlet boundary conditions from ICAO data.
-    
+
+    Args:
+        icao_csv_path: Path to ICAO engine data CSV
+        engine_id: Engine identifier (default: 'Trent 1000-AE3')
+        mode: Operating mode (default: 'TAKE-OFF')
+        thermo_props: Optional dict with fuel-dependent properties:
+            - cp: Specific heat [J/(kg·K)]
+            - R: Gas constant [J/(kg·K)]
+            - gamma: Heat capacity ratio [-]
+            If None, uses default air-like values.
+
     Returns:
-        dict with turbine inlet/outlet states
+        dict with turbine inlet/outlet states and fuel-dependent physics
     """
     df = pd.read_csv(icao_csv_path)
     
@@ -79,15 +108,26 @@ def extract_turbine_conditions(icao_csv_path, engine_id='Trent 1000-AE3', mode='
     # This ensures sufficient pressure ratio for thrust generation
     p_turbine_outlet = 1.8 * p_ambient
     
+    # Use fuel-dependent properties if provided, else defaults
+    if thermo_props is not None:
+        cp_gas = thermo_props['cp']      # FUEL-DEPENDENT
+        R_gas = thermo_props['R']        # FUEL-DEPENDENT
+        gamma_gas = thermo_props['gamma'] # FUEL-DEPENDENT
+    else:
+        # Default air-like values (for backward compatibility)
+        cp_gas = 1150  # J/(kg·K) for combustion products
+        R_gas = 287    # J/(kg·K)
+        gamma_gas = 1.33
+
     # Turbine outlet temperature (from work extraction)
     eta_turbine = 0.90  # Typical turbine efficiency
-    cp_gas = 1150  # J/(kg·K) for combustion products
-    
+
     # Work per unit mass extracted by turbine
     w_turbine_specific = W_turbine_required / air_mass_flow_core
-    
+
     # Outlet temperature (isentropic relation with efficiency correction)
     # Actual: h_in - h_out = w_extracted
+    # CRITICAL: Now uses actual fuel-specific cp!
     T_turbine_outlet = T_turbine_inlet - w_turbine_specific / cp_gas
     
     print(f"Turbine outlet: p={p_turbine_outlet/1e3:.1f} kPa, T={T_turbine_outlet:.1f} K")
@@ -97,8 +137,8 @@ def extract_turbine_conditions(icao_csv_path, engine_id='Trent 1000-AE3', mode='
     L_turbine = 0.8  # meters (you can refine this)
     
     # Estimate inlet velocity from mass flow and density
-    R = 287  # J/(kg·K) for air/gas mixture
-    rho_inlet = p_turbine_inlet / (R * T_turbine_inlet)
+    # Use fuel-dependent R if available
+    rho_inlet = p_turbine_inlet / (R_gas * T_turbine_inlet)
     
     # Estimate turbine annular area (typical for Trent-class engines)
     # Mean radius ~0.6 m, annular height ~0.15 m
@@ -125,8 +165,9 @@ def extract_turbine_conditions(icao_csv_path, engine_id='Trent 1000-AE3', mode='
             'A_outlet': A_inlet * 1.15  # Slight expansion in turbine
         },
         'physics': {
-            'gamma': 1.33,  # Heat capacity ratio for combustion products
-            'R': R,
+            'gamma': gamma_gas,  # FUEL-DEPENDENT heat capacity ratio
+            'R': R_gas,          # FUEL-DEPENDENT gas constant
+            'cp': cp_gas,        # FUEL-DEPENDENT specific heat
             'eta_turbine': eta_turbine,
             'w_shaft_total': W_turbine_required,
             'mass_flow': air_mass_flow_core

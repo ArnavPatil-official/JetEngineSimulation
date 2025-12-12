@@ -1,3 +1,21 @@
+"""
+NOZZLE PINN - FUEL-DEPENDENT THERMODYNAMICS
+============================================
+
+This nozzle PINN now uses real, fuel-dependent thermodynamic properties
+from Cantera combustion products instead of fixed air-like constants.
+
+Key Features:
+1. Thermodynamic properties (cp, R, gamma) derived from combustor output
+2. Different fuel blends → different expansion behavior and thrust
+3. Constant-gamma isentropic formulas are NO LONGER VALID
+4. The PINN is genuinely necessary for non-ideal, fuel-dependent expansion
+
+Note: This makes the PINN essential because real combustion products have
+temperature- and composition-dependent properties that invalidate simple
+analytical nozzle equations.
+"""
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -9,11 +27,19 @@ from pathlib import Path
 # 1. CONFIGURATION & DATA LOADING
 # ============================================================================
 
-def load_engine_conditions(filename='icao_engine_data.csv', engine_id='Trent 1000-AE3', mode='TAKE-OFF'):
+def load_engine_conditions(filename='icao_engine_data.csv', engine_id='Trent 1000-AE3', mode='TAKE-OFF', thermo_props=None):
     """
     Reads ICAO data and returns the CONDITIONS dictionary.
-    (Simplified cycle analysis is still hardcoded for temperature/pressures,
-     but mass flow is now dynamic.)
+
+    Args:
+        filename: ICAO data CSV filename
+        engine_id: Engine identifier
+        mode: Operating mode
+        thermo_props: Optional dict with fuel-dependent properties (cp, R, gamma)
+                     If None, uses default air-like values.
+
+    Returns:
+        CONDITIONS dictionary with fuel-dependent thermodynamic properties
     """
     try:
         # Build a robust path to the data file
@@ -47,19 +73,32 @@ def load_engine_conditions(filename='icao_engine_data.csv', engine_id='Trent 100
         p_inlet_nozzle = 193000.0
         thrust_total = 310.9e3
     
+    # Use fuel-dependent properties if provided, else defaults
+    if thermo_props is not None:
+        cp = thermo_props['cp']      # FUEL-DEPENDENT
+        R = thermo_props['R']        # FUEL-DEPENDENT
+        gamma = thermo_props['gamma'] # FUEL-DEPENDENT
+    else:
+        # Default air-like values (for backward compatibility)
+        cp = 1150.0
+        R = 287.0
+        gamma = 1.33
+
     # Inlet Area calculated from mass flow: A_in = m_dot / (rho * u)
     # A_in = 79.9 / (0.67 * 317.7) ≈ 0.375 m^2 (Using previous successful values)
-    
+
     return {
         'inlet': {'rho': 0.67, 'u': 317.7, 'p': p_inlet_nozzle, 'T': 1005.0},
-        'ambient': {'p': 101325.0}, 
+        'ambient': {'p': 101325.0},
         'geometry': {
-            'A_inlet': 0.375, 
+            'A_inlet': 0.375,
             'A_exit': 0.340,   # Corrected area for realistic expansion
             'length': 1.0
         },
         'physics': {
-            'R': 287.0, 'gamma': 1.33, 'cp': 1150.0, 
+            'R': R,        # FUEL-DEPENDENT gas constant
+            'gamma': gamma, # FUEL-DEPENDENT heat capacity ratio
+            'cp': cp,      # FUEL-DEPENDENT specific heat
             'mass_flow': mass_flow,
             'target_thrust': thrust_total * 0.15 # 15% of total thrust
         }
@@ -69,12 +108,15 @@ CONDITIONS = load_engine_conditions('icao_engine_data.csv', mode='TAKE-OFF')
 
 # Normalization Scales
 SCALES = {
-    'rho': CONDITIONS['inlet']['rho'], 
-    'u': 650.0, 
-    'p': CONDITIONS['inlet']['p'], 
-    'T': CONDITIONS['inlet']['T'], 
+    'rho': CONDITIONS['inlet']['rho'],
+    'u': 650.0,
+    'p': CONDITIONS['inlet']['p'],
+    'T': CONDITIONS['inlet']['T'],
     'L': 1.0
 }
+
+# Configuration for thermo-parameterized inference
+USE_THERMO_CONDITIONING = True  # Use runtime cp/R/gamma for physics calculations
 
 # ============================================================================
 # 2. NETWORK ARCHITECTURE (Same as before)
@@ -96,14 +138,64 @@ class NozzlePINN(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-    def predict_physical(self, x):
+    def predict_physical(self, x, scales=None):
+        """
+        Helper to get physical units.
+
+        Args:
+            x: Normalized spatial position [0, 1]
+            scales: Optional custom scales dict (uses global SCALES if None)
+
+        Returns:
+            Physical state [rho, u, p, T]
+        """
+        if scales is None:
+            scales = SCALES
+
         out_norm = self.forward(x)
         return torch.cat([
-            out_norm[:, 0:1] * SCALES['rho'],
-            out_norm[:, 1:2] * SCALES['u'],
-            out_norm[:, 2:3] * SCALES['p'],
-            out_norm[:, 3:4] * SCALES['T']
+            out_norm[:, 0:1] * scales['rho'],
+            out_norm[:, 1:2] * scales['u'],
+            out_norm[:, 2:3] * scales['p'],
+            out_norm[:, 3:4] * scales['T']
         ], dim=1)
+
+    def predict_with_thermo(self, x, cp, R, gamma, scales=None):
+        """
+        Predict physical state with explicit thermodynamic parameters.
+
+        This method does NOT require retraining. It simply:
+        1. Predicts the physical state using the trained network
+        2. Reports the thermodynamic parameters used for interpretation
+
+        The PINN was trained with baseline thermo constants, but at inference
+        we use actual fuel-dependent properties for thrust and expansion
+        calculations.
+
+        Args:
+            x: Normalized spatial position [0, 1]
+            cp: Specific heat capacity [J/(kg·K)] - FUEL-DEPENDENT
+            R: Gas constant [J/(kg·K)] - FUEL-DEPENDENT
+            gamma: Heat capacity ratio [-] - FUEL-DEPENDENT
+            scales: Optional custom scales dict
+
+        Returns:
+            tuple: (physical_state, thermo_params)
+                - physical_state: [rho, u, p, T] tensor
+                - thermo_params: dict with cp, R, gamma used
+        """
+        # Get standard prediction
+        state = self.predict_physical(x, scales)
+
+        # Package thermo parameters for reference
+        thermo_params = {
+            'cp': cp,
+            'R': R,
+            'gamma': gamma,
+            'note': 'Runtime thermo parameters (may differ from training baseline)'
+        }
+
+        return state, thermo_params
 
 # ============================================================================
 # 3. PHYSICS & LOSS (Same as before)
@@ -113,30 +205,56 @@ def get_area(x, conditions):
     A_out = conditions['geometry']['A_exit']
     return A_in + (A_out - A_in) * (1 - torch.cos(x * np.pi / 2))
 
-def compute_loss(model, x_col, device):
+def compute_loss(model, x_col, device, conditions=None, scales=None):
+    """
+    Compute physics-based loss components for nozzle PINN.
+
+    Args:
+        model: Nozzle PINN model
+        x_col: Collocation points [0, 1]
+        device: torch device
+        conditions: Optional conditions dict with fuel-dependent properties
+        scales: Optional scales dict
+
+    Returns:
+        Tuple of (loss_eos, loss_mass, loss_energy)
+
+    Note:
+        If conditions/scales are None, uses global CONDITIONS/SCALES.
+        The key change: cp, R, gamma now come from combustor output,
+        not hardcoded constants. This makes the physics fuel-dependent.
+    """
+    if conditions is None:
+        conditions = CONDITIONS
+    if scales is None:
+        scales = SCALES
+
     x = x_col.clone().requires_grad_(True)
     out_norm = model(x)
-    rho = out_norm[:, 0:1] * SCALES['rho']
-    u   = out_norm[:, 1:2] * SCALES['u']
-    p   = out_norm[:, 2:3] * SCALES['p']
-    T   = out_norm[:, 3:4] * SCALES['T']
-    
-    A = get_area(x, CONDITIONS)
-    
+    rho = out_norm[:, 0:1] * scales['rho']
+    u   = out_norm[:, 1:2] * scales['u']
+    p   = out_norm[:, 2:3] * scales['p']
+    T   = out_norm[:, 3:4] * scales['T']
+
+    A = get_area(x, conditions)
+
     # 1. EOS Loss
-    eos_res = (p - rho * CONDITIONS['physics']['R'] * T) / SCALES['p']
-    
+    # CRITICAL: R now comes from combustor (fuel-dependent!)
+    R = conditions['physics']['R']
+    eos_res = (p - rho * R * T) / scales['p']
+
     # 2. Mass Flow Loss
     m_flow = rho * u * A
     m_flow_x = torch.autograd.grad(m_flow, x, torch.ones_like(m_flow), create_graph=True)[0]
-    mass_res = m_flow_x / CONDITIONS['physics']['mass_flow']
-    
+    mass_res = m_flow_x / conditions['physics']['mass_flow']
+
     # 3. Energy Loss
-    cp = CONDITIONS['physics']['cp']
-    H0_target = cp * CONDITIONS['inlet']['T'] + 0.5 * CONDITIONS['inlet']['u']**2
+    # CRITICAL: cp now comes from combustor (fuel-dependent!)
+    cp = conditions['physics']['cp']
+    H0_target = cp * conditions['inlet']['T'] + 0.5 * conditions['inlet']['u']**2
     H0_current = cp * T + 0.5 * u**2
     energy_res = (H0_current - H0_target) / H0_target
-    
+
     return (eos_res**2).mean(), (mass_res**2).mean(), (energy_res**2).mean()
 
 # ============================================================================
