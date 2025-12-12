@@ -1,77 +1,110 @@
-# Subsetting Data in Train/Test Sets
+"""
+Compressor Model for Jet Engine Simulation.
+
+This module implements a thermodynamic model of an axial compressor using Cantera
+for accurate thermodynamic property evaluation. The model uses isentropic relations
+with an efficiency correction to account for real-world losses.
+
+Model Approach:
+1. Calculate ideal isentropic compression (constant entropy)
+2. Apply efficiency factor to account for irreversibilities
+3. Calculate actual work requirement from enthalpy change
+
+This provides realistic compression behavior without requiring detailed blade geometry
+or CFD simulation.
+"""
 
 import cantera as ct
-from pathlib import Path
-import os
-# Directory containing the YAML file (absolute path)
-# def_path = Path("/Users/arnavpatil/Desktop/JetEngineSimulation/data/processed")
-
-
-# # Ensure CANTERA_DATA points to the directory containing the file
-# os.environ["CANTERA_DATA"] = str(def_path)
-
-# def fuel_used(sol: str) -> str:
-#     return str(def_path / sol)
-
-# mixture = fuel_used("n_dodecane_hychem.yaml")
 
 class Compressor:
     """
-    Compressor model (isentropic with efficiency correction).
+    Axial compressor model using isentropic compression with efficiency losses.
 
-    Attributes
-    ----------
-    eta_c : float
-        Compressor efficiency (0 < eta_c ≤ 1)
-    pi_c : float
-        Pressure ratio (p_out / p_in)
-    gas : ct.Solution
-        Cantera gas object representing working fluid
+    The compressor raises air pressure through a series of rotating and stationary
+    blades. Real compressors have losses due to friction, turbulence, and blade
+    inefficiencies, captured here through the efficiency parameter eta_c.
+
+    Attributes:
+        eta_c: Compressor isentropic efficiency (0 < eta_c ≤ 1)
+               Typical values: 0.80-0.90 for modern compressors
+        pi_c: Overall pressure ratio (p_out / p_in)
+              Typical values: 15-50 for high-bypass turbofans
+        gas: Cantera Solution object for thermodynamic property evaluation
     """
 
     def __init__(self, gas: ct.Solution, eta_c: float = 0.85, pi_c: float = 10.0):
         """
-        Initialize the compressor with a Cantera gas object and parameters.
+        Initialize compressor model with thermodynamic properties and performance parameters.
+
+        Args:
+            gas: Cantera Solution object for working fluid property evaluation
+            eta_c: Isentropic efficiency (default 0.85)
+            pi_c: Overall pressure ratio (default 10.0)
         """
         self.gas = gas
         self.eta_c = eta_c
         self.pi_c = pi_c
 
-    # Core methods
-
     def compute_outlet_state(self, T_in: float, p_in: float):
-      # Inlet state
-      self.gas.TP = T_in, p_in
-      s_in = self.gas.entropy_mass
+        """
+        Calculate compressor outlet conditions using isentropic relations with efficiency correction.
 
-      # Ideal isentropic outlet at target pressure
-      p_out = p_in * self.pi_c
-      self.gas.SP = s_in, p_out
-      T_out_ideal = self.gas.T
+        The calculation proceeds in three steps:
+        1. Find ideal isentropic outlet state (constant entropy to target pressure)
+        2. Apply efficiency correction to get real outlet temperature
+        3. Calculate work requirement from enthalpy rise
 
-      # Efficiency-corrected outlet temperature
-      T_out = T_in + (T_out_ideal - T_in) / self.eta_c
+        Args:
+            T_in: Inlet temperature [K]
+            p_in: Inlet pressure [Pa]
 
-      # Enthalpy change (J/kg)
-      self.gas.TP = T_in, p_in
-      h_in = self.gas.enthalpy_mass
-      self.gas.TP = T_out, p_out
-      h_out = self.gas.enthalpy_mass
+        Returns:
+            Dictionary containing:
+                - T_out: Outlet temperature [K]
+                - p_out: Outlet pressure [Pa]
+                - h_in: Inlet specific enthalpy [J/kg]
+                - h_out: Outlet specific enthalpy [J/kg]
+                - work_specific: Specific work input [J/kg]
+        """
+        # Set inlet state and store entropy
+        self.gas.TP = T_in, p_in
+        s_in = self.gas.entropy_mass
 
-      return {
-          "T_out": T_out,
-          "p_out": p_out,
-          "h_in": h_in,
-          "h_out": h_out,
-          "work_specific": h_out - h_in,  # ~ +400 kJ/kg for PR~15, eta~0.86
-    }
+        # Calculate ideal isentropic compression to target pressure
+        # (constant entropy, s_out = s_in)
+        p_out = p_in * self.pi_c
+        self.gas.SP = s_in, p_out
+        T_out_ideal = self.gas.T
 
+        # Apply efficiency correction to account for real losses
+        # Real temperature rise is larger than ideal due to irreversibilities
+        T_out = T_in + (T_out_ideal - T_in) / self.eta_c
 
-    # Utility methods
+        # Calculate work requirement from enthalpy change
+        self.gas.TP = T_in, p_in
+        h_in = self.gas.enthalpy_mass
+        self.gas.TP = T_out, p_out
+        h_out = self.gas.enthalpy_mass
+
+        return {
+            "T_out": T_out,
+            "p_out": p_out,
+            "h_in": h_in,
+            "h_out": h_out,
+            "work_specific": h_out - h_in,  # Specific work input [J/kg]
+        }
+
 
     def summary(self, T_in: float, p_in: float):
         """
-        Print a formatted summary of compressor performance.
+        Print formatted summary of compressor performance for diagnostics.
+
+        Args:
+            T_in: Inlet temperature [K]
+            p_in: Inlet pressure [Pa]
+
+        Returns:
+            Dictionary with outlet state and performance metrics
         """
         result = self.compute_outlet_state(T_in, p_in)
         print(f"[Compressor]")
@@ -83,8 +116,8 @@ class Compressor:
         return result
 
 
-# Example
 if __name__ == "__main__":
+    # Example: Compress ambient air with typical high-bypass turbofan parameters
     gas = ct.Solution('air.yaml')
     comp = Compressor(gas, eta_c=0.86, pi_c=15.0)
-    comp.summary(T_in=288.0, p_in=101325.0)
+    comp.summary(T_in=288.0, p_in=101325.0)  # ISA sea level conditions

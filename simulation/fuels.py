@@ -1,18 +1,18 @@
 """
-fuels.py
+Fuel Surrogate Definitions and Blending Utilities.
 
-Fuel surrogate definitions and blending utilities for Jet-A1 and SAF components
-(HEFA-SPK, FT-SPK, ATJ-SPK), compatible with Cantera composition strings.
+This module defines surrogate fuel representations for conventional jet fuel (Jet-A1)
+and Sustainable Aviation Fuels (SAF) using n-alkane mixtures compatible with chemical
+kinetics mechanisms like CRECK C1-C16.
 
-Usage example
--------------
-from fuels import JET_A1, HEFA_SPK, FT_SPK, ATJ_SPK, make_saf_blend
+Fuel Surrogates:
+- Jet-A1: Pure n-dodecane (NC12H26)
+- HEFA-SPK: Hydroprocessed esters and fatty acids (85% n-dodecane, 15% iso-octane)
+- FT-SPK: Fischer-Tropsch synthetic paraffinic kerosene (n-decane + n-dodecane + iso-octane)
+- ATJ-SPK: Alcohol-to-jet (80% iso-octane, 20% n-dodecane)
 
-blend = make_saf_blend(p_j=0.6, p_h=0.2, p_f=0.1, p_a=0.1)
-fuel_string = blend.as_composition_string()
-gas.set_equivalence_ratio(phi=0.35,
-                          fuel=fuel_string,
-                          oxidizer="O2:1.0, N2:3.76")
+These surrogates approximate the combustion chemistry of real fuels while maintaining
+computational tractability for detailed chemical kinetics simulations.
 """
 
 from __future__ import annotations
@@ -21,22 +21,36 @@ from typing import Dict, Mapping, List, Tuple
 
 
 # ---------------------------------------------------------------------------
-# Core data structure
+# Fuel Surrogate Data Structure
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class FuelSurrogate:
     """
-    Represents a fuel surrogate as a mapping of species -> unnormalized mole fractions.
+    Represents a fuel as a mixture of surrogate chemical species.
 
-    The internal 'species' dictionary does NOT need to be normalized; methods below
-    handle normalization when generating composition strings.
+    Each fuel is represented by a weighted combination of simple hydrocarbons
+    (e.g., n-dodecane, iso-octane) that approximate the combustion behavior
+    of the real complex fuel mixture.
+
+    Attributes:
+        name: Fuel identifier (e.g., "Jet-A1", "HEFA-SPK")
+        species: Dictionary mapping species names to mole fractions (unnormalized)
+        LHV_MJ_per_kg: Lower Heating Value [MJ/kg] - for energy calculations
+        carbon_fraction: Mass fraction of carbon (w_C = m_C / m_fuel) - for CO₂ emissions
     """
     name: str
     species: Dict[str, float]
+    LHV_MJ_per_kg: float = 43.2  # Default: typical jet fuel LHV
+    carbon_fraction: float = 0.857  # Default: C12H26 has 12*12/(12*12 + 26*1) = 0.857
 
     def normalized_species(self) -> Dict[str, float]:
-        """Return a new dict of species -> mole fraction normalized to sum to 1."""
+        """
+        Normalize species mole fractions to sum to 1.0.
+
+        Returns:
+            Dictionary of species -> normalized mole fractions
+        """
         total = sum(self.species.values())
         if total <= 0.0:
             raise ValueError(f"FuelSurrogate '{self.name}' has non-positive total fraction.")
@@ -44,113 +58,139 @@ class FuelSurrogate:
 
     def as_composition_string(self) -> str:
         """
-        Return a Cantera-compatible composition string, e.g.:
+        Convert fuel composition to Cantera-compatible format string.
 
-        'NC12H26:0.7, IC8H18:0.3'
+        Returns:
+            Composition string like "NC12H26:0.7, IC8H18:0.3" for use with
+            Cantera's set_equivalence_ratio() method
         """
         norm = self.normalized_species()
-        # Cantera accepts non-normalized too, but normalized is clearer.
         parts = [f"{sp}:{mf:.6g}" for sp, mf in norm.items()]
         return ", ".join(parts)
 
     def with_scaled_fraction(self, factor: float) -> Dict[str, float]:
         """
-        Return a dict of species -> (factor * mole fraction) where mole fractions
-        are normalized inside this surrogate.
+        Scale all species mole fractions by a constant factor.
 
-        This is used when combining multiple FuelSurrogate objects into a blend.
+        This is used when blending multiple fuel surrogates together to create
+        a composite fuel (e.g., 60% Jet-A1 + 40% HEFA).
+
+        Args:
+            factor: Scaling factor to apply to normalized mole fractions
+
+        Returns:
+            Dictionary of species -> scaled mole fractions
         """
         norm = self.normalized_species()
         return {sp: factor * mf for sp, mf in norm.items()}
 
 
 # ---------------------------------------------------------------------------
-# Species names (adjust if your mechanisms use different labels)
+# Chemical Species Identifiers
 # ---------------------------------------------------------------------------
+# Species names must match those in the Cantera mechanism YAML file
 
-# NOTE:
-# - Update these strings if your YAML/CTI files use different species names.
-#   For example, some mechanisms may use 'nC12H26' instead of 'NC12H26'.
-
-SP_N_DODECANE = "NC12H26"   # n-dodecane, Jet-A1/HEFA/FT surrogate
-SP_ISO_OCTANE = "IC8H18"    # iso-octane, ATJ/branched surrogate
-SP_N_DECANE   = "NC10H22"   # n-decane (adjust if your CRECK file uses 'C10H22' etc.)
+SP_N_DODECANE = "NC12H26"   # n-dodecane: C12H26 linear alkane (kerosene-range)
+SP_ISO_OCTANE = "IC8H18"    # iso-octane: C8H18 branched alkane (gasoline-range)
+SP_N_DECANE   = "NC10H22"   # n-decane: C10H22 linear alkane (short kerosene)
 
 
 # ---------------------------------------------------------------------------
-# Base fuel surrogates
+# Pre-defined Fuel Surrogates
 # ---------------------------------------------------------------------------
 
-# Jet-A1: represented as pure n-dodecane (standard single-component surrogate)
+# Conventional Jet-A1: Pure n-dodecane surrogate
+# This is the most common single-component representation for conventional jet fuel
+# C12H26: M_C = 12*12 = 144 g/mol, M_H = 26*1 = 26 g/mol, M_total = 170 g/mol
+# Carbon fraction: w_C = 144/170 = 0.847
 JET_A1 = FuelSurrogate(
     name="Jet-A1",
     species={
         SP_N_DODECANE: 1.0,
     },
+    LHV_MJ_per_kg=44.1,  # n-dodecane LHV
+    carbon_fraction=0.847  # C12H26 carbon mass fraction
 )
 
-# HEFA-SPK: paraffinic, mid/long-chain; simple 2-component representation
-# Here: 85% n-dodecane + 15% iso-octane (iso-paraffinic fraction)
+# HEFA-SPK: Hydroprocessed Esters and Fatty Acids - Synthetic Paraffinic Kerosene
+# Bio-derived SAF with predominantly straight-chain alkanes and some branching
+# Blend: 85% C12H26 (w_C=0.847) + 15% C8H18 (w_C=0.842)
+# Weighted w_C ≈ 0.85*0.847 + 0.15*0.842 = 0.846
 HEFA_SPK = FuelSurrogate(
     name="HEFA-SPK",
     species={
-        SP_N_DODECANE: 0.85,
-        SP_ISO_OCTANE: 0.15,
+        SP_N_DODECANE: 0.85,  # Dominant straight-chain component
+        SP_ISO_OCTANE: 0.15,  # Represents iso-paraffinic content
     },
+    LHV_MJ_per_kg=44.0,  # Slightly lower than pure dodecane due to iso-octane
+    carbon_fraction=0.846  # Weighted average
 )
 
-# FT-SPK: heavily paraffinic; represented by a mix of n-decane, n-dodecane, and a bit
-# of iso-octane for iso-paraffinic content.
+# FT-SPK: Fischer-Tropsch Synthetic Paraffinic Kerosene
+# Gas-to-liquid or coal-to-liquid SAF with high paraffinic content
+# Blend: 50% C12H26 + 35% C10H22 (w_C=0.845) + 15% C8H18
+# Weighted w_C ≈ 0.50*0.847 + 0.35*0.845 + 0.15*0.842 = 0.846
 FT_SPK = FuelSurrogate(
     name="FT-SPK",
     species={
-        SP_N_DODECANE: 0.50,
-        SP_N_DECANE:   0.35,
-        SP_ISO_OCTANE: 0.15,
+        SP_N_DODECANE: 0.50,  # Long-chain paraffinic component
+        SP_N_DECANE:   0.35,  # Medium-chain paraffinic component
+        SP_ISO_OCTANE: 0.15,  # Iso-paraffinic fraction
     },
+    LHV_MJ_per_kg=43.9,
+    carbon_fraction=0.846
 )
 
-# ATJ-SPK: branched paraffinic, short-to-mid chain; dominated by iso-octane
-# plus some n-dodecane.
+# ATJ-SPK: Alcohol-to-Jet Synthetic Paraffinic Kerosene
+# Produced from biomass-derived alcohols; more branched structure
+# Blend: 80% C8H18 (w_C=0.842) + 20% C12H26 (w_C=0.847)
+# Weighted w_C ≈ 0.80*0.842 + 0.20*0.847 = 0.843
 ATJ_SPK = FuelSurrogate(
     name="ATJ-SPK",
     species={
-        SP_ISO_OCTANE: 0.80,
-        SP_N_DODECANE: 0.20,
+        SP_ISO_OCTANE: 0.80,  # Dominant branched component
+        SP_N_DODECANE: 0.20,  # Minor straight-chain component
     },
+    LHV_MJ_per_kg=43.5,  # Lower due to higher iso-octane content
+    carbon_fraction=0.843
 )
 
 
 # ---------------------------------------------------------------------------
-# Blending utilities
+# Fuel Blending Utilities
 # ---------------------------------------------------------------------------
 
 def blend_surrogates(fuels: List[Tuple[FuelSurrogate, float]],
                      name: str = "Blend") -> FuelSurrogate:
     """
-    Blend multiple FuelSurrogate objects by high-level fractions.
+    Create a composite fuel blend from multiple fuel surrogates.
 
-    Parameters
-    ----------
-    fuels : List[Tuple[FuelSurrogate, float]]
-        List of (FuelSurrogate, fraction) pairs.
-        These fractions do NOT need to sum to 1; they will be normalized internally.
-    name : str
-        Optional name for the resulting blended surrogate.
+    This function combines multiple fuels (e.g., Jet-A1 + HEFA + FT) by blending
+    their species compositions. The resulting surrogate represents the weighted
+    average chemistry of the blend.
 
-    Returns
-    -------
-    FuelSurrogate
-        A new FuelSurrogate whose species dictionary is the
-        mole-fraction-weighted combination of all inputs.
+    Args:
+        fuels: List of (FuelSurrogate, mass_fraction) pairs
+               Fractions will be automatically normalized if they don't sum to 1.0
+        name: Name for the resulting blended fuel
+
+    Returns:
+        New FuelSurrogate representing the blended fuel composition
+
+    Example:
+        blend = blend_surrogates([
+            (JET_A1, 0.6),
+            (HEFA_SPK, 0.4)
+        ], name="Jet-A1/HEFA-40")
     """
     total_p = sum(p for _, p in fuels)
     if total_p <= 0.0:
         raise ValueError("Total blend fraction must be positive.")
 
-    # Normalize top-level fractions
+    # Normalize blend fractions to sum to 1.0
     normalized_top = [(fuel, p / total_p) for fuel, p in fuels if p > 0.0]
 
+    # Combine species from all fuels, weighted by their blend fractions
     combined: Dict[str, float] = {}
     for fuel, p_norm in normalized_top:
         scaled = fuel.with_scaled_fraction(p_norm)
@@ -168,25 +208,30 @@ def make_saf_blend(
     enforce_astm: bool = True,
 ) -> FuelSurrogate:
     """
-    Create a SAF blend C_F = {p1 J, p2 H, p3 F, p4 A} using Jet-A1,
-    HEFA-SPK, FT-SPK, and ATJ-SPK surrogates.
+    Create a Sustainable Aviation Fuel (SAF) blend with ASTM certification constraints.
 
-    ASTM-like constraints (optional):
-    - Jet-A1 fraction >= 0.5
-    - HEFA + FT + ATJ <= 0.5
+    ASTM D7566 requires that approved SAF blends contain at least 50% conventional
+    Jet-A1 to ensure compatibility with existing aircraft fuel systems and maintain
+    safety margins for combustion characteristics.
 
-    Parameters
-    ----------
-    p_j, p_h, p_f, p_a : float
-        Overall fractions for Jet-A1, HEFA-SPK, FT-SPK, and ATJ-SPK.
-        These do NOT need to sum to 1; they will be normalized.
-    enforce_astm : bool
-        If True, raises a ValueError if the constraints are violated.
+    Args:
+        p_j: Mass fraction of Jet-A1 (conventional fuel)
+        p_h: Mass fraction of HEFA-SPK
+        p_f: Mass fraction of FT-SPK
+        p_a: Mass fraction of ATJ-SPK
+        enforce_astm: If True, validates ASTM D7566 blending constraints:
+                      - Jet-A1 fraction >= 0.5
+                      - Total SAF fraction <= 0.5
 
-    Returns
-    -------
-    FuelSurrogate
-        Blended surrogate representing the overall fuel.
+    Returns:
+        FuelSurrogate representing the compliant SAF blend
+
+    Raises:
+        ValueError: If enforce_astm=True and blend violates ASTM constraints
+
+    Example:
+        # 60% Jet-A1, 30% HEFA, 10% FT (ASTM-compliant)
+        blend = make_saf_blend(p_j=0.6, p_h=0.3, p_f=0.1, p_a=0.0)
     """
     if enforce_astm:
         total = p_j + p_h + p_f + p_a
@@ -196,11 +241,11 @@ def make_saf_blend(
         saf_frac = (p_h + p_f + p_a) / total
         if j_frac < 0.5 - 1e-8:
             raise ValueError(
-                f"ASTM constraint violated: Jet-A1 fraction {j_frac:.3f} < 0.5"
+                f"ASTM D7566 constraint violated: Jet-A1 fraction {j_frac:.3f} < 0.5"
             )
         if saf_frac > 0.5 + 1e-8:
             raise ValueError(
-                f"ASTM constraint violated: SAF fraction {saf_frac:.3f} > 0.5"
+                f"ASTM D7566 constraint violated: SAF fraction {saf_frac:.3f} > 0.5"
             )
 
     fuels = [
@@ -212,14 +257,9 @@ def make_saf_blend(
     return blend_surrogates(fuels, name="SAF-Blend")
 
 
-# ---------------------------------------------------------------------------
-# Simple manual test / demo
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
-    # Example: 60% Jet-A1, 20% HEFA, 10% FT, 10% ATJ
-    blend = make_saf_blend(p_j=0.6, p_h=0.2, p_f=0.1, p_a=0.1)
+    # Example usage: Create a 60% Jet-A1, 30% HEFA, 10% FT blend
+    blend = make_saf_blend(p_j=0.6, p_h=0.3, p_f=0.1, p_a=0.0)
     print(f"Blend name: {blend.name}")
-    print("Species (unnormalized):", blend.species)
-    print("Normalized species:", blend.normalized_species())
+    print("Species composition:", blend.normalized_species())
     print("Cantera composition string:", blend.as_composition_string())

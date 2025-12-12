@@ -1,15 +1,17 @@
 """
-Thermodynamic Utilities for PINN Integration
-=============================================
+Thermodynamic Utilities for Cantera-PINN Integration.
 
-Helper functions to bridge Cantera combustion chemistry with PINNs,
-enabling fuel-dependent, non-ideal thermodynamic modeling in turbine
-and nozzle components.
+This module provides bridge functions that connect Cantera's chemical equilibrium
+calculations with Physics-Informed Neural Network (PINN) models. These utilities
+extract fuel-dependent thermodynamic properties from combustion products and package
+them in a format suitable for PINN training and inference.
 
-Key Features:
-- Extracts real thermodynamic properties (cp, R, gamma) from combustor output
-- Builds PINN-compatible condition dictionaries
-- Ensures thermodynamic consistency across engine components
+Key Capability:
+The functions here enable the hybrid modeling approach by propagating real,
+fuel-specific thermodynamic properties (cp, R, gamma) from chemical kinetics
+calculations into flow physics predictions. This breaks the constant-property
+assumption and allows the model to capture how fuel chemistry affects expansion
+and acceleration processes.
 """
 
 from typing import Dict, Any

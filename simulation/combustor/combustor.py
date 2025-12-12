@@ -1,3 +1,20 @@
+"""
+Combustor Model Using Chemical Equilibrium.
+
+This module implements a constant-pressure combustor using Cantera's chemical equilibrium
+solver. The model calculates adiabatic flame temperature and equilibrium product composition
+for arbitrary fuel-air mixtures, then extracts fuel-dependent thermodynamic properties.
+
+Model Capabilities:
+- Handles any fuel compatible with the loaded chemical mechanism
+- Computes equilibrium combustion products (CO2, H2O, N2, etc.)
+- Extracts fuel-dependent thermodynamic properties (cp, R, gamma) from products
+- Applies efficiency factor to account for incomplete combustion
+
+The fuel-dependent properties are critical: different fuels produce different combustion
+products with different heat capacities, which directly affect downstream expansion processes.
+"""
+
 import cantera as ct
 import numpy as np
 from typing import Dict, Any
@@ -5,30 +22,33 @@ from typing import Dict, Any
 
 class Combustor:
     """
-    Constant-pressure combustor model using Cantera.
+    Constant-pressure combustor using Cantera chemical equilibrium.
 
-    - Uses HP equilibrium to compute the ideal adiabatic flame state.
-    - Applies a combustion efficiency factor N_cmb to scale the ideal
-      temperature rise (models incomplete combustion / losses).
+    The combustor solves for chemical equilibrium at constant enthalpy and pressure (HP)
+    to find the adiabatic flame temperature and product composition. Real combustors have
+    heat losses and incomplete combustion, captured by the efficiency parameter.
 
-    The combustor is mechanism-agnostic: it can use any Cantera-compatible
-    mechanism file (CRECK, HyChem, GRI-Mech, etc.). The choice of mechanism
-    should be made by the calling code based on the simulation purpose.
+    Key Feature:
+        Extracts fuel-dependent thermodynamic properties (cp, R, gamma) from the actual
+        combustion product mixture. These properties vary significantly between fuels:
+        - Jet-A1 combustion products: different cp, gamma than SAF combustion products
+        - This variation propagates through the engine and affects performance
     """
 
     def __init__(self, mechanism_file: str):
         """
-        Initialize the Combustor with a Cantera reaction mechanism file path.
+        Initialize combustor with a chemical kinetics mechanism.
 
         Args:
-            mechanism_file: Path to the Cantera mechanism file.
-                           Examples: 'data/creck_c1c16_full.yaml' (for blend studies),
-                                    'data/A1highT.yaml' (for HyChem Jet-A1 validation),
-                                    'gri30.yaml' (for simple methane combustion)
+            mechanism_file: Path to Cantera-compatible mechanism YAML file
+                           Examples:
+                           - 'data/creck_c1c16_full.yaml': For multi-fuel comparisons
+                           - 'data/A1highT.yaml': For high-fidelity Jet-A1 validation
         """
         self.mechanism_file = mechanism_file
+        # Validate mechanism file exists and can be loaded
         try:
-            ct.Solution(mechanism_file)  # Validate mechanism file on initialization
+            ct.Solution(mechanism_file)
         except Exception as e:
             raise RuntimeError(f"Failed to load Cantera mechanism '{mechanism_file}': {e}")
 
@@ -41,20 +61,33 @@ class Combustor:
         efficiency: float = 1.0,
     ) -> Dict[str, Any]:
         """
-        Run the combustor model for a given inlet state, fuel blend, and equivalence ratio.
+        Simulate combustion and extract fuel-dependent thermodynamic properties.
+
+        The combustion calculation proceeds in several steps:
+        1. Set up fuel-air mixture at inlet conditions
+        2. Solve for chemical equilibrium (adiabatic flame temperature)
+        3. Apply efficiency factor to account for real combustor losses
+        4. Extract thermodynamic properties from equilibrium product mixture
 
         Args:
-            T_in: Inlet temperature [K] (from compressor).
-            p_in: Inlet pressure [Pa] (from compressor).
-            fuel_blend: FuelSurrogate or string; if object, must implement .as_composition_string().
-            phi: Equivalence ratio.
-            efficiency: Combustion efficiency N_cmb, scaling the ideal temperature rise (0–1).
+            T_in: Inlet temperature from compressor [K]
+            p_in: Inlet pressure from compressor [Pa]
+            fuel_blend: FuelSurrogate object or composition string (e.g., "NC12H26:1.0")
+            phi: Equivalence ratio (phi < 1 is lean, phi = 1 is stoichiometric)
+            efficiency: Combustion efficiency accounting for incomplete combustion (0-1)
+                       Typical value: 0.98 for modern combustors
 
         Returns:
-            dict with:
-                T_out, p_out, h_out, Y_out, cp_out, R_out, gamma_out
+            Dictionary containing outlet state and fuel-dependent properties:
+                - T_out: Outlet temperature [K]
+                - p_out: Outlet pressure [Pa]
+                - h_out: Outlet specific enthalpy [J/kg]
+                - Y_out: Mass fractions of product species
+                - cp_out: Specific heat at constant pressure [J/(kg·K)] - FUEL-DEPENDENT
+                - R_out: Specific gas constant [J/(kg·K)] - FUEL-DEPENDENT
+                - gamma_out: Heat capacity ratio cp/cv - FUEL-DEPENDENT
         """
-        # 1. Fuel composition string
+        # Convert fuel blend object to Cantera composition string
         try:
             fuel_string = fuel_blend.as_composition_string()
         except AttributeError:
@@ -65,29 +98,32 @@ class Combustor:
                     "fuel_blend must be a composition string or implement .as_composition_string()."
                 )
 
-        # 2. Set up equilibrium gas (ideal adiabatic flame)
+        # Set up fuel-air mixture at inlet conditions
         gas_eq = ct.Solution(self.mechanism_file)
         gas_eq.TP = T_in, p_in
         gas_eq.set_equivalence_ratio(phi, fuel=fuel_string, oxidizer="O2:1.0, N2:3.76")
 
-        # Ideal adiabatic equilibrium (HP)
+        # Solve for chemical equilibrium at constant enthalpy and pressure
+        # This finds the adiabatic flame temperature and product composition
         gas_eq.equilibrate("HP")
         T_ideal = gas_eq.T
-        Y_ideal = gas_eq.Y
+        Y_ideal = gas_eq.Y  # Product mass fractions (CO2, H2O, N2, etc.)
 
-        # 3. Apply combustion efficiency to temperature rise
-        #    T_out = T_in + N_cmb * (T_ideal - T_in)
+        # Apply combustion efficiency to temperature rise
+        # Real combustors have heat losses and incomplete combustion
         T_out = T_in + efficiency * (T_ideal - T_in)
 
-        # 4. Set final state with same composition but reduced temperature
+        # Set outlet state with equilibrium composition at efficiency-corrected temperature
         gas_out = ct.Solution(self.mechanism_file)
         gas_out.TPY = T_out, p_in, Y_ideal
 
-        # 5. Package outputs including gamma
-        cp_out = gas_out.cp_mass
-        R_out = ct.gas_constant / gas_out.mean_molecular_weight
-        cv_out = cp_out - R_out
-        gamma_out = cp_out / cv_out
+        # Extract fuel-dependent thermodynamic properties from product mixture
+        # These properties vary with fuel because different fuels produce different
+        # combustion products (e.g., different H2O/CO2 ratios)
+        cp_out = gas_out.cp_mass  # Specific heat [J/(kg·K)]
+        R_out = ct.gas_constant / gas_out.mean_molecular_weight  # Gas constant [J/(kg·K)]
+        cv_out = cp_out - R_out  # Specific heat at constant volume [J/(kg·K)]
+        gamma_out = cp_out / cv_out  # Heat capacity ratio (typically 1.3-1.35 for combustion products)
 
         return {
             "T_out": gas_out.T,

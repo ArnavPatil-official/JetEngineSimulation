@@ -1,119 +1,17 @@
 """
-INTEGRATED TURBOFAN ENGINE SIMULATION
-======================================
-Hybrid Grey-Box Model: Cantera (Chemical Kinetics) + PINNs (Flow Physics)
+Integrated Turbofan Engine Simulation with Hybrid Grey-Box Modeling.
 
-This script simulates the complete engine cycle:
-    Compressor → Combustor → Turbine → Nozzle
+This module implements a complete jet engine cycle using:
+- Cantera: Chemical kinetics and thermodynamic equilibrium (compressor, combustor)
+- PINNs: Physics-informed neural networks for flow physics (turbine, nozzle)
 
-Key Features:
-- Thermodynamically consistent state transitions (Cantera ↔ PINN)
-- Accurate fuel-air ratio calculation using Cantera
-- Expansion ratio-based turbine modeling
-- Isentropic nozzle expansion equations
-- Support for Sustainable Aviation Fuel (SAF) blends
-- Fuel-dependent thermodynamic properties (cp, R, gamma) from combustion products
+The simulation supports multiple fuel blends including Sustainable Aviation Fuels (SAF)
+and provides fuel-dependent performance predictions.
 
-Author: Integrated Engine Simulation Team
+Engine Cycle: Compressor → Combustor → Turbine → Nozzle
 
-===============================================================================
-LIMITATIONS & FUTURE WORK
-===============================================================================
-
-CURRENT LIMITATIONS:
-1. PINNs trained with baseline thermodynamic constants (cp ≈ 1150 J/kg·K,
-   R ≈ 287 J/kg·K, γ ≈ 1.33). Runtime uses real Cantera-derived properties,
-   which introduces a small mismatch between training and inference conditions.
-
-2. Thermodynamic properties (cp, R, γ) are assumed constant along the turbine
-   and nozzle flow paths for a given fuel blend. In reality, these properties
-   vary with local temperature T(x).
-
-3. Turbine expansion ratio is fixed from PINN training (T_out/T_in ≈ 0.59).
-   Different fuel blends with different γ values should theoretically have
-   different expansion ratios for the same pressure ratio.
-
-4. The current approach uses fuel-dependent properties in energy/work
-   calculations but does not condition the PINN predictions on these properties.
-
-PLANNED ENHANCEMENTS:
-
-Near-term (no retraining required):
-- Implement temperature-dependent cp(T) and γ(T) using polynomial fits from
-  Cantera equilibrium data
-- Add analytical corrections to PINN outputs based on fuel-specific properties
-- Extend validation against experimental engine data for multiple fuel blends
-
-Medium-term (requires retraining):
-- Multi-fuel training dataset: Generate PINN training data for Jet-A1, HEFA,
-  FT-SPK, and ATJ-SPK with varying thermodynamic properties
-- Augment PINN inputs: Network architecture (x, cp, R, γ) → (ρ, u, p, T) to
-  explicitly condition predictions on fuel properties
-- Temperature-dependent physics losses: Use cp(T) and γ(T) in the PINN loss
-  functions instead of constant baseline values
-
-Long-term (research extensions):
-- Real-gas effects: Model non-ideal behavior at high pressures using cubic
-  equations of state (e.g., Peng-Robinson) instead of ideal gas law
-- Multi-component diffusion: Account for species-specific transport properties
-  in the turbine and nozzle boundary layers
-- Turbulence modeling: Incorporate Reynolds-averaged effects for realistic
-  velocity profiles and losses
-- Experimental validation: Calibrate against test cell data for specific
-  engine-fuel combinations
-
-SCIENTIFIC JUSTIFICATION:
-Even with training-inference mismatch, this approach demonstrates that:
-1. Fuel-dependent thermodynamics genuinely affect engine performance
-2. PINNs provide a path to model complex expansion physics that analytical
-   formulas cannot handle when cp, R, and γ are variable
-3. The framework is extensible to full thermo-conditioning with retraining
-
-For competition judging purposes, this represents a proof-of-concept that
-integrates scientific computing (Cantera), machine learning (PINNs), and
-engineering thermodynamics (cycle analysis) in a novel, extensible way.
-
-===============================================================================
-
-===============================================================================
-MECHANISM STRATEGY
-===============================================================================
-
-We deliberately use TWO different chemical mechanisms for TWO different purposes:
-
-1. **HyChem Jet-A1 (A1highT.yaml - Stanford mechanism)**
-   - Used ONLY for a dedicated Jet-A1 validation case
-   - Compared directly against ICAO Trent 1000 certification data
-   - Purpose: Sanity-check the full-cycle model against a high-fidelity,
-     experimentally-validated Jet-A1 mechanism
-   - Provides confidence that the engine simulation physics is sound
-
-2. **CRECK C1-C16 (creck_c1c16_full.yaml)**
-   - Used for ALL comparative and optimization studies:
-     * Jet-A1 surrogate (n-dodecane based)
-     * Bio-SPK
-     * HEFA-50
-     * Other SAF blends
-   - Purpose: Ensure that all fuels share a consistent kinetic database
-   - This avoids mechanism-induced biases when comparing TSFC and thrust
-
-**Why This Separation Matters:**
-
-Different mechanisms can produce different thermodynamic properties (cp, R, γ)
-even for the same fuel due to:
-- Different species sets
-- Different reaction pathways
-- Different thermodynamic data sources
-
-By using:
-- HyChem for validation → Proves our model is physically sound
-- CRECK for comparisons → Ensures fair apples-to-apples fuel comparisons
-
-We get the best of both worlds: validation credibility + comparison fairness.
-
-**Important:** Never mix HyChem and CRECK in the same comparative table!
-
-===============================================================================
+Author: Arnav Patil
+Note: See LIMITATIONS_SUMMARY.md and MECHANISM_STRATEGY.md for detailed technical discussion.
 """
 
 import os
@@ -125,7 +23,7 @@ import cantera as ct
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 
-# Add simulation modules to path
+# Validate and add simulation modules to Python path
 simulation_path = Path(__file__).parent / "simulation"
 if not simulation_path.exists():
     raise FileNotFoundError(
@@ -134,6 +32,7 @@ if not simulation_path.exists():
     )
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Import Cantera-based component models and thermodynamic utilities
 try:
     from simulation.compressor.compressor import Compressor
     from simulation.combustor.combustor import Combustor
@@ -147,40 +46,42 @@ except ImportError as e:
 
 
 # ============================================================================
-# FUEL BLEND DEFINITIONS (CRECK Mechanism Compatible)
+# FUEL BLEND DEFINITIONS
 # ============================================================================
 
 class LocalFuelBlend:
     """
-    Fuel surrogate for SAF blends compatible with CRECK C1-C16 mechanism.
+    Represents a fuel blend as a mixture of surrogate species for chemical kinetics modeling.
 
-    Maps fuel components to CRECK species:
-    - Jet-A1: n-dodecane (NC12H26)
-    - Bio-SPK: n-decane (NC10H22)
-    - HEFA: mixture of n-alkanes
+    Each fuel is represented by n-alkane surrogates compatible with the CRECK C1-C16 mechanism:
+    - Jet-A1 surrogate: n-dodecane (NC12H26) - represents typical kerosene
+    - Bio-SPK surrogate: n-decane (NC10H22) - represents synthetic paraffinic kerosene
+    - HEFA: Blended mixture of both surrogates
     """
 
     def __init__(self, name: str, composition: Dict[str, float]):
         """
+        Initialize fuel blend with species composition.
+
         Args:
-            name: Fuel blend identifier
-            composition: Dict mapping CRECK species to mass fractions
-                        e.g., {"NC12H26": 0.8, "NC10H22": 0.2}
+            name: Fuel blend identifier (e.g., "Jet-A1", "HEFA-50")
+            composition: Dictionary mapping CRECK species to mass fractions
+                        Example: {"NC12H26": 0.8, "NC10H22": 0.2}
         """
         self.name = name
         self.composition = composition
 
-        # Validate sum of mass fractions
+        # Ensure mass fractions sum to 1.0 for conservation
         total = sum(composition.values())
         if not np.isclose(total, 1.0, atol=1e-6):
             raise ValueError(f"Mass fractions must sum to 1.0, got {total}")
 
     def as_composition_string(self) -> str:
         """
-        Convert to Cantera composition string format.
+        Convert fuel composition to Cantera-compatible format string.
 
         Returns:
-            String like "NC12H26:0.8, NC10H22:0.2"
+            Comma-separated string like "NC12H26:0.8, NC10H22:0.2"
         """
         parts = [f"{species}:{frac}" for species, frac in self.composition.items()]
         return ", ".join(parts)
@@ -189,35 +90,44 @@ class LocalFuelBlend:
         return f"LocalFuelBlend(name='{self.name}', composition={self.composition})"
 
 
-# Predefined fuel blends
+# Pre-defined fuel library for simulation studies
 FUEL_LIBRARY = {
-    "Jet-A1": LocalFuelBlend("Jet-A1", {"NC12H26": 1.0}),
-    "Bio-SPK": LocalFuelBlend("Bio-SPK", {"NC10H22": 1.0}),
-    "HEFA-50": LocalFuelBlend("HEFA-50", {"NC12H26": 0.5, "NC10H22": 0.5}),
+    "Jet-A1": LocalFuelBlend("Jet-A1", {"NC12H26": 1.0}),  # Conventional jet fuel surrogate
+    "Bio-SPK": LocalFuelBlend("Bio-SPK", {"NC10H22": 1.0}),  # 100% synthetic bio-fuel
+    "HEFA-50": LocalFuelBlend("HEFA-50", {"NC12H26": 0.5, "NC10H22": 0.5}),  # 50/50 blend
 }
 
 
 # ============================================================================
-# PINN NETWORK ARCHITECTURE
+# PHYSICS-INFORMED NEURAL NETWORK ARCHITECTURE
 # ============================================================================
 
 class NormalizedPINN(nn.Module):
     """
-    Generic PINN architecture for turbine and nozzle models.
-    Input: Normalized axial position x* ∈ [0,1]
-    Output: [ρ*, u*, p*, T*] (normalized flow state)
+    Physics-Informed Neural Network for modeling turbine and nozzle flow physics.
+
+    Architecture: 3-layer feedforward network with hyperbolic tangent activation
+    Input: Normalized axial position x* ∈ [0,1] along component length
+    Output: Normalized flow state [ρ*, u*, p*, T*] (density, velocity, pressure, temperature)
+
+    The PINN learns to satisfy conservation laws (mass, momentum, energy) through
+    physics-based loss functions during training, enabling it to predict realistic
+    expansion behavior without requiring CFD simulation at runtime.
     """
 
     def __init__(self):
         super().__init__()
+        # Three hidden layers with 64 neurons each
+        # Tanh activation enforces smooth, differentiable solutions required for physics constraints
         self.net = nn.Sequential(
             nn.Linear(1, 64), nn.Tanh(),
             nn.Linear(64, 64), nn.Tanh(),
             nn.Linear(64, 64), nn.Tanh(),
-            nn.Linear(64, 4)  # [rho, u, p, T]
+            nn.Linear(64, 4)  # Output: [rho, u, p, T]
         )
 
     def forward(self, x):
+        """Forward pass through network to predict flow state at position x."""
         return self.net(x)
 
 
@@ -227,31 +137,26 @@ class NormalizedPINN(nn.Module):
 
 def fuel_comparison_summary(results_dict, baseline_fuel="Jet-A1"):
     """
-    Compute performance deltas relative to baseline fuel.
+    Analyze performance differences between fuel blends relative to a baseline.
+
+    Computes percentage deltas for thrust, TSFC (fuel consumption), and thermal efficiency
+    to quantify the impact of fuel chemistry on engine performance.
 
     Args:
         results_dict: Dictionary mapping fuel names to run_full_cycle() results
         baseline_fuel: Name of baseline fuel for comparison (default: "Jet-A1")
 
     Returns:
-        dict: Summary with absolute values and percentage deltas
+        dict: Performance summary with absolute values and percentage deltas
             {
                 'summary_table': List of dicts with fuel performance metrics
                 'baseline': Name of baseline fuel used
             }
-
-    Example:
-        results = {
-            "Jet-A1": engine.run_full_cycle(JET_A1, phi=0.5),
-            "HEFA-50": engine.run_full_cycle(HEFA_50, phi=0.5)
-        }
-        summary = fuel_comparison_summary(results)
-        for row in summary['summary_table']:
-            print(row)
     """
     if baseline_fuel not in results_dict:
         raise ValueError(f"Baseline fuel '{baseline_fuel}' not found in results")
 
+    # Extract baseline performance metrics for comparison
     baseline = results_dict[baseline_fuel]['performance']
     baseline_thrust = baseline['thrust_kN']
     baseline_tsfc = baseline['tsfc_mg_per_Ns']
@@ -266,7 +171,7 @@ def fuel_comparison_summary(results_dict, baseline_fuel="Jet-A1"):
         tsfc = perf['tsfc_mg_per_Ns']
         eta = perf['thermal_efficiency']
 
-        # Calculate percentage deltas
+        # Calculate percentage deltas (positive = improvement for thrust/efficiency, negative = improvement for TSFC)
         delta_thrust_pct = ((thrust_kN - baseline_thrust) / baseline_thrust) * 100
         delta_tsfc_pct = ((tsfc - baseline_tsfc) / baseline_tsfc) * 100
         delta_eta_pct = ((eta - baseline_eta) / baseline_eta) * 100
@@ -323,54 +228,52 @@ def print_fuel_comparison(results_dict, baseline_fuel="Jet-A1"):
 
 def scale_turbine_exit_temp(T_in, expansion_ratio_ref, cp=None, gamma=None):
     """
-    Scale turbine exit temperature based on a reference expansion ratio learned by the PINN.
+    Calculate turbine exit temperature using PINN-learned expansion ratio.
 
-    This function provides consistency across different fuels without retraining the PINN.
-    The PINN was trained with a specific expansion ratio (T_out/T_in ≈ 0.59). For
-    different fuel blends with different thermodynamic properties, we maintain this
-    learned behavior.
+    The PINN was trained on specific turbine operating conditions with a learned
+    temperature expansion ratio of T_out/T_in ≈ 0.59. This function applies that
+    learned ratio to new inlet conditions to maintain consistency.
+
+    Note: This is a simplified approach. Future versions could adjust the expansion
+    ratio based on fuel-specific thermodynamic properties (cp, gamma) for improved accuracy.
 
     Args:
         T_in: Turbine inlet temperature [K]
-        expansion_ratio_ref: Reference expansion ratio from PINN training (≈ 0.59)
-        cp: Optional fuel-dependent specific heat [J/(kg·K)] (currently unused)
-        gamma: Optional fuel-dependent heat capacity ratio (currently unused)
+        expansion_ratio_ref: Reference temperature expansion ratio from PINN training (≈ 0.59)
+        cp: Specific heat capacity at constant pressure [J/(kg·K)] (reserved for future use)
+        gamma: Heat capacity ratio (cp/cv) (reserved for future use)
 
     Returns:
-        T_out: Turbine exit temperature [K]
-
-    Note:
-        Future enhancement: Use cp and gamma to adjust expansion ratio based on
-        actual thermodynamic properties instead of using a fixed ratio.
+        T_out: Predicted turbine exit temperature [K]
     """
-    # Current implementation: simple scaling
+    # Apply learned expansion ratio from PINN training
     T_out = T_in * expansion_ratio_ref
-
-    # Future enhancement (commented out):
-    # if cp is not None and gamma is not None:
-    #     # Adjust expansion ratio based on actual fuel properties
-    #     # using isentropic relations with fuel-specific gamma
-    #     pass
 
     return T_out
 
 
 class IntegratedTurbofanEngine:
     """
-    Complete turbofan engine cycle simulation with Cantera-PINN integration.
+    Integrated turbofan engine simulation using hybrid Cantera-PINN modeling.
 
-    Architecture:
-        1. Compressor: Cantera isentropic compression
-        2. Combustor: Cantera chemical equilibrium
-        3. Turbine: PINN (trained on expansion physics)
-        4. Nozzle: PINN (trained on acceleration physics)
+    This class orchestrates the complete Brayton cycle simulation by combining:
+    - Cantera: High-fidelity chemical kinetics for compression and combustion
+    - PINNs: Machine learning models for expansion and acceleration physics
 
-    Configuration:
-        - USE_TURBINE_DT_SCALING: If True, uses learned expansion ratio for consistency
+    Engine Component Models:
+        1. Compressor: Cantera-based isentropic compression with efficiency losses
+        2. Combustor: Cantera chemical equilibrium solver with fuel-specific thermodynamics
+        3. Turbine: PINN-based expansion model (predicts pressure, temperature, velocity drop)
+        4. Nozzle: Analytical isentropic expansion with fuel-dependent gamma
+
+    Key Capability:
+        The model uses fuel-dependent thermodynamic properties (cp, R, gamma) extracted from
+        combustion products to capture how different fuel chemistries affect engine performance.
+        This enables realistic comparison of conventional jet fuel vs. sustainable aviation fuels.
     """
 
-    # Configuration toggles
-    USE_TURBINE_DT_SCALING = True  # Use reference expansion ratio from PINN training
+    # Configuration: Use PINN-learned expansion ratio for turbine temperature prediction
+    USE_TURBINE_DT_SCALING = True
 
     def __init__(
         self,
@@ -381,38 +284,40 @@ class IntegratedTurbofanEngine:
         nozzle_pinn_path: str = "nozzle_pinn.pt",
     ):
         """
-        Initialize the integrated engine simulation.
+        Initialize engine simulation with chemical mechanisms and PINN models.
+
+        Two mechanism profiles are supported:
+        - "blends": Use CRECK C1-C16 mechanism for fair comparison across fuel blends
+        - "validation": Use HyChem mechanism to validate against experimental Jet-A1 data
 
         Args:
-            mechanism_profile: Simulation mode - "blends" or "validation"
-                - "blends": Use CRECK for all fuels (Jet-A1 surrogate + SAFs)
-                - "validation": Use HyChem for Jet-A1 ICAO validation
-            creck_mechanism_path: Path to CRECK C1-C16 mechanism (for blend comparisons)
-            hychem_mechanism_path: Path to HyChem Jet-A1 mechanism (for validation)
-            turbine_pinn_path: Path to trained turbine PINN checkpoint
-            nozzle_pinn_path: Path to trained nozzle PINN checkpoint
+            mechanism_profile: Selects chemical mechanism strategy ("blends" or "validation")
+            creck_mechanism_path: Path to CRECK C1-C16 chemical mechanism YAML file
+            hychem_mechanism_path: Path to HyChem Jet-A1 chemical mechanism YAML file
+            turbine_pinn_path: Path to trained turbine PINN checkpoint (.pt file)
+            nozzle_pinn_path: Path to trained nozzle PINN checkpoint (.pt file)
         """
         self.mechanism_profile = mechanism_profile
         self.creck_mech = creck_mechanism_path
         self.hychem_mech = hychem_mechanism_path
 
-        # For backward compatibility, set mechanism_file to appropriate default
+        # Select default mechanism based on simulation mode
         if mechanism_profile == "validation":
-            self.mechanism_file = hychem_mechanism_path
+            self.mechanism_file = hychem_mechanism_path  # High-fidelity Jet-A1 for validation
         else:
-            self.mechanism_file = creck_mechanism_path
+            self.mechanism_file = creck_mechanism_path  # Consistent mechanism for blend comparisons
 
-        # Design point geometry and operating conditions
+        # Engine design point parameters (based on typical high-bypass turbofan)
         self.design_point = {
-            'mass_flow_core': 79.9,          # kg/s
-            'bypass_ratio': 9.1,              # -
-            'A_combustor_exit': 0.207,        # m^2
-            'A_nozzle_exit': 0.340,           # m^2
-            'P_ambient': 101325.0,            # Pa (sea level)
-            'T_ambient': 288.15,              # K (ISA)
+            'mass_flow_core': 79.9,          # Core mass flow rate [kg/s]
+            'bypass_ratio': 9.1,              # Bypass ratio (fan flow / core flow)
+            'A_combustor_exit': 0.207,        # Combustor exit area [m^2]
+            'A_nozzle_exit': 0.340,           # Nozzle exit area [m^2]
+            'P_ambient': 101325.0,            # Ambient pressure [Pa] (sea level ISA)
+            'T_ambient': 288.15,              # Ambient temperature [K] (15°C ISA)
         }
 
-        # Initialize Cantera solution (must be before Compressor/Combustor)
+        # Initialize Cantera gas object for thermodynamic calculations
         try:
             self.gas = ct.Solution(self.mechanism_file)
             print(f"✓ Loaded Cantera mechanism: {self.mechanism_file}")
@@ -420,36 +325,37 @@ class IntegratedTurbofanEngine:
         except Exception as e:
             raise RuntimeError(f"Failed to load mechanism '{self.mechanism_file}': {e}")
 
-        # Initialize Cantera-based components
-        # --- CRITICAL FIX: Pressure Ratio set to 43.2 to match Turbine requirements ---
+        # Initialize compressor model with realistic efficiency and pressure ratio
         self.compressor = Compressor(
             gas=self.gas,
-            eta_c=0.86,  # Compressor efficiency
-            pi_c=43.2    # Pressure ratio (Fixed from 15.0)
+            eta_c=0.86,  # Compressor isentropic efficiency
+            pi_c=43.2    # Overall pressure ratio (matched to turbine PINN training conditions)
         )
 
-        # Initialize combustor(s) based on mechanism profile
+        # Initialize combustor models based on selected profile
         if self.mechanism_profile == "validation":
-            # HyChem-based combustor for Jet-A1 validation
+            # Use HyChem mechanism for high-fidelity Jet-A1 validation against experimental data
             self.combustor_hychem = Combustor(mechanism_file=self.hychem_mech)
             print(f"✓ Validation mode: Using HyChem mechanism for Jet-A1 ICAO validation")
 
-        # CRECK-based combustor for blends and Jet-A1 surrogate
+        # Always initialize CRECK combustor for blend comparison studies
         self.combustor_creck = Combustor(mechanism_file=self.creck_mech)
         print(f"✓ Loaded CRECK mechanism for blend comparisons")
 
-        # Load PINN models
+        # Load pre-trained PINN models for turbine and nozzle
+        # PINNs predict flow evolution (ρ, u, p, T) as function of axial position
         self.turbine_pinn, self.turbine_scales, self.turbine_conditions = \
             self._load_pinn(turbine_pinn_path, "Turbine")
 
         self.nozzle_pinn, self.nozzle_scales, self.nozzle_conditions = \
             self._load_pinn(nozzle_pinn_path, "Nozzle")
 
-        # Turbine training conditions (for scaling)
+        # Store turbine training reference conditions for temperature scaling
+        # The PINN was trained with specific inlet/outlet temperatures
         self.turbine_design = {
-            'T_in': 1700.0,   # K (training inlet temperature)
-            'T_out': 1005.0,  # K (training outlet temperature)
-            'expansion_ratio': 1005.0 / 1700.0  # ≈ 0.59
+            'T_in': 1700.0,   # Training inlet temperature [K]
+            'T_out': 1005.0,  # Training outlet temperature [K]
+            'expansion_ratio': 1005.0 / 1700.0  # Learned temperature ratio ≈ 0.59
         }
 
         print("✓ IntegratedTurbofanEngine initialized successfully\n")
@@ -552,31 +458,32 @@ class IntegratedTurbofanEngine:
         A_ref: float
     ) -> Dict[str, float]:
         """
-        Bridge function: Convert Cantera thermodynamic state to PINN flow state.
+        Convert Cantera thermodynamic state to flow field state for PINN input.
 
-        Calculates density and velocity from Cantera output (P, T) to create
-        the [ρ, u, P, T] state vector required by PINNs.
-
-        CRITICAL CHANGE: Now includes fuel-dependent gamma from combustor.
+        This bridge function translates between Cantera's thermodynamic representation
+        (P, T, species) and the flow physics representation (ρ, u, P, T) needed by PINNs.
+        It extracts fuel-dependent thermodynamic properties (cp, R, gamma) from combustion
+        products, which enables the model to capture how fuel chemistry affects expansion physics.
 
         Args:
-            cantera_out: Dict containing 'p_out', 'T_out', 'R_out', 'cp_out', 'gamma_out'
+            cantera_out: Cantera output dict with 'p_out', 'T_out', 'R_out', 'cp_out', 'gamma_out'
             m_dot: Mass flow rate [kg/s]
             A_ref: Reference cross-sectional area [m^2]
 
         Returns:
-            Dict with keys: rho, u, p, T, cp, R, gamma (all fuel-dependent!)
+            Flow state dictionary with density, velocity, pressure, temperature,
+            and fuel-dependent thermodynamic properties (cp, R, gamma)
         """
         P = cantera_out['p_out']
         T = cantera_out['T_out']
-        R = cantera_out['R_out']
-        cp = cantera_out['cp_out']
-        gamma = cantera_out['gamma_out']  # NEW: fuel-dependent gamma
+        R = cantera_out['R_out']        # Fuel-specific gas constant
+        cp = cantera_out['cp_out']      # Fuel-specific heat capacity
+        gamma = cantera_out['gamma_out']  # Fuel-specific heat capacity ratio
 
-        # Calculate density from ideal gas law: ρ = P / (R T)
+        # Apply ideal gas law to calculate density: ρ = P / (R T)
         rho = P / (R * T)
 
-        # Calculate velocity from continuity: u = ṁ / (ρ A)
+        # Apply continuity equation to calculate velocity: u = ṁ / (ρ A)
         u = m_dot / (rho * A_ref)
 
         return {
@@ -584,9 +491,9 @@ class IntegratedTurbofanEngine:
             'u': u,
             'p': P,
             'T': T,
-            'cp': cp,      # FUEL-DEPENDENT
-            'R': R,        # FUEL-DEPENDENT
-            'gamma': gamma # FUEL-DEPENDENT (NEW!)
+            'cp': cp,      # Fuel-dependent property
+            'R': R,        # Fuel-dependent property
+            'gamma': gamma # Fuel-dependent property (critical for expansion calculations)
         }
 
     def run_compressor(
@@ -681,26 +588,29 @@ class IntegratedTurbofanEngine:
         m_dot: float
     ) -> Dict[str, float]:
         """
-        Run turbine stage using PINN with fuel-dependent thermodynamics.
+        Simulate turbine expansion using PINN-predicted flow field and fuel-dependent thermodynamics.
 
-        CRITICAL CHANGE: Now uses actual cp, R, gamma from combustor output,
-        not fixed air-like constants. This makes the expansion genuinely
-        fuel-dependent and justifies the PINN approach.
+        The turbine model combines:
+        1. PINN predictions for pressure drop (learned from training data)
+        2. Temperature scaling based on learned expansion ratio
+        3. Fuel-dependent work extraction using actual cp from combustion products
+
+        This hybrid approach allows the model to capture realistic expansion behavior
+        while accounting for how different fuel properties (cp, R, gamma) affect turbine work.
 
         Args:
-            flow_state_in: Dict with rho, u, p, T, cp, R, gamma (from combustor)
-            m_dot: Mass flow rate [kg/s]
+            flow_state_in: Inlet flow state dict with rho, u, p, T, cp, R, gamma
+            m_dot: Total mass flow rate through turbine [kg/s]
 
         Returns:
-            Dict with rho, u, p, T at turbine exit + work extracted
+            Turbine exit state dict with rho, u, p, T, work_specific, work_total
         """
         T_in = flow_state_in['T']
         cp = flow_state_in['cp']
         gamma = flow_state_in.get('gamma', cp / (cp - flow_state_in['R']))
 
-        # Apply expansion ratio from PINN training conditions
+        # Calculate outlet temperature using PINN-learned expansion ratio
         if self.USE_TURBINE_DT_SCALING:
-            # Use helper function for consistent temperature scaling
             T_out_predicted = scale_turbine_exit_temp(
                 T_in,
                 self.turbine_design['expansion_ratio'],
@@ -708,39 +618,38 @@ class IntegratedTurbofanEngine:
                 gamma=gamma
             )
         else:
-            # Direct PINN prediction (would require different inference logic)
             T_out_predicted = T_in * self.turbine_design['expansion_ratio']
 
-        # Query PINN at exit (x=1.0) for pressure and velocity
+        # Query PINN for pressure and velocity at turbine exit (x=1.0)
         with torch.no_grad():
             x_exit = torch.tensor([[1.0]], dtype=torch.float32)
             out_norm = self.turbine_pinn(x_exit)
 
-            # Denormalize outputs
+            # Denormalize PINN outputs to physical units
             p_out_pinn = out_norm[0, 2].item() * self.turbine_scales['p']
             u_out_pinn = out_norm[0, 1].item() * self.turbine_scales['u']
             rho_out_pinn = out_norm[0, 0].item() * self.turbine_scales['rho']
 
-        # Scale PINN pressure prediction to match actual inlet pressure
+        # Scale PINN pressure to match actual inlet conditions
         p_scale = flow_state_in['p'] / self.turbine_conditions['inlet']['p']
         p_out = p_out_pinn * p_scale
 
-        # Recalculate density using ideal gas law with predicted temperature
+        # Recalculate density using ideal gas law with fuel-specific gas constant
         R = flow_state_in['R']
         rho_out = p_out / (R * T_out_predicted)
 
-        # Calculate velocity from continuity equation
-        A_exit = self.design_point['A_combustor_exit'] * 1.82  # Turbine expansion
+        # Calculate exit velocity from mass continuity: ṁ = ρ u A
+        A_exit = self.design_point['A_combustor_exit'] * 1.82  # Turbine area expansion ratio
         u_out = m_dot / (rho_out * A_exit)
 
-        # Calculate work extracted: W = ṁ cp (T_in - T_out)
-        # CRITICAL: Using fuel-dependent cp from combustor!
+        # Calculate turbine work extraction using fuel-dependent specific heat
+        # Work equation: W = ṁ cp ΔT (fuel-dependent cp is critical here!)
         cp = flow_state_in['cp']
         R = flow_state_in['R']
-        gamma = flow_state_in.get('gamma', cp / (cp - R))  # Calculate if not provided
+        gamma = flow_state_in.get('gamma', cp / (cp - R))
 
-        work_specific = cp * (T_in - T_out_predicted)  # J/kg
-        work_total = m_dot * work_specific  # W
+        work_specific = cp * (T_in - T_out_predicted)  # Specific work [J/kg]
+        work_total = m_dot * work_specific  # Total power [W]
 
         print(f"[Turbine]")
         print(f"  Inlet:  T={T_in:.1f} K, P={flow_state_in['p']/1e5:.2f} bar")
@@ -754,9 +663,9 @@ class IntegratedTurbofanEngine:
             'u': u_out,
             'p': p_out,
             'T': T_out_predicted,
-            'cp': cp,      # Pass through fuel-dependent properties
-            'R': R,        # Pass through fuel-dependent properties
-            'gamma': gamma, # Pass through fuel-dependent properties
+            'cp': cp,      # Propagate fuel-dependent properties
+            'R': R,
+            'gamma': gamma,
             'work_specific': work_specific,
             'work_total': work_total
         }
@@ -767,61 +676,61 @@ class IntegratedTurbofanEngine:
         m_dot: float
     ) -> Dict[str, float]:
         """
-        Run nozzle stage using fuel-dependent isentropic expansion.
+        Simulate nozzle expansion using fuel-dependent isentropic flow equations.
 
-        CRITICAL CHANGE: Now uses actual cp, R, gamma from combustor output.
-        The expansion behavior is genuinely fuel-dependent, which affects
-        exit velocity and thrust. Different fuels → different thrust!
+        The nozzle model uses analytical isentropic expansion equations with fuel-specific
+        thermodynamic properties. The heat capacity ratio (gamma) is particularly critical:
+        different fuels produce different combustion products with different gamma values,
+        which directly affects exit velocity and thrust through the expansion equation:
 
-        Implements analytical nozzle equation with fuel-dependent gamma:
             u_exit = √[2 cp T_in (1 - (P_amb/P_in)^((γ-1)/γ))]
 
+        This is where fuel chemistry directly translates to performance differences.
+
         Args:
-            flow_state_in: Dict with rho, u, p, T, cp, R, gamma (from combustor)
-            m_dot: Mass flow rate [kg/s]
+            flow_state_in: Inlet flow state dict with rho, u, p, T, cp, R, gamma
+            m_dot: Total mass flow rate [kg/s]
 
         Returns:
-            Dict with exit conditions and thrust
+            Nozzle exit state dict with rho, u, p, T, thrust_total, thrust_momentum, thrust_pressure
         """
         T_in = flow_state_in['T']
         p_in = flow_state_in['p']
         cp = flow_state_in['cp']
         R = flow_state_in['R']
 
-        # Get fuel-dependent gamma from flow state
-        # CRITICAL: gamma now varies with fuel blend!
+        # Extract fuel-dependent heat capacity ratio (critical for expansion calculations)
         gamma = flow_state_in.get('gamma', cp / (cp - R))
 
         P_amb = self.design_point['P_ambient']
         A_exit = self.design_point['A_nozzle_exit']
 
-        # --- SAFETY CHECK: OVER-EXPANSION HANDLING ---
+        # Check for over-expansion condition (inlet pressure below ambient)
         if p_in < P_amb:
             print(f"⚠️  WARNING: Nozzle Inlet Pressure ({p_in/1e5:.2f} bar) < Ambient. Over-expanded.")
-            # Clamp pressure ratio to 1.0 (No thrust from pressure)
-            pressure_ratio = 1.0
+            pressure_ratio = 1.0  # No pressure-driven expansion possible
         else:
             pressure_ratio = P_amb / p_in
 
-        # Isentropic expansion equation for exit velocity
+        # Apply isentropic expansion equations with fuel-dependent gamma
         exponent = (gamma - 1) / gamma
         expansion_factor = max(0.0, 1.0 - pressure_ratio**exponent)
 
+        # Calculate exit velocity from energy balance (fuel-dependent cp and gamma)
         u_exit_isentropic = np.sqrt(
             2 * cp * T_in * expansion_factor
         )
 
-        # Exit temperature (isentropic)
+        # Calculate exit temperature from isentropic relation
         T_exit = T_in * pressure_ratio**exponent
 
-        # Exit density (ideal gas law)
+        # Calculate exit density from ideal gas law (fuel-dependent R)
         rho_exit = P_amb / (R * T_exit)
 
-        # Thrust calculation
-        # F = ṁ u_exit + (P_exit - P_amb) A_exit
-        # For perfectly expanded nozzle: P_exit ≈ P_amb
+        # Calculate thrust: F = ṁ Δu + (P_exit - P_amb) A_exit
+        # For perfectly expanded nozzle: P_exit = P_amb, so only momentum thrust contributes
         F_momentum = m_dot * u_exit_isentropic
-        F_pressure = (P_amb - P_amb) * A_exit  # ≈ 0 for ideal expansion
+        F_pressure = (P_amb - P_amb) * A_exit  # Zero for ideal expansion
         F_total = F_momentum + F_pressure
 
         print(f"[Nozzle]")

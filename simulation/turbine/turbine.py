@@ -1,20 +1,26 @@
 """
-TURBINE PINN - FUEL-DEPENDENT THERMODYNAMICS
-=============================================
+Turbine Physics-Informed Neural Network (PINN) with Fuel-Dependent Thermodynamics.
 
-This turbine PINN now uses real, fuel-dependent thermodynamic properties
-from Cantera combustion products instead of fixed air-like constants.
+This module trains a PINN to model turbine expansion physics while enforcing conservation
+laws (mass, momentum, energy) and using fuel-dependent thermodynamic properties.
 
-Key Features:
-1. Thermodynamic properties (cp, R, gamma) derived from combustor output
-2. Different fuel blends → different expansion behavior
-3. Constant-gamma analytical formulas are NO LONGER VALID
-4. The PINN is genuinely necessary for non-ideal, fuel-dependent expansion
-5. Enforces Shaft Work Conservation using actual fuel-specific cp
+Model Architecture:
+- Input: Normalized axial position x* ∈ [0,1]
+- Output: Flow state [ρ*, u*, p*, T*] (normalized density, velocity, pressure, temperature)
+- Physics constraints: Enforces continuity, momentum, and energy conservation in loss function
+- Fuel-dependent: Uses actual cp, R, gamma from combustion products (not fixed air constants)
 
-Note: This makes the PINN essential (not just a numerical trick) because
-real combustion products have temperature- and composition-dependent
-properties that break the isentropic relations used in simple cycle analysis.
+Training Process:
+The PINN learns to satisfy:
+1. Continuity equation: d(ρu)/dx = 0 (mass conservation)
+2. Momentum equation: ρu du/dx + dp/dx = 0 (Newton's second law)
+3. Energy equation: Shaft work extraction matches compressor work requirement
+4. Boundary conditions: Match inlet/outlet states from engine cycle
+
+Key Innovation:
+Unlike traditional PINNs that assume constant gamma, this model uses fuel-specific
+thermodynamic properties, making it necessary (not just convenient) for modeling
+real engine behavior where fuel chemistry affects expansion physics.
 """
 
 import torch
@@ -37,6 +43,115 @@ print("="*70)
 # For fuel-dependent operation, use build_turbine_conditions() from thermo_utils
 # to create conditions with real combustor-derived properties.
 
+# =============================================================================
+# DERIVATION OF DEFAULT TURBINE CONDITIONS (DESIGN-POINT RECONSTRUCTION)
+# =============================================================================
+#
+# IMPORTANT:
+# These values are NOT directly reported in the ICAO emissions dataset.
+# The ICAO databank provides thrust rating, fuel flow, pressure ratio, and
+# emissions indices — NOT internal engine state variables.
+#
+# The quantities below are THERMODYNAMICALLY RECONSTRUCTED design-point
+# conditions inferred from:
+#   • ICAO overall pressure ratio
+#   • ICAO-rated thrust and fuel flow
+#   • Standard Brayton-cycle relations
+#   • Energy balance between compressor and turbine
+#
+# They serve as:
+#   (1) a physics-consistent training anchor for the turbine PINN
+#   (2) a baseline that is later overridden by fuel-dependent properties
+#       (cp, R, gamma) extracted from Cantera at runtime
+#
+# -----------------------------------------------------------------------------
+# TURBINE INLET STATE
+# -----------------------------------------------------------------------------
+#
+# Pressure:
+#   p_t,in ≈ OPR × p_ambient
+#   Typical modern turbofan OPR ≈ 40–45
+#
+#   p_t,in ≈ 41.5 × 101325 Pa ≈ 4.20 MPa
+#
+# Temperature:
+#   Turbine inlet temperature (TIT) is not reported by ICAO.
+#   Values of 1650–1750 K are standard in open literature for high-bypass
+#   turbofans. We select:
+#
+#   T_t,in = 1700 K
+#
+# Density:
+#   Computed from ideal gas law (baseline air-like constants):
+#
+#   ρ = p / (R T)
+#   ρ ≈ 4.20e6 / (287 × 1700) ≈ 8.61 kg/m³
+#
+# Velocity:
+#   From continuity at turbine inlet:
+#
+#   ṁ = ρ u A  ⇒  u = ṁ / (ρ A)
+#
+#   Using reconstructed mass flow and annulus area yields:
+#   u ≈ 44.7 m/s (low axial velocity due to high density)
+#
+# -----------------------------------------------------------------------------
+# TURBINE OUTLET STATE
+# -----------------------------------------------------------------------------
+#
+# Pressure:
+#   ICAO-consistent turbine exit / nozzle inlet pressure
+#   Typically ~4–5% of compressor exit pressure:
+#
+#   p_out ≈ 0.045 × OPR × p_ambient ≈ 193 kPa
+#
+# Temperature:
+#   Determined by shaft work balance (First Law):
+#
+#   W_turb = ṁ · cp · (T_in − T_out)
+#
+#   Solving for T_out ensures turbine extracts sufficient power
+#   to drive the compressor:
+#
+#   T_out = T_in − W_required / (ṁ · cp)
+#
+#   This yields T_out ≈ 1005 K
+#
+# Velocity:
+#   Density drops due to expansion, so axial velocity increases.
+#   Derived again from continuity:
+#
+#   u_out = ṁ / (ρ_out A_out)
+#
+# -----------------------------------------------------------------------------
+# GEOMETRY
+# -----------------------------------------------------------------------------
+#
+# Areas are chosen to:
+#   • satisfy continuity between turbine and nozzle
+#   • represent realistic LPT expansion ratios
+#
+# Length is normalized and scaled out during PINN training (x* ∈ [0,1])
+#
+# -----------------------------------------------------------------------------
+# PHYSICS CONSTANTS (BASELINE ONLY)
+# -----------------------------------------------------------------------------
+#
+# cp, R, gamma below are AIR-LIKE BASELINE VALUES.
+# They are used ONLY during PINN training for numerical stability.
+#
+# At runtime:
+#   cp, R, gamma are replaced with fuel-dependent values extracted
+#   from Cantera combustion products.
+#
+# -----------------------------------------------------------------------------
+# NORMALIZATION SCALES
+# -----------------------------------------------------------------------------
+#
+# These are characteristic magnitudes used for non-dimensionalization.
+# They improve numerical conditioning and DO NOT affect physics.
+#
+# =============================================================================
 DEFAULT_CONDITIONS = {
     'inlet': {'rho': 8.61, 'u': 44.7, 'p': 4.20e6, 'T': 1700.0},
     'outlet': {'rho': 0.67, 'u': 317.7, 'p': 1.93e5, 'T': 1005.0},

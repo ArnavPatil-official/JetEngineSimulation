@@ -1,19 +1,26 @@
 """
-NOZZLE PINN - FUEL-DEPENDENT THERMODYNAMICS
-============================================
+Nozzle Physics-Informed Neural Network (PINN) with Fuel-Dependent Thermodynamics.
 
-This nozzle PINN now uses real, fuel-dependent thermodynamic properties
-from Cantera combustion products instead of fixed air-like constants.
+This module trains a PINN to model converging-diverging nozzle expansion physics while
+enforcing conservation laws and using fuel-dependent thermodynamic properties.
 
-Key Features:
-1. Thermodynamic properties (cp, R, gamma) derived from combustor output
-2. Different fuel blends → different expansion behavior and thrust
-3. Constant-gamma isentropic formulas are NO LONGER VALID
-4. The PINN is genuinely necessary for non-ideal, fuel-dependent expansion
+Model Architecture:
+- Input: Normalized axial position x* ∈ [0,1]
+- Output: Flow state [ρ*, u*, p*, T*] (normalized density, velocity, pressure, temperature)
+- Physics constraints: Enforces continuity, momentum, isentropic flow in loss function
+- Fuel-dependent: Uses actual cp, R, gamma from combustion products
 
-Note: This makes the PINN essential because real combustion products have
-temperature- and composition-dependent properties that invalidate simple
-analytical nozzle equations.
+Training Process:
+The PINN learns to satisfy:
+1. Continuity equation: d(ρuA)/dx = 0 with area variation A(x)
+2. Momentum equation: ρu du/dx + dp/dx = 0
+3. Isentropic relation: p/ρ^gamma = constant (with fuel-specific gamma)
+4. Target thrust: Exit momentum matches required thrust level
+
+Key Innovation:
+The nozzle expansion is sensitive to the heat capacity ratio gamma. Different fuels
+produce combustion products with different gamma values, directly affecting exit velocity
+and thrust. The PINN captures this fuel-chemistry-to-performance link.
 """
 
 import torch
