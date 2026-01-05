@@ -56,7 +56,7 @@ WHY NEVER MIX MECHANISMS IN COMPARISONS:
 """
 ```
 
-**Purpose:** Clearly document scientific justification for judges/reviewers
+**Purpose:** Clearly document scientific justification for validation
 
 ---
 
@@ -177,12 +177,10 @@ python integrated_engine.py --mode validation  # Validation mode
 - Competition readiness checklist
 - Future enhancement roadmap
 
-### 2. QUICK_REFERENCE_HYCHEM.md
-- Quick start guide
+### 2. QUICKSTART_FUEL_DEPENDENT.md
+- Quick start guide (supersedes the old quick reference)
 - Command-line usage examples
-- API reference
-- Best practices and troubleshooting
-- Example workflows
+- API reference and workflow snippets
 
 ### 3. CHANGELOG_HYCHEM.md (this file)
 - Detailed change log
@@ -405,7 +403,7 @@ engine.combustor_creck.run(...)  # or engine.combustor_hychem
 
 ### New Documents
 1. ✅ HYCHEM_VALIDATION_SUMMARY.md - Implementation details
-2. ✅ QUICK_REFERENCE_HYCHEM.md - Quick start guide
+2. ✅ QUICKSTART_FUEL_DEPENDENT.md - Quick start guide
 3. ✅ CHANGELOG_HYCHEM.md - This file
 
 ### Updated Documents
@@ -426,7 +424,7 @@ engine.combustor_creck.run(...)  # or engine.combustor_hychem
 ## 📞 Support
 
 For issues, questions, or suggestions:
-1. Check [QUICK_REFERENCE_HYCHEM.md](QUICK_REFERENCE_HYCHEM.md) for common solutions
+1. See [documentation/QUICKSTART_FUEL_DEPENDENT.md](documentation/QUICKSTART_FUEL_DEPENDENT.md) for common solutions
 2. Review [HYCHEM_VALIDATION_SUMMARY.md](HYCHEM_VALIDATION_SUMMARY.md) for detailed documentation
 3. Refer to inline code comments for implementation details
 
