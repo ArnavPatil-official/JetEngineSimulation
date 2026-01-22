@@ -145,7 +145,7 @@ class EmissionsEstimator:
         """Load ICAO engine emissions data from CSV."""
         try:
             self.icao_data = pd.read_csv(self.icao_data_path)
-            print(f"✓ Loaded ICAO emissions data: {len(self.icao_data)} records")
+            print(f"[OK] Loaded ICAO emissions data: {len(self.icao_data)} records")
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"ICAO data file not found at: {self.icao_data_path}\n"
@@ -1569,7 +1569,7 @@ def main():
                 )
                 results[fuel.name] = result
             except Exception as e:
-                print(f"❌ Error simulating {fuel.name}: {e}\n")
+                print(f"Error simulating {fuel.name}: {e}\n")
                 continue
 
         # Comparative analysis using fuel comparison function
