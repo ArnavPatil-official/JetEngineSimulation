@@ -25,7 +25,7 @@ try:
     import numpy as np
     import matplotlib.pyplot as plt
     import cantera as ct
-except Exception as e:
+except (ImportError, ModuleNotFoundError) as e:
     print(f"[WARN] Dependencies import failed: {e}")
     print("       Install required packages: numpy, matplotlib, cantera")
     print("       Example: conda install -c conda-forge cantera numpy matplotlib")

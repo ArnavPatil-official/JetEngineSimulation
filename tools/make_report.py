@@ -24,7 +24,7 @@ OUTPUTS_DIR = REPO_ROOT / "outputs"
 IGNORES = {
     ".git", ".github", "__pycache__", ".venv", "venv", "env",
     ".mypy_cache", ".pytest_cache", ".idea", ".vscode",
-    "data/raw", "data/processors", "build", "dist"
+    "raw", "processors", "build", "dist"
 }
 
 def should_include(path: Path) -> bool:
@@ -64,7 +64,7 @@ def embed_code(md, files):
         md.write("```python\n")
         try:
             text = p.read_text(encoding="utf-8", errors="replace")
-        except Exception as e:
+        except (UnicodeDecodeError, FileNotFoundError, PermissionError) as e:
             text = f"# [ERROR] Could not read file: {e}\n"
         md.write(text)
         md.write("\n```\n\n")
