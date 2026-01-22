@@ -13,6 +13,7 @@ import re
 from mpl_toolkits.mplot3d import Axes3D
 from integrated_engine import IntegratedTurbofanEngine, LocalFuelBlend
 from simulation.fuels import make_saf_blend
+from optuna.trial import TrialState
 
 # --- CONFIGURATION ---
 N_TRIALS = 1000           # Number of optimization trials
@@ -63,6 +64,53 @@ def scrape_log_data(log_text):
         co2 = float(re.search(r"CO₂:\s+([\d\.]+)", log_text).group(1))
         return tsfc, thrust, t4, nox, co2
     except: return None, None, None, None, None
+
+
+def compute_blend_components(params):
+    saf = params.get('saf_total', 0.0)
+    jet_a = 1.0 - saf
+
+    w_h = params.get('w_hefa', 0.0)
+    w_f = params.get('w_ft', 0.0)
+    w_a = params.get('w_atj', 0.0)
+
+    total_w = w_h + w_f + w_a + 1e-6
+    p_h = saf * (w_h / total_w)
+    p_f = saf * (w_f / total_w)
+    p_a = saf * (w_a / total_w)
+
+    lca = jet_a*LCA_FACTORS['JetA'] + p_h*LCA_FACTORS['HEFA'] + p_f*LCA_FACTORS['FT'] + p_a*LCA_FACTORS['ATJ']
+    return saf, jet_a, p_h, p_f, p_a, lca
+
+
+def identify_pareto_front(df, objectives, minimize_flags):
+    """Return boolean mask for Pareto-optimal rows."""
+    is_pareto = np.ones(len(df), dtype=bool)
+
+    for i in range(len(df)):
+        if not is_pareto[i]:
+            continue
+        for j in range(len(df)):
+            if i == j:
+                continue
+            dominates = True
+            strictly_better = False
+            for k, obj in enumerate(objectives):
+                a, b = df.iloc[i][obj], df.iloc[j][obj]
+                if minimize_flags[k]:
+                    if b > a:
+                        dominates = False; break
+                    elif b < a:
+                        strictly_better = True
+                else:
+                    if b < a:
+                        dominates = False; break
+                    elif b > a:
+                        strictly_better = True
+            if dominates and strictly_better:
+                is_pareto[i] = False
+                break
+    return is_pareto
 
 # --- 4. OBJECTIVE FUNCTION ---
 def objective(trial):
@@ -137,47 +185,39 @@ def objective(trial):
 study = optuna.create_study(directions=["minimize", "maximize", "minimize", "minimize"])
 study.optimize(objective, n_trials=N_TRIALS)
 
-# --- 6. EXTRACT & SAVE (UPDATED) ---
-print("\n📊 Saving detailed results...")
-trials = [t for t in study.best_trials if t.values[0] < 500]
+# --- 6. EXTRACT & SAVE (ALL TRIALS + PARETO FLAG) ---
+print("\n📊 Saving detailed results for all completed trials...")
+completed_trials = [t for t in study.trials if t.state == TrialState.COMPLETE and t.values]
 
-# Initialize dictionary with ALL columns
-results_data = {
-    'TSFC': [], 'SpecThrust': [], 'CO2': [], 'NOx': [],
-    'SAF_Total': [], 'Phi': [], 'LCA': [],
-    'HEFA_Frac': [], 'FT_Frac': [], 'ATJ_Frac': []  # <--- ADDED COLUMNS
-}
+rows = []
+for t in completed_trials:
+    tsfc, spec_thrust, co2, nox = t.values
+    saf, jet_a, p_h, p_f, p_a, lca = compute_blend_components(t.params)
 
-for t in trials:
-    results_data['TSFC'].append(t.values[0])
-    results_data['SpecThrust'].append(t.values[1])
-    results_data['CO2'].append(t.values[2])
-    results_data['NOx'].append(t.values[3])
-    
-    saf = t.params.get('saf_total', 0.0)
-    results_data['SAF_Total'].append(saf)
-    results_data['Phi'].append(t.params.get('phi', 0.5))
+    rows.append({
+        'Trial': t.number,
+        'TSFC': tsfc,
+        'SpecThrust': spec_thrust,
+        'CO2': co2,
+        'NOx': nox,
+        'SAF_Total': saf,
+        'Phi': t.params.get('phi', 0.5),
+        'LCA': lca,
+        'HEFA_Frac': p_h,
+        'FT_Frac': p_f,
+        'ATJ_Frac': p_a,
+        'State': t.state.name
+    })
 
-    # Reconstruct Blend Fractions
-    w_h = t.params.get('w_hefa', 0); w_f = t.params.get('w_ft', 0); w_a = t.params.get('w_atj', 0)
-    total_w = w_h + w_f + w_a + 1e-6
-    
-    p_h = saf * (w_h / total_w)
-    p_f = saf * (w_f / total_w)
-    p_a = saf * (w_a / total_w)
-    
-    # Save Blend Components
-    results_data['HEFA_Frac'].append(p_h)
-    results_data['FT_Frac'].append(p_f)
-    results_data['ATJ_Frac'].append(p_a)
+df_results = pd.DataFrame(rows)
 
-    jet_a = 1.0 - saf
-    lca = jet_a*LCA_FACTORS['JetA'] + p_h*LCA_FACTORS['HEFA'] + p_f*LCA_FACTORS['FT'] + p_a*LCA_FACTORS['ATJ']
-    results_data['LCA'].append(lca)
+# Pareto analysis across all completed trials
+objective_cols = ['TSFC', 'SpecThrust', 'CO2', 'NOx']
+pareto_mask = identify_pareto_front(df_results, objective_cols, [True, False, True, True])
+df_results['ParetoOptimal'] = pareto_mask
 
-df_results = pd.DataFrame(results_data)
 df_results.to_csv('optimization_results.csv', index=False)
-print(f"✅ Saved 'optimization_results.csv' with full blend composition.")
+print(f"✅ Saved {len(df_results)} rows to 'optimization_results.csv' with ParetoOptimal flag ({pareto_mask.sum()} Pareto points).")
 
 # --- 7. VISUALIZATION (Standard) ---
 print("📈 Generating plots...")
