@@ -14,7 +14,8 @@ Run standalone:
   python tools/generate_outputs.py
 """
 
-import os, sys
+import os
+import sys
 from pathlib import Path
 import json
 import numpy as np

@@ -12,7 +12,10 @@ Usage:
   python tools/make_report.py --pdf
 """
 
-import os, sys, subprocess, shutil
+import os
+import sys
+import subprocess
+import shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -64,8 +67,8 @@ def embed_code(md, files):
         md.write("```python\n")
         try:
             text = p.read_text(encoding="utf-8", errors="replace")
-        except Exception as e:
-            text = f"# [ERROR] Could not read file: {e}\n"
+        except Exception:
+            text = f"# [ERROR] Could not read file\n"
         md.write(text)
         md.write("\n```\n\n")
 
