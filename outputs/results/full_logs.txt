@@ -1,0 +1,1021 @@
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1710.3 K, p=191.15 kPa, u=620.1 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.3146 kg/s
+    ṁ_in_pred   = 82.3146 kg/s
+    ṁ_exit_pred = 82.3146 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    51.04 kN
+    F_pressure  = ΔpA      =    30.54 kN
+    F_total     =               81.58 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_37_Blend
+  Equivalence Ratio:   0.451
+  Fuel-Air Ratio:      0.030220
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.4146 kg/s
+  Total Mass Flow:     82.31 kg/s
+  ---
+  Thrust:              81.58 kN
+  TSFC:                29.60 mg/(N·s)  [0.000030 kg/(N·s)]
+  η_kinetic:           15.24% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_38_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_38_Blend
+  Phi:    0.457
+  FAR:    0.030655 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2410.8 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2410.8 K, P=43.77 bar
+  Outlet: T=1977.9 K, P=2.86 bar
+  Fuel-dependent properties: cp=1371.7 J/(kg·K), R=289.5 J/(kg·K), γ=1.268
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1371.7 J/(kg·K), R=289.5 J/(kg·K), gamma=1.268
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.500150 kg/m³
+    u = 437.037047 m/s
+    p = 286413.437500 Pa
+    T = 1977.924856 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1720.4 K, p=191.21 kPa, u=623.9 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.3494 kg/s
+    ṁ_in_pred   = 82.3494 kg/s
+    ṁ_exit_pred = 82.3494 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    51.38 kN
+    F_pressure  = ΔpA      =    30.56 kN
+    F_total     =               81.94 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_38_Blend
+  Equivalence Ratio:   0.457
+  Fuel-Air Ratio:      0.030655
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.4494 kg/s
+  Total Mass Flow:     82.35 kg/s
+  ---
+  Thrust:              81.94 kN
+  TSFC:                29.89 mg/(N·s)  [0.000030 kg/(N·s)]
+  η_kinetic:           15.22% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_39_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_39_Blend
+  Phi:    0.608
+  FAR:    0.040737 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2641.4 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2641.4 K, P=43.77 bar
+  Outlet: T=2224.7 K, P=2.84 bar
+  Fuel-dependent properties: cp=1410.7 J/(kg·K), R=290.7 J/(kg·K), γ=1.260
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1410.7 J/(kg·K), R=290.7 J/(kg·K), gamma=1.260
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.439503 kg/m³
+    u = 502.208843 m/s
+    p = 284254.218750 Pa
+    T = 2224.653040 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1935.5 K, p=189.74 kPa, u=717.1 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 83.1549 kg/s
+    ṁ_in_pred   = 83.1549 kg/s
+    ṁ_exit_pred = 83.1549 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    59.63 kN
+    F_pressure  = ΔpA      =    30.06 kN
+    F_total     =               89.69 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_39_Blend
+  Equivalence Ratio:   0.608
+  Fuel-Air Ratio:      0.040737
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      3.2549 kg/s
+  Total Mass Flow:     83.15 kg/s
+  ---
+  Thrust:              89.69 kN
+  TSFC:                36.29 mg/(N·s)  [0.000036 kg/(N·s)]
+  η_kinetic:           15.27% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_40_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_40_Blend
+  Phi:    0.581
+  FAR:    0.038946 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2604.4 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2604.4 K, P=43.77 bar
+  Outlet: T=2185.0 K, P=2.85 bar
+  Fuel-dependent properties: cp=1404.3 J/(kg·K), R=290.5 J/(kg·K), γ=1.261
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1404.3 J/(kg·K), R=290.5 J/(kg·K), gamma=1.261
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.448960 kg/m³
+    u = 490.784520 m/s
+    p = 284952.906250 Pa
+    T = 2185.017496 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1901.0 K, p=190.21 kPa, u=700.7 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 83.0118 kg/s
+    ṁ_in_pred   = 83.0118 kg/s
+    ṁ_exit_pred = 83.0118 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    58.17 kN
+    F_pressure  = ΔpA      =    30.22 kN
+    F_total     =               88.39 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_40_Blend
+  Equivalence Ratio:   0.581
+  Fuel-Air Ratio:      0.038946
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      3.1118 kg/s
+  Total Mass Flow:     83.01 kg/s
+  ---
+  Thrust:              88.39 kN
+  TSFC:                35.21 mg/(N·s)  [0.000035 kg/(N·s)]
+  η_kinetic:           15.23% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_41_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_41_Blend
+  Phi:    0.644
+  FAR:    0.043156 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2689.1 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2689.1 K, P=43.77 bar
+  Outlet: T=2275.8 K, P=2.83 bar
+  Fuel-dependent properties: cp=1419.6 J/(kg·K), R=291.2 J/(kg·K), γ=1.258
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1419.6 J/(kg·K), R=291.2 J/(kg·K), gamma=1.258
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.426513 kg/m³
+    u = 518.707423 m/s
+    p = 282635.031250 Pa
+    T = 2275.831841 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1980.1 K, p=188.65 kPa, u=740.7 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 83.3482 kg/s
+    ṁ_in_pred   = 83.3482 kg/s
+    ṁ_exit_pred = 83.3482 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    61.73 kN
+    F_pressure  = ΔpA      =    29.69 kN
+    F_total     =               91.42 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_41_Blend
+  Equivalence Ratio:   0.644
+  Fuel-Air Ratio:      0.043156
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      3.4482 kg/s
+  Total Mass Flow:     83.35 kg/s
+  ---
+  Thrust:              91.42 kN
+  TSFC:                37.72 mg/(N·s)  [0.000038 kg/(N·s)]
+  η_kinetic:           15.42% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_42_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_42_Blend
+  Phi:    0.518
+  FAR:    0.034715 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2509.7 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2509.7 K, P=43.77 bar
+  Outlet: T=2083.6 K, P=2.86 bar
+  Fuel-dependent properties: cp=1387.9 J/(kg·K), R=289.9 J/(kg·K), γ=1.264
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1387.9 J/(kg·K), R=289.9 J/(kg·K), gamma=1.264
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.473972 kg/m³
+    u = 462.991626 m/s
+    p = 286294.468750 Pa
+    T = 2083.558438 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1812.5 K, p=191.12 kPa, u=661.0 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.6737 kg/s
+    ṁ_in_pred   = 82.6737 kg/s
+    ṁ_exit_pred = 82.6737 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    54.65 kN
+    F_pressure  = ΔpA      =    30.53 kN
+    F_total     =               85.18 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_42_Blend
+  Equivalence Ratio:   0.518
+  Fuel-Air Ratio:      0.034715
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.7737 kg/s
+  Total Mass Flow:     82.67 kg/s
+  ---
+  Thrust:              85.18 kN
+  TSFC:                32.56 mg/(N·s)  [0.000033 kg/(N·s)]
+  η_kinetic:           15.14% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_43_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_43_Blend
+  Phi:    0.514
+  FAR:    0.034430 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2503.2 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2503.2 K, P=43.77 bar
+  Outlet: T=2076.7 K, P=2.86 bar
+  Fuel-dependent properties: cp=1387.0 J/(kg·K), R=289.9 J/(kg·K), γ=1.264
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1387.0 J/(kg·K), R=289.9 J/(kg·K), gamma=1.264
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.475342 kg/m³
+    u = 461.530410 m/s
+    p = 286178.625000 Pa
+    T = 2076.718746 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1806.6 K, p=191.04 kPa, u=658.9 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.6510 kg/s
+    ṁ_in_pred   = 82.6510 kg/s
+    ṁ_exit_pred = 82.6510 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    54.46 kN
+    F_pressure  = ΔpA      =    30.50 kN
+    F_total     =               84.96 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_43_Blend
+  Equivalence Ratio:   0.514
+  Fuel-Air Ratio:      0.034430
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.7510 kg/s
+  Total Mass Flow:     82.65 kg/s
+  ---
+  Thrust:              84.96 kN
+  TSFC:                32.38 mg/(N·s)  [0.000032 kg/(N·s)]
+  η_kinetic:           15.17% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_44_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_44_Blend
+  Phi:    0.490
+  FAR:    0.032856 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2465.3 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2465.3 K, P=43.77 bar
+  Outlet: T=2036.1 K, P=2.86 bar
+  Fuel-dependent properties: cp=1380.5 J/(kg·K), R=289.7 J/(kg·K), γ=1.266
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1380.5 J/(kg·K), R=289.7 J/(kg·K), gamma=1.266
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.485690 kg/m³
+    u = 451.009602 m/s
+    p = 286499.812500 Pa
+    T = 2036.127739 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1771.2 K, p=191.26 kPa, u=643.9 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.5252 kg/s
+    ṁ_in_pred   = 82.5252 kg/s
+    ṁ_exit_pred = 82.5252 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    53.13 kN
+    F_pressure  = ΔpA      =    30.58 kN
+    F_total     =               83.71 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_44_Blend
+  Equivalence Ratio:   0.490
+  Fuel-Air Ratio:      0.032856
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.6252 kg/s
+  Total Mass Flow:     82.53 kg/s
+  ---
+  Thrust:              83.71 kN
+  TSFC:                31.36 mg/(N·s)  [0.000031 kg/(N·s)]
+  η_kinetic:           15.15% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_45_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_45_Blend
+  Phi:    0.397
+  FAR:    0.026610 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2304.9 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2304.9 K, P=43.77 bar
+  Outlet: T=1864.8 K, P=2.86 bar
+  Fuel-dependent properties: cp=1354.5 J/(kg·K), R=289.2 J/(kg·K), γ=1.271
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1354.5 J/(kg·K), R=289.2 J/(kg·K), gamma=1.271
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.529977 kg/m³
+    u = 410.821589 m/s
+    p = 285835.812500 Pa
+    T = 1864.787554 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1621.8 K, p=190.83 kPa, u=586.4 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.0262 kg/s
+    ṁ_in_pred   = 82.0262 kg/s
+    ṁ_exit_pred = 82.0261 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    48.10 kN
+    F_pressure  = ΔpA      =    30.43 kN
+    F_total     =               78.53 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_45_Blend
+  Equivalence Ratio:   0.397
+  Fuel-Air Ratio:      0.026610
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.1262 kg/s
+  Total Mass Flow:     82.03 kg/s
+  ---
+  Thrust:              78.53 kN
+  TSFC:                27.07 mg/(N·s)  [0.000027 kg/(N·s)]
+  η_kinetic:           15.43% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_46_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_46_Blend
+  Phi:    0.360
+  FAR:    0.024098 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2235.7 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2235.7 K, P=43.77 bar
+  Outlet: T=1791.0 K, P=2.85 bar
+  Fuel-dependent properties: cp=1343.5 J/(kg·K), R=289.1 J/(kg·K), γ=1.274
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1343.5 J/(kg·K), R=289.1 J/(kg·K), gamma=1.274
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.550705 kg/m³
+    u = 394.391234 m/s
+    p = 285112.843750 Pa
+    T = 1790.964409 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1557.4 K, p=190.35 kPa, u=563.0 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 81.8254 kg/s
+    ṁ_in_pred   = 81.8254 kg/s
+    ṁ_exit_pred = 81.8254 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    46.06 kN
+    F_pressure  = ΔpA      =    30.27 kN
+    F_total     =               76.33 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_46_Blend
+  Equivalence Ratio:   0.360
+  Fuel-Air Ratio:      0.024098
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      1.9254 kg/s
+  Total Mass Flow:     81.83 kg/s
+  ---
+  Thrust:              76.33 kN
+  TSFC:                25.22 mg/(N·s)  [0.000025 kg/(N·s)]
+  η_kinetic:           15.66% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_47_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_47_Blend
+  Phi:    0.430
+  FAR:    0.028836 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2363.9 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2363.9 K, P=43.77 bar
+  Outlet: T=1927.9 K, P=2.86 bar
+  Fuel-dependent properties: cp=1364.0 J/(kg·K), R=289.4 J/(kg·K), γ=1.269
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1364.0 J/(kg·K), R=289.4 J/(kg·K), gamma=1.269
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.513146 kg/m³
+    u = 425.216591 m/s
+    p = 286272.031250 Pa
+    T = 1927.890714 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1676.8 K, p=191.12 kPa, u=607.0 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.2040 kg/s
+    ṁ_in_pred   = 82.2040 kg/s
+    ṁ_exit_pred = 82.2040 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    49.90 kN
+    F_pressure  = ΔpA      =    30.53 kN
+    F_total     =               80.43 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_47_Blend
+  Equivalence Ratio:   0.430
+  Fuel-Air Ratio:      0.028836
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.3040 kg/s
+  Total Mass Flow:     82.20 kg/s
+  ---
+  Thrust:              80.43 kN
+  TSFC:                28.65 mg/(N·s)  [0.000029 kg/(N·s)]
+  η_kinetic:           15.29% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_48_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_48_Blend
+  Phi:    0.538
+  FAR:    0.036061 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2540.8 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2540.8 K, P=43.77 bar
+  Outlet: T=2116.9 K, P=2.86 bar
+  Fuel-dependent properties: cp=1393.3 J/(kg·K), R=290.1 J/(kg·K), γ=1.263
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1393.3 J/(kg·K), R=290.1 J/(kg·K), gamma=1.263
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.465713 kg/m³
+    u = 471.815332 m/s
+    p = 285972.250000 Pa
+    T = 2116.891584 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1841.6 K, p=190.90 kPa, u=673.6 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 82.7813 kg/s
+    ṁ_in_pred   = 82.7813 kg/s
+    ṁ_exit_pred = 82.7813 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    55.76 kN
+    F_pressure  = ΔpA      =    30.46 kN
+    F_total     =               86.22 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_48_Blend
+  Equivalence Ratio:   0.538
+  Fuel-Air Ratio:      0.036061
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      2.8813 kg/s
+  Total Mass Flow:     82.78 kg/s
+  ---
+  Thrust:              86.22 kN
+  TSFC:                33.42 mg/(N·s)  [0.000033 kg/(N·s)]
+  η_kinetic:           15.16% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Trial_49_Blend
+======================================================================
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=1464.3 K, P=43.77 bar
+  Work:   611.94 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Trial_49_Blend
+  Phi:    0.618
+  FAR:    0.041388 (fuel/air mass ratio)
+  Inlet:  T=1464.3 K, P=43.77 bar
+  Outlet: T=2654.6 K, P=43.77 bar
+  Efficiency: 97.2%
+
+[Turbine]
+  Inlet:  T=2654.6 K, P=43.77 bar
+  Outlet: T=2238.7 K, P=2.84 bar
+  Fuel-dependent properties: cp=1413.1 J/(kg·K), R=290.8 J/(kg·K), γ=1.259
+  Work Target: 48.89 MW
+  Work Extracted: 48.89 MW
+
+[Nozzle PINN ACTIVE] version v4.0_exact_continuity
+  Thermo: cp=1413.1 J/(kg·K), R=290.8 J/(kg·K), gamma=1.259
+
+[Turbine→Nozzle Handoff Verification]
+  Turbine Exit State (single source of truth):
+    ρ = 0.436034 kg/m³
+    u = 506.520908 m/s
+    p = 283899.375000 Pa
+    T = 2238.725094 K
+✓ Loaded: /Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt
+  Version: v4.0_exact_continuity
+
+[Nozzle PINN Results]
+  Thrust Model: STATIC_TEST_STAND
+  Exit State:  T=1947.8 K, p=189.50 kPa, u=723.2 m/s
+
+  Inlet Verification (PINN at x=0 vs Turbine Exit):
+    Max relative error: 0.464%
+    ✓ Inlet state preserved exactly
+
+  Mass Conservation Check:
+    ṁ_input     = 83.2069 kg/s
+    ṁ_in_pred   = 83.2069 kg/s
+    ṁ_exit_pred = 83.2069 kg/s
+    Error       = 0.00%
+    ✓ Continuity satisfied
+
+  Thrust Breakdown (Static Test Stand):
+    F_momentum  = ṁ·u_exit =    60.18 kN
+    F_pressure  = ΔpA      =    29.98 kN
+    F_total     =               90.16 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Trial_49_Blend
+  Equivalence Ratio:   0.618
+  Fuel-Air Ratio:      0.041388
+  Core Mass Flow:      79.90 kg/s
+  Fuel Mass Flow:      3.3069 kg/s
+  Total Mass Flow:     83.21 kg/s
+  ---
+  Thrust:              90.16 kN
+  TSFC:                36.68 mg/(N·s)  [0.000037 kg/(N·s)]
+  η_kinetic:           15.30% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     48.89 MW
+  Turbine Work:        48.89 MW
+
+  Physics Validation Checklist:
+    ✓ Turbine-Nozzle handoff exact
+    ✓ Mass conservation: 0.00%
+    ✓ Inlet BC preserved: 0.000%
+    ✓ Thrust model: STATIC
+    ✓ Energy balance: Turbine work = Compressor work
+======================================================================
+
+
+📊 Generating Pareto Front...
+❌ No successful trials found. (This shouldn't happen with relaxed constraints)
+(.venv) arnavpatil@mac JetEngineSimulation % 

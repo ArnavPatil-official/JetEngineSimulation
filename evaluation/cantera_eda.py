@@ -3,8 +3,8 @@ import cantera as ct
 import numpy as np
 from pathlib import Path
 
-# Define base path for mechanisms
-base_path = Path("/Users/arnavpatil/Desktop/JetEngineSimulation/data/")
+# Define base path for mechanisms (relative to project root)
+base_path = Path(__file__).resolve().parent.parent / "data"
 
 # Define mechanisms to evaluate
 mechanisms = [

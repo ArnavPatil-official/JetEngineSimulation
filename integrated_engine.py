@@ -495,8 +495,8 @@ class IntegratedTurbofanEngine:
         mechanism_profile: str = "blends",
         creck_mechanism_path: str = "data/creck_c1c16_full.yaml",
         hychem_mechanism_path: str = "data/A1highT.yaml",
-        turbine_pinn_path: str = "turbine_pinn.pt",
-        nozzle_pinn_path: str = "nozzle_pinn.pt",
+        turbine_pinn_path: str = "models/turbine_pinn.pt",
+        nozzle_pinn_path: str = "models/nozzle_pinn.pt",
         icao_data_path: str = "data/icao_engine_data.csv",
     ):
         """

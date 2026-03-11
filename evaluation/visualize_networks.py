@@ -531,8 +531,8 @@ def plot_physics_residuals(model, conditions, scales, save_path='physics_residua
 # MAIN: GENERATE ALL VISUALIZATIONS
 # ============================================================================
 
-def generate_all_visualizations(turbine_model_path='/Users/arnavpatil/Desktop/JetEngineSimulation/turbine_pinn.pt',
-                                nozzle_model_path='/Users/arnavpatil/Desktop/JetEngineSimulation/nozzle_pinn.pt'):
+def generate_all_visualizations(turbine_model_path='models/turbine_pinn.pt',
+                                nozzle_model_path='models/nozzle_pinn.pt'):
     """
     Generate all visualizations for both turbine and nozzle PINNs.
     """

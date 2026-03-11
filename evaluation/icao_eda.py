@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from pathlib import Path
-def_path = Path("/Users/arnavpatil/Desktop/JetEngineSimulation/data/")
+def_path = Path(__file__).resolve().parent.parent / "data"
 
 
 # Ensure CANTERA_DATA points to the directory containing the file
 # os.environ["CANTERA_DATA"] = str(def_path)
-df = pd.read_csv("/Users/arnavpatil/Desktop/JetEngineSimulation/data/icao_engine_data.csv")
+df = pd.read_csv(str(def_path / "icao_engine_data.csv"))
 
 
 print("Shape:", df.shape)
