@@ -26,6 +26,8 @@ from simulation.nozzle.le_pinn import (
     compute_rans_residuals,
     compute_wall_distances,
     setup_training,
+    finetune_on_cfd_data,
+    validate_le_pinn,
     FUSION_DELTA,
 )
 
@@ -248,3 +250,93 @@ class TestExistingPINNUnaffected:
         # Verify it has the expected architecture (3 hidden, 64 wide, 8→3)
         params = list(model.parameters())
         assert len(params) > 0
+
+
+# ============================================================================
+# 9. CFD fine-tuning & validation smoke tests
+# ============================================================================
+
+DATASET_PATH = str(
+    Path(__file__).parent.parent / "data" / "processed" / "master_shock_dataset.pt"
+)
+
+
+@pytest.mark.skipif(
+    not Path(DATASET_PATH).exists(),
+    reason="master_shock_dataset.pt not present — run fetch_and_build_cfd_data.py",
+)
+class TestCFDFinetune:
+    def test_finetune_returns_model_and_history(self, tmp_path: Path) -> None:
+        """finetune_on_cfd_data runs 3 epochs without crashing."""
+        save = str(tmp_path / "le_pinn_cfd_test.pt")
+        model, history = finetune_on_cfd_data(
+            dataset_path=DATASET_PATH,
+            n_epochs=3,
+            save_path=save,
+            physics_loss_weight=0.0,  # skip physics for speed
+            verbose=False,
+        )
+        assert isinstance(model, LE_PINN)
+        assert len(history["loss_total"]) == 3
+        assert len(history["loss_data"]) == 3
+        assert Path(save).exists()
+
+    def test_finetune_loss_decreases_or_stable(self, tmp_path: Path) -> None:
+        """Data loss over 20 epochs should not diverge (sanity check)."""
+        model, history = finetune_on_cfd_data(
+            dataset_path=DATASET_PATH,
+            n_epochs=20,
+            save_path=str(tmp_path / "le_pinn_cfd_test2.pt"),
+            physics_loss_weight=0.0,
+            verbose=False,
+        )
+        assert history["loss_data"][-1] < history["loss_data"][0] * 10, (
+            "Data loss grew more than 10× — training may be unstable"
+        )
+
+    def test_finetune_warning_for_missing_pretrained(self, tmp_path: Path) -> None:
+        """A missing pretrained_path should warn, not raise."""
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            finetune_on_cfd_data(
+                dataset_path=DATASET_PATH,
+                pretrained_path="/nonexistent/path/le_pinn.pt",
+                n_epochs=2,
+                save_path=str(tmp_path / "le_pinn_cfd_warn.pt"),
+                physics_loss_weight=0.0,
+                verbose=False,
+            )
+        assert any("not found" in str(w.message).lower() for w in caught), (
+            "Expected a RuntimeWarning about missing pretrained path"
+        )
+
+    def test_validate_returns_metrics(self) -> None:
+        """validate_le_pinn returns a dict with rmse_* and r2_* keys."""
+        model = LE_PINN()
+        metrics = validate_le_pinn(
+            model,
+            dataset_path=DATASET_PATH,
+            verbose=False,
+        )
+        assert isinstance(metrics, dict)
+        # rho, u, P should have non-trivial range → metrics present
+        for var in ("rho", "u", "P"):
+            assert f"rmse_{var}" in metrics, f"Missing rmse_{var}"
+            assert f"r2_{var}" in metrics, f"Missing r2_{var}"
+            assert np.isfinite(metrics[f"rmse_{var}"]), f"rmse_{var} is not finite"
+
+    def test_validate_skips_zero_range_columns(self) -> None:
+        """Columns with zero range (v=0, T=900) should be skipped with a warning."""
+        import warnings
+        model = LE_PINN()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            metrics = validate_le_pinn(model, dataset_path=DATASET_PATH, verbose=False)
+        zero_range_warned = any(
+            "zero range" in str(w.message).lower() for w in caught
+        )
+        assert zero_range_warned, "Expected warnings for zero-range target columns"
+        # v and T should be absent from metrics
+        assert "rmse_v" not in metrics or metrics.get("rmse_v") is None
+        assert "rmse_T" not in metrics or metrics.get("rmse_T") is None

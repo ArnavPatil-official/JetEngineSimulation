@@ -1,0 +1,352 @@
+<html>
+<head>
+
+<title> Transonic Diffuser: Study #1 </title>
+
+</head>
+
+<body text="#000000" bgcolor="#FFFFFF" link="#0000EE" 
+ vlink="#551A8B" alink="#FF0000"  >
+
+<!---------------------------------------------------------------------->
+<!...Heading Information...>
+
+<p><center>
+<b> NPARC Alliance Validation Archive </b> 
+&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp
+<b> <a href="http://www.lerc.nasa.gov/www/wind/valid/validation.html" > 
+Validation Home</a></b>
+<b> &nbsp | &nbsp </b>
+<b> <a href="http://www.lerc.nasa.gov/www/wind/valid/validarchive.html" > 
+Archive</a></b></h3>
+</center>
+
+<p><hr>
+
+
+<!---------------------------------------------------------------------->
+<!...Title...>
+
+<center>
+<h2> Transonic Diffuser: Study #1 </h2>
+</center>
+
+<p><hr>
+
+
+<!---------------------------------------------------------------------->
+<!...Image...>
+
+<p>
+<center>
+<img src = "fig1.jpg" border=1 ><br>
+<caption>
+ <b> Figure 1. Geometric configuration for converging-diverging 
+ duct. </b>
+</caption>
+</center>
+
+
+<!---------------------------------------------------------------------->
+<h3> Problem Description </h3>
+
+<p> Transonic turbulent flow has been computed in a two-dimensional
+converging-diverging duct, using the WIND, NPARC, and NXAIR codes.
+[This is one of the example cases in the NPARC validation archive,
+accessible via the WWW at
+http://info.arnold.af.mil/nparc/Archive_information.html.]  The
+geometry is shown in Figure 1.  The throat height hthr = 0.14435 ft.
+
+<p> Extensive experimental data are available for this geometry, at a
+variety of flow conditions (Chen, Sajben, and Kroutil, 1979; Bogar,
+Sajben, and Kroutil, 1983; Salmon, Bogar, and Sajben, 1983; Sajben,
+Bogar, and Kroutil, 1984; Bogar, 1986).  For this example case, flow
+enters the duct at about M = 0.46, accelerates to just under M = 1.3
+slightly downstream of the throat, shocks down to about M = 0.78, then
+decelerates and leaves the duct at about M = 0.51.
+
+
+<!---------------------------------------------------------------------->
+<h3> Download tar File </h3>
+
+<p> All of the archive files of this validation case are available in 
+the Unix compressed tar file 
+<a href="transdif01.tar.Z"> transdif01.tar.Z</a>.
+The files can then be accessed by the commands
+
+<p><blockquote> 
+<b>uncompress <i>transdif01</i>.tar.Z</b><br>
+<b>tar -xvof <i>transdif01</i>.tar</b><br>
+</blockquote>
+
+
+<!---------------------------------------------------------------------->
+<h3> Grids </h3>
+
+<p> An 81 x 51 body-fitted computational mesh was generated algebraically,
+and is shown in Figure 2, with every other grid line removed for
+clarity.  The same mesh was used with all three codes.
+
+<p><center><table border=1 cellpadding=7 >
+
+  <caption> <b> Table 1. Grids. </b> </caption>
+
+  <tr> <td> <b> Common Grid </b> </td> </tr>
+  <tr> <td> <a href="sajben.cgd" > sajben.cgd</a> </td> </tr>
+
+</table></center></p>
+   
+
+<p>
+<center>
+<img src = "fig2.jpg" border=1 ><br>
+<caption>
+ <b> Figure 2: Computational mesh for converging-diverging duct. </b>
+</caption>
+</center>
+
+
+<!---------------------------------------------------------------------->
+<h3> Initial and Boundary Conditions </h3>
+
+<p> Adiabatic no-slip boundary conditions were used on both the upper
+and lower walls.  The inlet boundary conditions corresponded to uniform
+flow at M = 0.46.  A constant static pressure was specified at the exit
+boundary.  For the first part of the calculation (2000 iterations for
+the WIND and NPARC codes, and 1000 for the NXAIR code), the exit
+pressure was set low enough to establish supersonic flow throughout the
+diverging portion of the duct.  The exit pressure was then raised to
+the value used in the experiment.
+
+
+<!---------------------------------------------------------------------->
+<h3> Computation Strategy </h3>
+
+<p> The NPARC and NXAIR calculations used the Baldwin-Lomax turbulence
+model (Baldwin and Lomax, 1978), and the WIND calculation used the
+Spalart-Allmaras turbulence model (Spalart and Allmaras, 1992).  For
+the most part, each of the three codes was run using default values for
+the various input parameters.  No attempt was made to use the same
+numerical schemes, smoothing methods, etc., for the three
+calculations.  The results of these calculations should therefore not
+be used to draw definitive conclusions about the relative performance
+of the three codes.
+
+
+<!---------------------------------------------------------------------->
+<h3> Input Parameters and Files </h3>
+
+<p><center><table border=1 cellpadding=7 >
+
+  <caption> <b> Table 2. Input files. </b> </caption>
+
+  <tr> <td> <b> WIND input data files </b> </td> 
+  <tr> <td> <a href="sajben.dat.1" > sajben.dat.1</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.2" > sajben.dat.2</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.3" > sajben.dat.3</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.4" > sajben.dat.4</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.5" > sajben.dat.5</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.6" > sajben.dat.6</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.7" > sajben.dat.7</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.8" > sajben.dat.8</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.9" > sajben.dat.9</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.10" > sajben.dat.10</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.11" > sajben.dat.11</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.12" > sajben.dat.12</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.13" > sajben.dat.13</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.14" > sajben.dat.14</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.15" > sajben.dat.15</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.16" > sajben.dat.16</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.17" > sajben.dat.17</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.18" > sajben.dat.18</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.19" > sajben.dat.19</a> </td> </tr>
+  <tr> <td> <a href="sajben.dat.20" > sajben.dat.20</a> </td> </tr>
+
+</table></center></p>
+
+
+<!---------------------------------------------------------------------->
+<h3> Computation </h3>
+
+<p><center><table border=1 cellpadding=7 >
+
+  <caption> <b> Table 3. Output files. </b> </caption>
+
+  <tr> <td> <b> Common Solution </b> </td> <td> <b> List </b> </td> </tr>
+  <tr> <td> <a href="sajben.cfl" > sajben.cfl</a> </td> 
+       <td> <a href="sajben.lis.Z"  > sajben.lis.Z</a> </td> </tr>
+
+</table></center></p>
+
+
+<!---------------------------------------------------------------------->
+<h3> Comparisons of the Results </h3>
+
+<p> The computed Mach number contours from the three codes are shown in
+Figures3(a)-3(c).  The WIND and NXAIR results show a slightly more
+well-defined normal shock than the NPARC results.  The NXAIR shock
+position is slightly downstream of the position predicted by the other
+two codes.  WIND and NPARC predict similar boundary layer growth
+downstream of the normal shock, while NXAIR predicts a thinner boundary
+layer.
+
+<p>
+<center>
+<img src = "fig3a.jpg" border=1 ><br>
+<caption>
+ <b> Figure 3(a). Mach number contours from WIND. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig3b.jpg" border=1 ><br>
+<caption>
+ <b> Figure 3(b). Mach number contours from NPARC. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig3c.jpg" border=1 ><br>
+<caption>
+ <b> Figure 3(c). Mach number contours from NXAIR. </b>
+</caption>
+</center>
+
+<p> The computed static pressure distribution along the top and bottom
+walls is shown in Figures 4(a) and 4(b), along with the experimental
+data of Hsieh, Wardlaw, Bogar, and Coakley (1987).  All three codes
+give essentially the same results upstream of the shock.  The shock
+position in the NXAIR calculation is slightly too far downstream, and
+the WIND results agree a little better with the experimental data in
+the diverging part of the duct.
+
+<p>
+<center>
+<img src = "fig4a.jpg" border=1 ><br>
+<caption>
+ <b> Figure 4(a). Static pressure distribution along top wall. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig4b.jpg" border=1 ><br>
+<caption>
+ <b> Figure 4(b). Static pressure distribution along bottom wall. </b>
+</caption>
+</center>
+
+<p> The computed u-velocity profiles at four locations are compared
+with the experimental data in Figures 5(a)-5(d).  The data were taken
+at x/hthr = 1.73, 2.88, 4.61, and 6.34.  The computed results are shown
+at i = 37, 52, 67, and 73, corresponding to x/hthr = 1.73, 2.90, 4.58,
+and 6.20.  These are the grid indices closest to the experimental data
+locations.
+
+<p> Overall, the WIND and NPARC results are similar, with the WIND
+results perhaps in slightly better agreement with the experimental
+data.  The big difference between the NXAIR results and those from the
+other two codes in Figure 5(a) is a result of the predicted shock
+location being too far downstream.
+
+<p>
+<center>
+<img src = "fig5a.jpg" border=1 ><br>
+<caption>
+ <b> Figure 5(a). u-velocity profiles at x/hthr = 1.73. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig5b.jpg" border=1 ><br>
+<caption>
+ <b> Figure 5(b). u-velocity profiles at x/hthr = 2.88. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig5c.jpg" border=1 ><br>
+<caption>
+ <b> Figure 5(c). u-velocity profiles at x/hthr = 4.61. </b>
+</caption>
+</center>
+
+<p>
+<center>
+<img src = "fig5d.jpg" border=1 ><br>
+<caption>
+ <b> Figure 5(d). u-velocity profiles at x/hthr = 6.34. </b>
+</caption>
+</center>
+
+
+<!---------------------------------------------------------------------->
+<h3> References </h3>
+
+<p> 
+Baldwin, B. S., and Lomax, H. (1978) "Thin Layer Approximation and
+Algebraic Model for Separated Turbulent Flows," AIAA Paper 78-257.
+
+<p> 
+Bogar, T. J., Sajben, M., and Kroutil, J. C. (1983) "Characteristic
+Frequencies of Transonic Diffuser Flow Oscillations," AIAA Journal,
+Vol. 21, No. 9, pp. 1232-1240.
+
+<p> 
+Bogar, T. J. (1986) "Structure of Self-Excited Oscillations in Transonic
+Diffuser Flows," AIAA Journal, Vol. 24, No. 1, pp. 54-61.
+
+<p> 
+Chen, C. P., Sajben, M., and Kroutil, J. C. (1979) "Shock Wave
+Oscillations in a Transonic Diffuser Flow," AIAA Journal, Vol. 17,
+No. 10, pp. 1076-1083.
+
+<p> 
+Hsieh, T., Bogar, T. J., and Coakley, T. J. (1987) "Numerical Simulation
+and Comparison with Experiment for Self-Excited Oscillations in a
+Diffuser Flow," AIAA Journal, Vol. 25, No. 7, pp. 936-943.
+
+<p> 
+Hsieh, T., Wardlaw A. B. Jr., Bogar, T. J., and Coakley, T. J. (1987)
+"Numerical Investigation of Unsteady Inlet Flowfields," AIAA Journal,
+Vol. 25, No. 1, pp. 75-81.
+
+<p> 
+Sajben, M., Bogar, T. J., and Kroutil, J. C. (1984) "Forced Oscillation
+Experiments in Supercritical Diffuser Flows," AIAA Journal, Vol. 22,
+No. 4, pp. 465-474.
+
+<p> 
+Salmon, J. T., Bogar, T. J., and Sajben, M. (1983) "Laser Doppler
+Velocimeter Measurements in Unsteady, Separated Transonic Diffuser
+Flows," Vol. 21, No. 12, pp. 1690-1697.
+
+<p> 
+Spalart, P. R., and Allmaras, S. R. (1992) "A One-Equation Turbulence
+Model for Aerodynamic Flows," AIAA Paper 92-0439.
+
+
+<!---------------------------------------------------------------------->
+<h3> Log and Contact Information </h3>
+
+<p> This validation test case was performed by <a
+href="mailto:towne@lerc.nasa.gov" > Charles Towne</a>.  (216)
+433-5851.  MS 5-11, NASA Lewis Research Center, 21000 Brook Park Road,
+Cleveland, Ohio, 44135.
+
+
+<!---------------------------------------------------------------------->
+<!...Trailer...>
+
+<p><hr><center><i>
+  <font size=-1> Send any comments to  
+  <a href="mailto:John.W.Slater@lerc.nasa.gov" > John Slater</a>. <br>
+  This page was last updated on March 25, 1998. </font>
+</i></center></p>
+
+</body>
+</html>

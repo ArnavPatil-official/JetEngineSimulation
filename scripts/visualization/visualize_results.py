@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from simulation.nozzle.nozzle import NozzlePINN
-from simulation.nozzle.le_pinn import BoundaryNetwork, GlobalNetwork
+from simulation.nozzle.le_pinn import BoundaryNetwork, GlobalNetwork, LE_PINN
 from simulation.turbine.turbine import NormalizedTurbinePINN
 from scripts.visualization.nozzle_2d_geometry import generate_nozzle_profile
 
@@ -210,6 +210,58 @@ def _predict_profile(model_class, checkpoint_path: Path, inlet_p: float, inlet_t
         out = model.predict_physical(x, THERMO_REF, inlet_state, m_dot, geometry, scales)
 
     return x.squeeze().numpy(), out.numpy()
+
+
+def _load_lepinn_mach_data(
+    x_phys: np.ndarray,
+    y_phys: np.ndarray,
+    y_wall_at_x: np.ndarray,
+    A5: float,
+    A6: float,
+    P_in: float,
+    T_in: float,
+) -> np.ndarray:
+    """Load le_pinn.pt, run 2-D forward pass, return clipped Mach number array."""
+    ckpt_path = REPO_ROOT / "models" / "le_pinn.pt"
+    ckpt = torch.load(ckpt_path, map_location=DEVICE, weights_only=False)
+
+    model = LE_PINN()
+    model.load_state_dict(ckpt["model_state_dict"])
+    model.eval()
+
+    in_min = ckpt["input_norm_min"].to(DEVICE)
+    in_max = ckpt["input_norm_max"].to(DEVICE)
+    out_min = ckpt["output_norm_min"].to(DEVICE)
+    out_max = ckpt["output_norm_max"].to(DEVICE)
+
+    N = len(x_phys)
+    inp = np.column_stack([
+        x_phys,
+        y_phys,
+        np.full(N, A5),
+        np.full(N, A6),
+        np.full(N, P_in),
+        np.full(N, T_in),
+    ])
+    inp_t = torch.tensor(inp, dtype=torch.float32)
+    inp_norm = (inp_t - in_min) / (in_max - in_min + 1e-12)
+    inp_norm = inp_norm.clamp(0.0, 1.0)
+
+    wall_dist = np.maximum(y_wall_at_x - y_phys, 0.0)
+    wd_t = torch.tensor(wall_dist, dtype=torch.float32).unsqueeze(1)
+
+    with torch.no_grad():
+        out_norm = model(inp_norm, wd_t)
+
+    out_phys = out_norm * (out_max - out_min) + out_min
+    out_np = out_phys.cpu().numpy()
+
+    u = out_np[:, 1]
+    v = out_np[:, 2]
+    T = np.maximum(out_np[:, 4], 1.0)
+    c = np.sqrt(THERMO_REF["gamma"] * THERMO_REF["R"] * T)
+    mach = np.sqrt(u ** 2 + v ** 2) / np.maximum(c, 1e-6)
+    return np.clip(mach, 0.0, 3.0)
 
 
 def plot_01_pinn_loss_curriculum(loss_df: pd.DataFrame, cycle_df: pd.DataFrame) -> None:
@@ -1085,18 +1137,7 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
     x_throat = 0.9 + 6.8 * (key_pts["Point 3 (Throat)"][0] - x_min) / x_span
     x_exit = 0.9 + 6.8 * (key_pts["Point 4 (Exit)"][0] - x_min) / x_span
 
-    def synthetic_mach(xv: np.ndarray, yv: np.ndarray, ywall: np.ndarray) -> np.ndarray:
-        x_norm = (xv - x_plot[0]) / max(x_plot[-1] - x_plot[0], 1e-9)
-        r_norm = np.abs((yv - 3.0) / np.maximum(ywall - 3.0, 1e-9))
-        throat_norm = (x_throat - x_plot[0]) / max(x_plot[-1] - x_plot[0], 1e-9)
-
-        base = 0.25 + 0.80 * x_norm
-        accel = 0.75 * np.exp(-((x_norm - throat_norm) / 0.11) ** 2)
-        radial = 0.32 * (r_norm ** 1.2)
-        ripple = 0.06 * np.sin(2.4 * np.pi * x_norm) * (1.0 - r_norm)
-        return np.clip(base + accel - radial + ripple, 0.08, 2.05)
-
-    # Heatmap-like flow field in the nozzle core.
+    # Heatmap flow field in the nozzle core — built in display space then mapped to physical.
     x_heat = np.linspace(x_plot[0] + 0.04, x_plot[-1] - 0.04, 82)
     hx, hy = [], []
     for xv in x_heat:
@@ -1108,16 +1149,29 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
 
     hx_arr = np.asarray(hx)
     hy_arr = np.asarray(hy)
-    ywall_arr = np.interp(hx_arr, x_plot, y_up)
-    mach_vals = synthetic_mach(hx_arr, hy_arr, ywall_arr)
+
+    # Convert display coords → physical coords for LE-PINN query.
+    x_phys_heat = x_min + (hx_arr - 0.9) / 6.8 * x_span
+    y_phys_heat = np.abs(hy_arr - 3.0) / 1.35 * y_max
+    y_wall_phys = np.interp(x_phys_heat, x_geom, y_geom)
+
+    A5_val = profile.geometry["A5"]
+    A6_val = profile.geometry["A6"]
+    P_in_val = float(row.get("TurbOut_P_bar", 6.59)) * 1e5
+    T_in_val = float(row.get("TurbOut_T", 1700.0))
+
+    mach_vals = _load_lepinn_mach_data(
+        x_phys_heat, y_phys_heat, y_wall_phys,
+        A5_val, A6_val, P_in_val, T_in_val,
+    )
 
     heatmap = ax.scatter(
         hx_arr,
         hy_arr,
         c=mach_vals,
         cmap="turbo",
-        vmin=0.1,
-        vmax=2.0,
+        vmin=0.0,
+        vmax=3.0,
         s=8,
         marker="s",
         edgecolors="none",
@@ -1163,7 +1217,7 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
         ax.add_patch(FancyArrowPatch((x0, 3.0), (x1, 3.0), arrowstyle="-|>", mutation_scale=12, lw=1.2, color="#1f2937"))
 
     ax.text(4.2, 5.32, "2D Axisymmetric Nozzle Section", ha="center", va="center", fontsize=9.3, weight="bold", color="#0f172a")
-    ax.text(4.2, 5.10, "Colour: synthetic Mach Number (turbo colormap, 0.1 → 2.0)", ha="center", va="center", fontsize=7.4, color="#1e40af", weight="semibold")
+    ax.text(4.2, 5.10, "Colour: LE-PINN Mach Number (turbo colormap, 0 → 3)", ha="center", va="center", fontsize=7.4, color="#1e40af", weight="semibold")
     ax.text(4.2, 4.89, "● Light blue: interior collocation pts  ● Orange: LE-PINN boundary fusion strip", ha="center", va="center", fontsize=7.0, color="#334155")
     ax.annotate("Throat", xy=(x_throat, 4.02), xytext=(x_throat + 0.35, 4.35), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0, color="#334155")
     ax.annotate("Exit plane", xy=(x_exit, 3.0), xytext=(x_exit - 0.7, 4.45), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0, color="#334155")
@@ -1200,8 +1254,12 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
         anchor=(6.7, 3.0),
     )
 
-    throat_mach = float(np.clip(synthetic_mach(np.array([x_throat]), np.array([3.0]), np.array([np.interp(x_throat, x_plot, y_up)]))[0], 0.08, 2.05))
-    exit_mach = float(np.clip(synthetic_mach(np.array([x_exit - 0.05]), np.array([3.0]), np.array([np.interp(x_exit - 0.05, x_plot, y_up)]))[0], 0.08, 2.05))
+    def _mach_at_display_x(xd: float) -> float:
+        idx = int(np.argmin(np.abs(hx_arr - xd)))
+        return float(np.clip(mach_vals[idx], 0.0, 3.0))
+
+    throat_mach = _mach_at_display_x(x_throat)
+    exit_mach = _mach_at_display_x(x_exit - 0.05)
 
     stats_text = (
         f"T_turb,out={row.get('TurbOut_T', np.nan):.1f} K\n"
@@ -1244,7 +1302,7 @@ def plot_16_lepinn_nozzle_cross_section(opt_df: pd.DataFrame, cycle_df: pd.DataF
         cbar_ax = fig.add_axes([0.20, 0.045, 0.60, 0.025])
         cbar = fig.colorbar(mappables[0], cax=cbar_ax, orientation="horizontal")
         cbar.set_label(
-            "Synthetic Mach Number  —  interior 2D flow field approximation (turbo colormap)",
+            "LE-PINN Mach Number  —  2D nozzle flow field (turbo colormap)",
             fontsize=11,
             labelpad=6,
         )
@@ -1258,6 +1316,70 @@ def plot_16_lepinn_nozzle_cross_section(opt_df: pd.DataFrame, cycle_df: pd.DataF
     )
     plt.savefig(PLOTS_DIR / "16_lepinn_nozzle_cross_section.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
+
+
+def plot_poster_hero_graphic(opt_df: pd.DataFrame, cycle_df: pd.DataFrame) -> None:
+    """Vertical A0-poster infographic: engine cross-section (top) + LE-PINN nozzle (bottom)."""
+    POSTER_RC = {
+        "font.size": 22,
+        "axes.titlesize": 26,
+        "axes.labelsize": 22,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "legend.fontsize": 18,
+    }
+    with plt.rc_context(POSTER_RC):
+        fig = plt.figure(figsize=(22, 36), facecolor="white")
+        gs = fig.add_gridspec(
+            2, 1,
+            height_ratios=[5, 8],
+            hspace=0.06,
+            left=0.02, right=0.98,
+            top=0.95, bottom=0.05,
+        )
+        ax_top = fig.add_subplot(gs[0])
+        ax_bot = fig.add_subplot(gs[1])
+
+        _, best = _select_baseline_and_best(opt_df, cycle_df)
+        if best is None:
+            for ax in (ax_top, ax_bot):
+                ax.axis("off")
+                ax.text(
+                    0.5, 0.5,
+                    "Run optimization first to generate engine data.",
+                    ha="center", va="center", fontsize=28,
+                )
+        else:
+            _draw_engine_state_map(
+                ax_top, best,
+                f"Best SAF Candidate — Trial {int(best['Trial'])}",
+            )
+            mappable = _draw_lepinn_nozzle_cross_section(
+                ax_bot, best,
+                (
+                    f"LE-PINN 2-D Nozzle  "
+                    f"(NPR \u2248 {float(best.get('TurbOut_P_bar', 6.59)):.1f},  "
+                    f"T\u1d35\u2099 \u2248 {float(best.get('TurbOut_T', 1700)):.0f} K)"
+                ),
+            )
+            if mappable is not None:
+                cbar_ax = fig.add_axes([0.15, 0.018, 0.70, 0.010])
+                cbar = fig.colorbar(mappable, cax=cbar_ax, orientation="horizontal")
+                cbar.set_label(
+                    "LE-PINN Mach Number (turbo colormap)",
+                    fontsize=20, labelpad=8,
+                )
+                cbar.ax.tick_params(labelsize=16)
+                cbar.set_ticks([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
+
+        fig.suptitle(
+            "Jet-Engine Thermodynamic Cycle with LE-PINN 2-D Nozzle Flow",
+            fontsize=34, fontweight="bold", y=0.975,
+        )
+        out_path = PLOTS_DIR / "poster_hero_graphic.png"
+        plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+        print(f"Saved poster hero graphic \u2192 {out_path}")
 
 
 def run_visualization_overhaul() -> None:
@@ -1296,7 +1418,7 @@ def run_visualization_overhaul() -> None:
     plot_14_fuel_delta_heatmap(opt_df)
     plot_15_annotated_cross_section(opt_df, cycle_df)
     plot_16_lepinn_nozzle_cross_section(opt_df, cycle_df)
-
+    plot_poster_hero_graphic(opt_df, cycle_df)
     print("Saved visualization overhaul figures in outputs/plots/.")
 
 

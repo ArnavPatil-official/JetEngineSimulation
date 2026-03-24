@@ -34,6 +34,7 @@ Training data is synthetic, generated from isentropic + ideal-gas relations.
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
@@ -845,3 +846,494 @@ if __name__ == "__main__":
         save_path=str(_REPO_ROOT / "models" / "le_pinn.pt"),
         verbose=True,
     )
+
+
+# ============================================================================
+# 11. CFD DATA FINE-TUNING HELPERS
+# ============================================================================
+
+def _estimate_wall_distances(
+    query_xy: torch.Tensor,
+    ref_x: torch.Tensor,
+    ref_y_abs: torch.Tensor,
+    n_bins: int = 60,
+) -> torch.Tensor:
+    """
+    Estimate minimum wall distance for each query point.
+
+    Approximates the wall envelope as the maximum ``|y|`` observed in
+    ``ref_x / ref_y_abs`` within the same x-bin as the query point.
+    Returns ``(N, 1)`` non-negative distances.
+    """
+    x_min = float(ref_x.min().item())
+    x_max = float(ref_x.max().item())
+    bin_width = max((x_max - x_min) / n_bins, 1e-12)
+
+    bin_r = ((ref_x - x_min) / bin_width).long().clamp(0, n_bins - 1)
+    bin_q = ((query_xy[:, 0] - x_min) / bin_width).long().clamp(0, n_bins - 1)
+
+    max_y_per_bin = torch.zeros(n_bins, dtype=ref_y_abs.dtype)
+    for b in range(n_bins):
+        mask = bin_r == b
+        if mask.any():
+            max_y_per_bin[b] = ref_y_abs[mask].max()
+        elif b > 0:
+            max_y_per_bin[b] = max_y_per_bin[b - 1]
+
+    wall_y = max_y_per_bin[bin_q]
+    dist = (wall_y - query_xy[:, 1].abs()).clamp(min=0.0).unsqueeze(1)
+    return dist
+
+
+def _safe_physics_loss(
+    model: "LE_PINN",
+    inputs_n: torch.Tensor,
+    wall_dists: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Compute the RANS physics loss, returning a zero scalar on failure.
+
+    Failures (e.g. autograd graph issues) are reported via ``warnings.warn``
+    rather than raised, so a single bad batch does not abort training.
+    """
+    try:
+        inputs_phys = inputs_n.detach().clone().requires_grad_(True)
+        preds_phys = model(inputs_phys, wall_dists)
+        res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
+            inputs_phys, preds_phys
+        )
+        return (
+            (res_mass ** 2).mean()
+            + (res_xmom ** 2).mean()
+            + (res_ymom ** 2).mean()
+            + (res_energy ** 2).mean()
+            + (res_eos ** 2).mean()
+        )
+    except Exception as exc:
+        warnings.warn(
+            f"Physics loss computation failed (non-fatal, set to 0): {exc}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return torch.tensor(0.0, device=inputs_n.device)
+
+
+# ============================================================================
+# 12. CFD DATA FINE-TUNING
+# ============================================================================
+
+def finetune_on_cfd_data(
+    dataset_path: Optional[str] = None,
+    pretrained_path: Optional[str] = None,
+    save_path: Optional[str] = None,
+    n_epochs: int = 500,
+    lr: float = 1e-5,
+    val_fraction: float = 0.2,
+    physics_loss_weight: float = 0.05,
+    device: str = "cpu",
+    verbose: bool = True,
+) -> Tuple["LE_PINN", Dict[str, list]]:
+    """
+    Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
+
+    The dataset provides inputs ``(N, 6) = [x, y, A5, A6, P_in, T_in]`` and
+    targets ``(N, 9) = [rho, u, v, P, T, 0, 0, 0, 0]``.  Only the first 5
+    target columns are used for the data loss; columns 5–8 are zero-padded and
+    ignored.
+
+    Warnings from physics / BC loss computation are **non-fatal** — they are
+    emitted via :func:`warnings.warn` and the failed term is set to zero for
+    that step so training can continue.
+
+    Args:
+        dataset_path: Path to ``master_shock_dataset.pt``.  Defaults to
+            ``<repo>/data/processed/master_shock_dataset.pt``.
+        pretrained_path: Optional path to a pre-trained LE-PINN checkpoint.
+            If ``None`` a freshly initialised model is fine-tuned.
+        save_path: Where to write the fine-tuned checkpoint.  Defaults to
+            ``<repo>/models/le_pinn_cfd.pt``.
+        n_epochs: Fine-tuning epochs.
+        lr: Learning rate (should be lower than initial training, e.g. 1e-5).
+        val_fraction: Fraction of data held out for validation.
+        physics_loss_weight: Scaling factor for the RANS physics loss term.
+            Set to 0 to disable physics loss entirely during fine-tuning.
+        device: ``"cpu"`` or ``"cuda"``.
+        verbose: Print epoch progress every 50 steps.
+
+    Returns:
+        ``(fine_tuned_model, history_dict)``
+    """
+    dev = torch.device(device)
+
+    # ---- Resolve default paths ----
+    if dataset_path is None:
+        dataset_path = str(_REPO_ROOT / "data" / "processed" / "master_shock_dataset.pt")
+    if save_path is None:
+        save_path = str(_REPO_ROOT / "models" / "le_pinn_cfd.pt")
+
+    if not Path(dataset_path).exists():
+        raise FileNotFoundError(
+            f"CFD dataset not found: {dataset_path}. "
+            "Run fetch_and_build_cfd_data.py first."
+        )
+
+    # ---- Load dataset (weights_only with fallback for older PyTorch) ----
+    try:
+        cfd = torch.load(dataset_path, weights_only=True)
+    except TypeError:
+        warnings.warn(
+            "torch.load weights_only not supported in this PyTorch version; "
+            "loading without restriction.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+        cfd = torch.load(dataset_path)  # type: ignore[call-overload]
+
+    inputs_raw: torch.Tensor = cfd["inputs"].float()   # (N, 6)
+    targets_raw: torch.Tensor = cfd["targets"].float() # (N, 9)
+
+    if inputs_raw.shape[1] != 6:
+        raise ValueError(f"Expected inputs with 6 columns, got {inputs_raw.shape[1]}")
+    if targets_raw.shape[1] != 9:
+        raise ValueError(f"Expected targets with 9 columns, got {targets_raw.shape[1]}")
+
+    # ---- Drop rows with NaN / Inf ----
+    valid = (
+        torch.isfinite(inputs_raw).all(dim=1)
+        & torch.isfinite(targets_raw[:, :5]).all(dim=1)
+    )
+    n_bad = int((~valid).sum().item())
+    if n_bad > 0:
+        warnings.warn(
+            f"Dropping {n_bad} rows with NaN/Inf values from CFD dataset.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+    inputs_raw = inputs_raw[valid]
+    targets_raw = targets_raw[valid]
+
+    if len(inputs_raw) == 0:
+        raise RuntimeError("No valid rows in CFD dataset after NaN filtering.")
+
+    N = len(inputs_raw)
+
+    # ---- Train / val split ----
+    torch.manual_seed(RANDOM_SEED)
+    perm = torch.randperm(N)
+    n_val = max(1, int(N * val_fraction))
+    n_train = N - n_val
+    train_idx = perm[:n_train]
+    val_idx = perm[n_train:]
+
+    inputs_train = inputs_raw[train_idx]
+    targets_train = targets_raw[train_idx]
+    inputs_val = inputs_raw[val_idx]
+    targets_val = targets_raw[val_idx]
+
+    # ---- Normalizers fitted on training split only ----
+    input_norm = MinMaxNormalizer().fit(inputs_train)
+    # Fit output normalizer on first 5 columns only; skip cols with zero range
+    output_norm_5 = MinMaxNormalizer().fit(targets_train[:, :5])
+
+    inputs_train_n = input_norm.transform(inputs_train).to(dev)
+    targets_train_5n = output_norm_5.transform(targets_train[:, :5]).to(dev)
+    inputs_val_n = input_norm.transform(inputs_val).to(dev)
+    targets_val_5n = output_norm_5.transform(targets_val[:, :5]).to(dev)
+
+    # ---- Wall distance approximation from dataset x/y envelope ----
+    ref_x = inputs_train[:, 0]
+    ref_y_abs = inputs_train[:, 1].abs()
+    wall_dists_train = _estimate_wall_distances(inputs_train[:, :2], ref_x, ref_y_abs).to(dev)
+    wall_dists_val = _estimate_wall_distances(inputs_val[:, :2], ref_x, ref_y_abs).to(dev)
+
+    # ---- Load or init model ----
+    model = LE_PINN().to(dev)
+    if pretrained_path is not None:
+        if not Path(pretrained_path).exists():
+            warnings.warn(
+                f"Pretrained checkpoint not found: {pretrained_path}. "
+                "Starting fine-tuning from random init.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+        else:
+            try:
+                try:
+                    ckpt = torch.load(pretrained_path, map_location=dev, weights_only=True)
+                except TypeError:
+                    ckpt = torch.load(pretrained_path, map_location=dev)  # type: ignore[call-overload]
+                model.load_state_dict(ckpt["model_state_dict"])
+                if verbose:
+                    print(f"Loaded pretrained weights from {pretrained_path}")
+            except Exception as exc:
+                warnings.warn(
+                    f"Failed to load pretrained checkpoint ({exc}). "
+                    "Starting fine-tuning from random init.",
+                    RuntimeWarning,
+                    stacklevel=1,
+                )
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-9
+    )
+    weighting = AdaptiveLossWeighting(max_epochs=n_epochs)
+
+    history: Dict[str, list] = {
+        "loss_total": [],
+        "loss_data": [],
+        "loss_physics": [],
+        "val_loss": [],
+        "lr": [],
+    }
+
+    if verbose:
+        print("=" * 70)
+        print("LE-PINN FINE-TUNING ON CFD DATA")
+        print("=" * 70)
+        print(f"  Dataset : {dataset_path}")
+        print(f"  Train/Val: {n_train} / {n_val}   Epochs: {n_epochs}   LR: {lr}")
+        print(f"  Physics weight: {physics_loss_weight}")
+        print("=" * 70)
+
+    for epoch in range(n_epochs):
+        model.train()
+        optimizer.zero_grad()
+
+        # Data loss on first 5 output columns
+        preds = model(inputs_train_n, wall_dists_train)
+        loss_data = nn.functional.mse_loss(preds[:, :5], targets_train_5n)
+
+        # Physics loss (non-fatal; returns zero tensor on failure)
+        if physics_loss_weight > 0:
+            loss_physics = _safe_physics_loss(model, inputs_train_n, wall_dists_train)
+        else:
+            loss_physics = torch.tensor(0.0, device=dev)
+
+        lam_d, lam_p, _ = weighting.compute_weights(epoch)
+        loss_total = lam_d * loss_data + physics_loss_weight * lam_p * loss_physics
+
+        loss_total.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+        scheduler.step(loss_total.item())
+
+        history["loss_total"].append(loss_total.item())
+        history["loss_data"].append(loss_data.item())
+        history["loss_physics"].append(float(loss_physics.item()))
+        history["lr"].append(optimizer.param_groups[0]["lr"])
+
+        if epoch % 50 == 0:
+            model.eval()
+            with torch.no_grad():
+                val_preds = model(inputs_val_n, wall_dists_val)
+                val_loss = nn.functional.mse_loss(
+                    val_preds[:, :5], targets_val_5n
+                ).item()
+            history["val_loss"].append(val_loss)
+            model.train()
+            if verbose:
+                print(
+                    f"Ep {epoch:4d} | Total {loss_total.item():.3e} | "
+                    f"Data {loss_data.item():.3e} | "
+                    f"Physics {float(loss_physics.item()):.3e} | "
+                    f"Val {val_loss:.3e} | "
+                    f"lr={optimizer.param_groups[0]['lr']:.1e}"
+                )
+
+    # ---- Save checkpoint ----
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "input_norm_min": input_norm.data_min,
+            "input_norm_max": input_norm.data_max,
+            "output_norm_min": output_norm_5.data_min,
+            "output_norm_max": output_norm_5.data_max,
+            "config": {
+                "n_epochs": n_epochs,
+                "lr": lr,
+                "physics_loss_weight": physics_loss_weight,
+                "dataset": dataset_path,
+            },
+            "seed": RANDOM_SEED,
+        },
+        save_path,
+    )
+    if verbose:
+        print(f"\nFine-tuned checkpoint saved: {save_path}")
+        print("=" * 70)
+
+    return model, history
+
+
+# ============================================================================
+# 13. VALIDATION
+# ============================================================================
+
+_CFD_VAR_NAMES = ["rho", "u", "v", "P", "T"]
+
+
+def validate_le_pinn(
+    model: "LE_PINN",
+    dataset_path: Optional[str] = None,
+    checkpoint_path: Optional[str] = None,
+    device: str = "cpu",
+    verbose: bool = True,
+) -> Dict[str, float]:
+    """
+    Evaluate the LE-PINN against the master CFD dataset.
+
+    Loads normaliser stats from ``checkpoint_path`` when provided.  Skips
+    target columns whose range is zero (e.g. constant ``T=900 K`` or ``v=0``).
+    All failure modes that are non-critical (missing checkpoint, NaN rows,
+    zero-range columns) are handled with :func:`warnings.warn` instead of
+    raising, so the caller always receives a result dict (possibly partial).
+
+    Args:
+        model: ``LE_PINN`` instance.
+        dataset_path: Path to ``master_shock_dataset.pt``.
+        checkpoint_path: Optional checkpoint to reload model weights / norms.
+        device: Compute device.
+        verbose: Print a results table.
+
+    Returns:
+        Dict with keys ``rmse_<var>`` and ``r2_<var>`` for each non-trivial
+        target column.
+    """
+    dev = torch.device(device)
+
+    if dataset_path is None:
+        dataset_path = str(_REPO_ROOT / "data" / "processed" / "master_shock_dataset.pt")
+
+    if not Path(dataset_path).exists():
+        raise FileNotFoundError(f"CFD dataset not found: {dataset_path}")
+
+    try:
+        cfd = torch.load(dataset_path, weights_only=True)
+    except TypeError:
+        warnings.warn(
+            "torch.load weights_only not supported; loading without restriction.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+        cfd = torch.load(dataset_path)  # type: ignore[call-overload]
+
+    inputs_raw: torch.Tensor = cfd["inputs"].float()
+    targets_raw: torch.Tensor = cfd["targets"].float()
+
+    # Drop bad rows
+    valid = (
+        torch.isfinite(inputs_raw).all(dim=1)
+        & torch.isfinite(targets_raw[:, :5]).all(dim=1)
+    )
+    n_bad = int((~valid).sum().item())
+    if n_bad > 0:
+        warnings.warn(
+            f"Dropping {n_bad} invalid rows during validation.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+    inputs_raw = inputs_raw[valid]
+    targets_raw = targets_raw[valid]
+
+    # ---- Load checkpoint if provided ----
+    input_norm = MinMaxNormalizer().fit(inputs_raw)
+    output_norm_5: Optional[MinMaxNormalizer] = None  # set from checkpoint when available
+
+    if checkpoint_path is not None:
+        if not Path(checkpoint_path).exists():
+            warnings.warn(
+                f"Checkpoint not found: {checkpoint_path}. "
+                "Using current model weights and fitting normaliser on full dataset.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+        else:
+            try:
+                try:
+                    ckpt = torch.load(checkpoint_path, map_location=dev, weights_only=True)
+                except TypeError:
+                    ckpt = torch.load(checkpoint_path, map_location=dev)  # type: ignore[call-overload]
+                model.load_state_dict(ckpt["model_state_dict"])
+                model.to(dev)
+                # Input normalizer
+                in_min = ckpt.get("input_norm_min")
+                in_max = ckpt.get("input_norm_max")
+                if in_min is not None and in_max is not None:
+                    input_norm.data_min = in_min.to(inputs_raw.device)
+                    input_norm.data_max = in_max.to(inputs_raw.device)
+                # Output normalizer (needed to de-normalize predictions)
+                out_min = ckpt.get("output_norm_min")
+                out_max = ckpt.get("output_norm_max")
+                if out_min is not None and out_max is not None:
+                    output_norm_5 = MinMaxNormalizer()
+                    output_norm_5.data_min = out_min.to("cpu")
+                    output_norm_5.data_max = out_max.to("cpu")
+            except Exception as exc:
+                warnings.warn(
+                    f"Failed to load checkpoint for validation ({exc}). "
+                    "Using current model weights.",
+                    RuntimeWarning,
+                    stacklevel=1,
+                )
+
+    inputs_n = input_norm.transform(inputs_raw).to(dev)
+    wall_dists = _estimate_wall_distances(
+        inputs_raw[:, :2], inputs_raw[:, 0], inputs_raw[:, 1].abs()
+    ).to(dev)
+
+    model.eval()
+    model.to(dev)
+    with torch.no_grad():
+        preds = model(inputs_n, wall_dists).cpu()
+
+    targets_5 = targets_raw[:, :5].cpu()
+
+    # De-normalize predictions if we have an output normalizer from the checkpoint
+    if output_norm_5 is not None:
+        preds_5 = output_norm_5.inverse_transform(preds[:, :5])
+    else:
+        warnings.warn(
+            "No output normaliser available; comparing raw model outputs against "
+            "un-normalised targets — RMSE/R² may be misleading.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+        preds_5 = preds[:, :5]
+
+    metrics: Dict[str, float] = {}
+    rows = []
+    for i, name in enumerate(_CFD_VAR_NAMES):
+        t = targets_5[:, i]
+        p = preds_5[:, i]
+
+        t_range = float((t.max() - t.min()).item())
+        if t_range < 1e-10:
+            warnings.warn(
+                f"Target column '{name}' has zero range — skipping metric.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+            continue
+
+        rmse = float(torch.sqrt(((p - t) ** 2).mean()).item())
+        ss_res = float(((p - t) ** 2).sum().item())
+        ss_tot = float(((t - t.mean()) ** 2).sum().item())
+        r2 = 1.0 - ss_res / (ss_tot + 1e-12)
+
+        metrics[f"rmse_{name}"] = rmse
+        metrics[f"r2_{name}"] = r2
+        rows.append((name, rmse, r2))
+
+    if verbose:
+        print("\n" + "=" * 50)
+        print("LE-PINN VALIDATION RESULTS (CFD DATA)")
+        print("=" * 50)
+        print(f"{'Variable':<10} {'RMSE':>14} {'R²':>10}")
+        print("-" * 36)
+        for name, rmse, r2 in rows:
+            print(f"{name:<10} {rmse:>14.4e} {r2:>10.4f}")
+        print("=" * 50)
+
+    return metrics

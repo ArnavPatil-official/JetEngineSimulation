@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# This is a example script invoked by NASTD at the completion of a run.
+# It must be named 'nastd_post' in the directory from where the job is run.
+#
+# The input parameters are:
+#
+#   $1 = prefix of '.dat' and '.job' file. 
+#   $2 = prefix of '.lis' file.
+#   $3 = prefix of '.cgd' file.
+#   $4 = prefix of '.cfl' file.
+#   $5 = current iteration of the job.
+#
+
+# This example resubmits the job with a different input file for each job
+# iteration.  Each time through, it looks for a new input file of the form:
+#
+#    base.dat.iter
+#
+# where 'base' is the original prefix of the '.dat' file and 'iter' is the
+# NEXT job iteration number.  The new file, if it exists, is COPIED OVER THE
+# ORIGINAL INPUT FILE and the original job file is resubmitted.  REMEMBER,
+# ALWAYS USE A COPY OF YOUR INITIAL INPUT FILE TO START THE FIRST JOB.
+#
+# A typical method for using this would be (assuming 'base' is 'test') would
+# be to create files 'test.dat.1', 'test.dat.2' up through 'test.dat.n'.  Then
+# copy 'test.dat.1' to 'test.dat' and submit the job.  By keeping the initial
+# input file in 'test.dat.1' and copying it to 'test.dat', the original initial
+# input file is preserved.  Remember that 'test.dat' gets overwritten with
+# 'test.dat.n'.
+
+echo "Current iteration is $5"
+next=`expr $5 + 1`
+echo "Next iteration is $next"
+
+if [ -s $1.dat.${next} ] ; then
+  cp $1.dat.${next} $1.dat
+  cfpost.exe << EOF
+  grid $3.cgd
+  solution $4.cfl
+  zone 1
+  plot3d q $4.plotq$5 2d mgrid blank unformatted
+  quit
+EOF
+  batch < $1.job
+else
+  echo "No more job files found"
+  /bin/rm -f $1.job
+fi
+#
+exit

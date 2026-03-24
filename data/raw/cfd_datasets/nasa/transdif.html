@@ -1,0 +1,208 @@
+<HTML>
+<HEAD>
+   <TITLE> Sajben Transonic Diffuser </TITLE>
+<style type="text/css">
+<!--
+.style1 {color: #800000;
+         text-decoration: underline; }
+.style2 {weight: bold}
+.style3 {color: #800000;}
+.style4 {font-size: smaller;}
+-->
+</style>
+
+</HEAD>
+
+<BODY TEXT="#000000" BGCOLOR="#FFFFFF" LINK="#0000EE" 
+  VLINK="#551A8B" ALINK="#FF0000">
+
+
+<!---------------------------------------------------------------------->
+<B>NPARC Alliance Validation Archive</B><BR>
+<B><A HREF="../homepage.html">
+Validation Home</A></B> &nbsp; <B> &gt; </B> &nbsp; 
+<B><A HREF="../archive.html">
+Archive</A></B> &nbsp; <B> &gt; </B> &nbsp; 
+<B> Transonic Diffuser </B>
+
+<HR>
+
+
+<!---------------------------------------------------------------------->
+<H2 align="center" class="style3"> Sajben Transonic Diffuser </H2>
+
+
+<!---------------------------------------------------------------------->
+<P align="CENTER">
+<IMG SRC="fig1.jpg" BORDER=1 alt="Figure 1 is described in the surrounding text"><BR>
+    <br><B>Figure 1. Geometry and flow field for Sajben transonic diffuser.</B>  
+</P>
+
+<!---------------------------------------------------------------------->
+<H3 class="style1">Flow Description</H3>
+
+<P> This validation case examines the transonic air flow through a
+converging-diverging diffuser with comparisons to experimental data
+obtained by Sajben et al.  Table 1 lists the conditions at the inflow.</P>
+
+<TABLE BORDER CELLPADDING=7 align="center">
+<CAPTION><B>Table 1. Flow conditions.</B></CAPTION>
+
+<TR><TH scope="row">Total Pressure (psia)</TH> <TD> 19.58 </TD></TR>
+<TR><TH scope="row">Total Temperature (R)</TH> <TD> 500.0 </TD></TR>
+<TR><TH scope="row">Angle-of-Attack (deg)</TH> <TD> 0.0 </TD></TR>
+<TR><TH scope="row">Angle-of-Sideslip (deg)</TH> <TD> 0.0 </TD></TR>
+<TR><TH scope="row">Weak Shock Outflow Static Pressure</TH> <TD> 16.05 </TD></TR>
+<TR><TH scope="row">Strong Shock Outflow Static  Pressure</TH> <TD> 14.10 </TD></TR>
+
+</TABLE>
+
+<P> The strength of the internal shock is controlled by the static 
+pressure at the outflow.  The static pressures imposed at the outflow 
+for the weak-shock and strong-shock cases are listed in Table 1.</P>
+
+
+<!---------------------------------------------------------------------->
+<H3 class="style1">Geometry</H3>
+
+<P> The two-dimensional geometry of the Sajben diffuser is shown in
+Fig. 2.  The throat is located at x = 0 inches and has a height 
+h<sub>thr</sub> of 0.14435 feet (44 milli-meters or 1.7322 inches).</P>
+
+<P align="center">
+<IMG SRC="geom.jpg" BORDER=1 alt="Figure 2 is described in the surrounding text"><BR>
+    <br><B>Figure 2. Geometry of the Sajben transonic diffuser.</B>  
+</P>
+<p> The geometry can be obtained from the grid file <a
+href="sajben.x.fmt"> sajben.x.fmt</a>, which is in the 
+<a href="../plot3d.html">Plot3d format</a>
+(3D, multi-block, formatted, whole).  The lower surface is the J1 grid
+line and the upper surface is the JMAX grid line.  These coordinates 
+are also available in the files <a href="lower.pts">lower.pts</a> and 
+<a href="upper.pts">upper.pts</a>.  The units are inches.</p>
+
+
+<!---------------------------------------------------------------------->
+<H3 class="style1">Comparison Data</H3>
+
+<P> The experimental data are from the references listed below.  The 
+files can be found in the studies below.</P>
+
+
+<!---------------------------------------------------------------------->
+<H3 class="style1">Computational Studies</H3>
+
+<TABLE BORDER=1 CELLPADDING=7 align="center">
+
+  <caption> <B> Table 2. Computational studies peformed for the 
+  Sajben transonic diffuser case. </B> </caption>
+  <TR> <TH scope="col"> Study </TH>
+       <TH> Category </TH> 
+       <TH> Person </TH> 
+       <TH> Comments </TH> </TR>
+
+  <TR> <TD scope="row"> <A HREF="transdif01/transdif01.html"> Study #1</A> </TD>
+       <TD> Benchmark Validation </TD> 
+       <TD> C. Towne </TD> 
+       <TD> Compares NPARC, WIND, NXAIR </TD> </TR>
+
+  <TR> <TD scope="row"> <A HREF="transdif02/transdif02.html"> Study #2</A> </TD>
+       <TD> Benchmark Validation </TD> 
+       <TD> D. Yoder </TD> 
+       <TD> Compares NPARC and WIND with turbulence models. </TD> </TR>
+
+  <TR> <TD scope="row"> <A HREF="transdif03/transdif03.html"> Study #3</A> </TD>
+       <TD> Benchmark Validation </TD> 
+       <TD> J. Slater </TD> 
+       <TD> Compares versions and turbulence models of WIND. </TD> </TR>
+
+  <TR> <TD scope="row"> <A HREF="transdif04/transdif04.html"> Study #4</A> </TD>
+       <TD> Benchmark Validation </TD> 
+       <TD> S. Mohler </TD> 
+       <TD> Validation of Wind-US unstructured flow solver. </TD> </TR>
+
+  <TR> <TD scope="row"> <A HREF="transdif05/transdif05.html"> Study #5</A> </TD>
+       <TD> Benchmark Validation </TD> 
+       <TD> J. Dudek </TD> 
+       <TD> Validation of Wind-US unstructured 3.146. </TD> </TR>
+
+</TABLE>
+
+
+<!---------------------------------------------------------------------->
+<H3 class="style1">References</H3>
+
+<p> 
+Bogar, T. J., Sajben, M., and Kroutil, J. C. (1983) &quot;Characteristic
+Frequencies of Transonic Diffuser Flow Oscillations,&quot; AIAA Journal,
+Vol. 21, No. 9, pp. 1232-1240.</p>
+
+<p> 
+Bogar, T. J. (1986) &quot;Structure of Self-Excited Oscillations in Transonic
+Diffuser Flows,&quot; AIAA Journal, Vol. 24, No. 1, pp. 54-61.</p>
+
+<p> 
+Chen, C. P., Sajben, M., and Kroutil, J. C. (1979) &quot;Shock Wave
+Oscillations in a Transonic Diffuser Flow,&quot; AIAA Journal, Vol. 17,
+No. 10, pp. 1076-1083.</p>
+
+<p> 
+Hsieh, T., Bogar, T. J., and Coakley, T. J. (1987) &quot;Numerical Simulation
+and Comparison with Experiment for Self-Excited Oscillations in a
+Diffuser Flow,&quot; AIAA Journal, Vol. 25, No. 7, pp. 936-943.</p>
+
+<p> 
+Hsieh, T., Wardlaw A. B. Jr., Bogar, T. J., and Coakley, T. J. (1987)
+&quot;Numerical Investigation of Unsteady Inlet Flowfields,&quot; AIAA Journal,
+Vol. 25, No. 1, pp. 75-81.</p>
+
+<p> 
+Sajben, M., Bogar, T. J., and Kroutil, J. C. (1984) &quot;Forced Oscillation
+Experiments in Supercritical Diffuser Flows,&quot; AIAA Journal, Vol. 22,
+No. 4, pp. 465-474.</p>
+
+<p> 
+Salmon, J. T., Bogar, T. J., and Sajben, M. (1983) &quot;Laser Doppler
+Velocimeter Measurements in Unsteady, Separated Transonic Diffuser
+Flows,&quot; Vol. 21, No. 12, pp. 1690-1697.</p>
+
+
+<!---------------------------------------------------------------------->
+<hr>
+<span style="font-weight: bold;">Last Updated:</span> Wednesday, 10-Feb-2021 09:38:58 EST<br>
+
+
+
+
+
+
+<div id="footer">
+
+<!-- <img src="images/nasa_logo.gif" class="right"
+      width= "50" height="40" alt="NASA meatball" />
+-->
+
+<div>
+  <span style="font-weight: bold;">Responsible NASA Official/Curator:</span> 
+      <a href="mailto:john.w.slater@nasa.gov">John W. Slater</a>
+</div>
+
+<span><span style="font-weight: bold;">Web Policies: </span>
+      <a href="http://www.grc.nasa.gov/Doc/grcwebpolicies.html">Web Privacy Policy and Important Notices</a></span><br />
+		<span style="font-weight: bold;">Adobe Reader Download: </span>  
+        <a href="http://www.adobe.com/products/acrobat/readstep2.html" title="Go to Adobe Web Site">
+        Adobe Reader</a>
+<!-- <span class="notprinted"><span style="font-weight: bold;">Adobe Reader Download: </span>  
+        <a href="http://www.adobe.com/products/acrobat/readstep2.html" title="Go to Adobe Web Site">
+        Adobe Reader</a>
+</span> -->
+
+<!-- We participate in the US government's analytics program. See the data at analytics.usa.gov. -->
+
+<script language="javascript" id="_fed_an_ua_tag" src="https://dap.digitalgov.gov/Universal-Federated-Analytics-Min.js?agency=NASA&subagency=GRC"></script>
+
+
+</div>
+
+</BODY>
+</HTML>
