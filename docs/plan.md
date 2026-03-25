@@ -1,274 +1,318 @@
-# LE-PINN Implementation Plan
+# Physics Fixes Plan: Turbine, Combustor, and LE-PINN
 
 ## Objective
 
-Implement the LE-PINN (Locally Enhanced Physics-Informed Neural Network) architecture from Ma et al. as a **new standalone module** in `simulation/nozzle/le_pinn.py`. The existing 1D PINN in `nozzle.py` is preserved unchanged.
+Fix five physics/engineering issues across the simulation codebase to make results scientifically defensible:
 
-The module implements a dual-network architecture for 2D RANS nozzle flow field prediction with 9 output variables, physics-informed loss (RANS equations + ideal gas EOS), wall boundary conditions, distance-based fusion, and adaptive loss weighting.
-
-Wall geometry comes from `scripts/visualization/nozzle_2d_geometry.py` (`generate_nozzle_profile()`).
-Training data is synthetic, generated analytically from isentropic + ideal-gas relations on the 2D nozzle grid.
+1. **Issue B** — Turbine expansion uses a hardcoded `expansion_ratio = 1005.0 / 1700.0` instead of a fuel-specific isentropic relation with polytropic efficiency.
+2. **Issue D** — Combustor efficiency is a static `0.98` constant; it should vary with equivalence ratio (φ) and fuel blend.
+3. **Issue A** — LE-PINN RANS residuals use 2D Cartesian PDEs instead of axisymmetric (adds ρv/r source terms).
+4. **Issue C** — Reynolds stress outputs (UU, VV, UV) appear in the physics loss without a turbulence closure; they should be dropped from the physics loss and trained only via data loss.
+5. **Issue E** — Wall BC assumes adiabatic (∂T/∂n = 0); this must be explicitly documented, or replaced with a convective BC.
 
 ## Constraints
 
-- **Do NOT modify** any existing files — this is a pure additive change
-- Existing `nozzle_pinn.pt` and `turbine_pinn.pt` must be preserved untouched
-- Chemical data files (`data/*.yaml`) are read-only
-- All new code must use type hints and docstrings
-- Use fixed random seed (42) for reproducibility
-- Must be compatible with PyTorch (already in requirements.txt)
+- Existing trained model weights (`models/*.pt`) are NOT overwritten; a retrain will be needed separately (Phase 3 from user plan, out of scope for this code change).
+- Chemical data files (`data/*.yaml`) remain read-only.
+- All changes must preserve random seeds and reproducibility.
+- Type hints and docstrings must be maintained.
+- Existing tests must continue to pass (with test updates where physics equations change).
 
 ## Repo Context
 
-Subsystems involved: nozzle (PINN surrogate model), geometry (2D wall profile generation).
-
-The geometry module `scripts/visualization/nozzle_2d_geometry.py` exports:
-- `generate_nozzle_profile(NPR, AR, Throat_Radius)` → `NozzleProfile` dataclass
-- `NozzleProfile` has fields: `x` (ndarray), `y` (ndarray), `key_points` (dict), `geometry` (dict)
-- `geometry` dict contains `A5` (throat area = π·r_t²), `A6` (exit area = π·r_exit²), `r_throat`, `r_exit`, `r_inlet`
+| Subsystem | Involvement |
+|-----------|-------------|
+| Turbine (integrated_engine.py) | Issue B: Fix `run_turbine` work target calculation |
+| Combustor (combustor.py) | Issue D: Add dynamic efficiency heuristic |
+| LE-PINN (le_pinn.py) | Issues A, C, E: PDE residuals, turbulence closure, wall BC |
+| Tests | Update `test_le_pinn.py` for changed RANS residuals |
 
 ## Relevant Files
 
 | Action | Path | Purpose |
 |--------|------|---------|
-| READ | `scripts/visualization/nozzle_2d_geometry.py` | Wall geometry API |
-| READ | `simulation/nozzle/nozzle.py` | Reference for existing patterns |
-| CREATE | `simulation/nozzle/le_pinn.py` | New LE-PINN module |
-| CREATE | `tests/test_le_pinn.py` | Unit tests |
+| MODIFY | `integrated_engine.py` | Fix turbine expansion (Issue B), wire dynamic combustor efficiency (Issue D) |
+| MODIFY | `simulation/combustor/combustor.py` | Add `estimate_efficiency()` heuristic function (Issue D) |
+| MODIFY | `simulation/nozzle/le_pinn.py` | Axisymmetric PDEs (Issue A), drop Reynolds stresses from physics loss (Issue C), document/update wall BC (Issue E) |
+| MODIFY | `tests/test_le_pinn.py` | Update RANS residuals test for new equation structure |
+
+---
 
 ## Implementation Phases
 
-### Phase 1: Core Architecture (`le_pinn.py` — Network Classes)
+### Phase 1: Turbine Expansion Fix (Issue B)
 
-Create `simulation/nozzle/le_pinn.py` with these classes:
+**File: `integrated_engine.py`**
 
-**1a. `GlobalNetwork(nn.Module)`**
-- Architecture: Input(6) → Linear(6, 400) → ReLU → [Linear(400, 400) → ReLU] × 6 → Linear(400, 9)
-- That is: 1 input layer + 6 hidden layers + 1 output layer
-- Xavier uniform initialization on all weights, zero initialization on all biases
-- Input: `(N, 6)` tensor `[x, y, A5, A6, P_in, T_in]`
-- Output: `(N, 9)` tensor `[ρ̂, û, v̂, P̂, T̂, ÛÛ, V̂V̂, ÛV̂, μ̂_eff]`
+**1a. Replace `scale_turbine_exit_temp` function (L444-467)**
 
-**1b. `BoundaryNetwork(nn.Module)`**
-- Architecture: Input(6) → Linear(6, 100) → ReLU → [Linear(100, 100) → ReLU] × 6 → Linear(100, 2)
-- That is: 1 input layer + 6 hidden layers + 1 output layer
-- Xavier uniform initialization on all weights, zero initialization on all biases
-- Input: `(N, 6)` tensor `[x_b, y_b, A5, A6, P_in, T_in]`
-- Output: `(N, 2)` tensor `[P̂_b, T̂_b]`
+Replace the hardcoded expansion ratio approach with the isentropic expansion formula:
 
-**1c. `LE_PINN(nn.Module)`**
-- Contains `GlobalNetwork` and `BoundaryNetwork`
-- `self.delta = 5e-4` (fusion threshold)
-- `forward(inputs, wall_distances)`:
-  1. Get global predictions: `global_preds = self.global_net(inputs)` → `(N, 9)`
-  2. Get boundary predictions: `boundary_preds = self.boundary_net(inputs)` → `(N, 2)`
-  3. Create mask: `near_wall = (wall_distances < self.delta).squeeze()`
-  4. Clone global: `fused = global_preds.clone()`
-  5. Replace pressure: `fused[near_wall, 3] = boundary_preds[near_wall, 0]`
-  6. Replace temperature: `fused[near_wall, 4] = boundary_preds[near_wall, 1]`
-  7. Return `fused` → `(N, 9)`
+```python
+T_out = T_in * [1 - η_t * (1 - (P_out / P_in)^((γ-1)/γ))]
+```
 
-**1d. `MinMaxNormalizer` class**
-- `__init__(self, epsilon=1e-8)`: stores epsilon
-- `fit(self, data)`: compute and store `data_min`, `data_max`
-- `transform(self, data)`: `(data - data_min) / (data_max - data_min + epsilon)`
-- `inverse_transform(self, data_norm)`: reverse operation
-- Applies to both inputs and outputs
+Where η_t ≈ 0.9 (polytropic turbine efficiency). The function now requires `gamma` and `P_out/P_in` ratio.
 
-### Phase 2: Physics & Loss Functions
+**1b. Fix `run_turbine` method (L843-849)**
 
-**2a. `compute_rans_residuals(inputs, outputs)` function**
-- `inputs` is `(N, 6)` with `requires_grad=True` for x, y columns
-- `outputs` is `(N, 9)`: `[ρ, u, v, P, T, UU, VV, UV, μ_eff]`
-- Use `torch.autograd.grad` to compute spatial derivatives:
-  - `∂ρ/∂x, ∂ρ/∂y, ∂u/∂x, ∂u/∂y, ∂v/∂x, ∂v/∂y, ∂P/∂x, ∂P/∂y, ∂T/∂x, ∂T/∂y`
-  - Second derivatives for viscous terms: `∂²u/∂x², ∂²u/∂y², ∂²v/∂x², ∂²v/∂y², ∂²T/∂x², ∂²T/∂y²`
-- Compute RANS equation residuals (using the Reynolds stress components from network output):
-  - Mass: `∂(ρu)/∂x + ∂(ρv)/∂y = 0`
-  - X-momentum: `ρ(u·∂u/∂x + v·∂u/∂y) + ∂P/∂x - μ_eff·(∂²u/∂x² + ∂²u/∂y²) + ρ·(∂UU/∂x + ∂UV/∂y) = 0`
-  - Y-momentum: `ρ(u·∂v/∂x + v·∂v/∂y) + ∂P/∂y - μ_eff·(∂²v/∂x² + ∂²v/∂y²) + ρ·(∂UV/∂x + ∂VV/∂y) = 0`
-  - Energy: `ρ·cp·(u·∂T/∂x + v·∂T/∂y) - k_eff·(∂²T/∂x² + ∂²T/∂y²) = 0` (with k_eff = μ_eff·cp/Pr_t, use Pr_t = 0.9)
-- Ideal gas EOS: `P - ρ·R·T = 0` (R = 287.0 J/(kg·K) default, or parameterizable)
-- Return: tuple of residual tensors (mass, xmom, ymom, energy, eos)
-- `L_physics = mean(mass² + xmom² + ymom² + energy² + eos²)`
+Currently at L846-849:
+```python
+# Estimate work from expansion ratio
+cp = thermo_props['cp']
+T_in = inlet_state['T']
+delta_T_estimated = T_in * (1 - self.turbine_design['expansion_ratio'])
+target_work_total = m_dot * cp * delta_T_estimated
+```
 
-**2b. `compute_wall_bc_loss(model, wall_points, wall_normals)` function**
-- `wall_points`: `(M, 6)` tensor of points on the wall boundary
-- `wall_normals`: `(M, 2)` tensor of outward normal vectors at wall points
-- Evaluate model at wall points: `preds = model(wall_points, wall_distances=zeros)`
-- Enforce:
-  - `u_wall = 0`: `L_u = mean(preds[:, 1]²)`
-  - `v_wall = 0`: `L_v = mean(preds[:, 2]²)`
-  - `∂T/∂n = 0` (Neumann): compute `∂T/∂x` and `∂T/∂y` via autograd, then `∂T/∂n = ∂T/∂x·n_x + ∂T/∂y·n_y`, `L_T = mean((∂T/∂n)²)`
-- Return: `L_bc = L_u + L_v + L_T`
+Replace with dynamic isentropic calculation using gamma from `thermo_props`:
+```python
+cp = thermo_props['cp']
+gamma = thermo_props['gamma']
+T_in = inlet_state['T']
+p_in = inlet_state['p']
+p_out_ratio = 1.93e5 / p_in  # turbine exit pressure ratio
+eta_t = 0.9  # polytropic turbine efficiency
+T_out = T_in * (1.0 - eta_t * (1.0 - p_out_ratio ** ((gamma - 1.0) / gamma)))
+delta_T = T_in - T_out
+target_work_total = m_dot * cp * delta_T
+```
 
-**2c. `AdaptiveLossWeighting` class**
-- Implements sigmoid-based exponential dynamic weighting from the paper
-- `__init__(self)`: initialize `self.epoch = 0`
-- `compute_weights(self, epoch, loss_data, loss_physics, loss_bc)`:
-  - `λ_data = sigmoid(α_d · (epoch / max_epoch))` where α_d is a scaling parameter (use α_d = 5.0)
-  - `λ_physics = 1.0 - λ_data + base_weight` (grows as data weight decreases)
-  - `λ_bc = sigmoid(α_bc · (epoch / max_epoch))` where α_bc = 3.0
-  - Return `(λ_data, λ_physics, λ_bc)`
-- The exact sigmoid formulation: `sigmoid(x) = 1 / (1 + exp(-x))`
+**1c. Update `turbine_design` dict (L569-573)**
 
-### Phase 3: Synthetic Data Generation & Geometry Integration
+Remove the hardcoded `expansion_ratio` and add documentation:
+```python
+self.turbine_design = {
+    'T_in_ref': 1700.0,
+    'T_out_ref': 1005.0,
+    'P_out': 1.93e5,     # Turbine exit pressure [Pa]
+    'eta_polytropic': 0.9  # Polytropic turbine efficiency
+}
+```
 
-**3a. `generate_wall_geometry(NPR, AR, Throat_Radius)` function**
-- Import `generate_nozzle_profile` from `scripts.visualization.nozzle_2d_geometry`
-- Call `generate_nozzle_profile(NPR, AR, Throat_Radius)` to get wall x, y arrays
-- Build upper wall coordinates array (already provided by the function)
-- Mirror for lower wall: `(x, -y)` for axisymmetric nozzle
-- Return upper and lower wall arrays, and geometry dict with A5, A6
+---
 
-**3b. `compute_wall_distances(query_points, wall_points)` function**
-- `query_points`: `(N, 2)` tensor of (x, y) coordinates
-- `wall_points`: `(W, 2)` tensor of all wall coordinates (upper + lower + centerline if needed)
-- Compute minimum Euclidean distance from each query point to any wall point
-- Return: `(N, 1)` tensor of minimum distances
-- Use efficient broadcasting: `distances = torch.cdist(query_points, wall_points).min(dim=1).values`
+### Phase 2: Dynamic Combustor Efficiency (Issue D)
 
-**3c. `compute_wall_normals(wall_x, wall_y)` function**
-- Given wall x, y arrays in order, compute outward normal vectors
-- Use finite differences: `dx = wall_x[1:] - wall_x[:-1]`, `dy = wall_y[1:] - wall_y[:-1]`
-- Normal = `(-dy, dx)` normalized, with sign chosen to point outward (away from flow domain)
-- Return `(M, 2)` tensor of unit normals at wall midpoints
+**File: `simulation/combustor/combustor.py`**
 
-**3d. `generate_synthetic_training_data(n_samples, NPR, AR, Throat_Radius, P_in, T_in)` function**
-- Generate 2D grid of (x, y) points inside the nozzle domain
-- Use wall geometry to determine domain bounds at each x
-- Compute isentropic flow field analytically:
-  - Local area A(x) from nozzle profile
-  - Mach number from area-Mach relation with NPR
-  - Temperature: `T = T_in * (1 + (γ-1)/2 * M²)^(-1)`
-  - Pressure: `P = P_in * (T/T_in)^(γ/(γ-1))`
-  - Density: `ρ = P / (R·T)`
-  - Axial velocity: `u = M * sqrt(γ·R·T)`
-  - Radial velocity: `v = 0` (1st order approximation for axisymmetric)
-  - Reynolds stresses: `UU = VV = UV = 0` (laminar baseline, small perturbation for training)
-  - Effective viscosity: `μ_eff = μ_lam` (estimate from Sutherland's law)
-- Package as input tensor `(N, 6)` and output tensor `(N, 9)`
-- Return: `(inputs, outputs, wall_distances)`
+**2a. Add `estimate_efficiency()` static method to `Combustor` class**
 
-### Phase 4: Training Infrastructure
+Add a heuristic function that penalizes efficiency as φ deviates from stoichiometric and applies a small penalty for heavier SAF blends:
 
-**4a. `setup_training(model)` function**
-- Optimizer: `torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)`
-- Scheduler: `torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, min_lr=1e-8)`
-- Return `(optimizer, scheduler)`
+```python
+@staticmethod
+def estimate_efficiency(phi: float, fuel_blend=None) -> float:
+    """
+    Estimate combustor efficiency based on equivalence ratio and fuel type.
+    
+    Efficiency drops as phi deviates from stoichiometric (1.0):
+      η = η_max - k_phi * (phi - 1.0)^2
+    
+    Additional penalty of 1-2% for heavier SAF blends (literature-based).
+    """
+    eta_max = 0.995
+    k_phi = 0.04  # penalty coefficient
+    eta = eta_max - k_phi * (phi - 1.0) ** 2
+    
+    # SAF blend penalty (heavier molecules = slightly lower efficiency)
+    if fuel_blend is not None:
+        blend_name = getattr(fuel_blend, 'name', '')
+        if 'Bio-SPK' in blend_name:
+            eta -= 0.015  # 1.5% penalty
+        elif 'HEFA' in blend_name:
+            eta -= 0.01   # 1.0% penalty
+    
+    return max(min(eta, 0.999), 0.90)  # clamp to [0.90, 0.999]
+```
 
-**4b. `train_le_pinn(config)` function**
-- Config dict with: `n_epochs`, `NPR`, `AR`, `Throat_Radius`, `P_in`, `T_in`, `batch_size`, `save_path`
-- Training loop:
-  1. Generate synthetic data (Phase 3d)
-  2. Generate wall geometry (Phase 3a)
-  3. Compute wall distances (Phase 3b)
-  4. Compute wall normals (Phase 3c)
-  5. For each epoch:
-     a. Forward pass through LE_PINN
-     b. Compute data loss: `L_data = MSE(predictions, synthetic_targets)`
-     c. Compute physics loss: `L_physics` from Phase 2a
-     d. Compute BC loss: `L_bc` from Phase 2b
-     e. Compute adaptive weights: `(λ_d, λ_p, λ_bc)` from Phase 2c
-     f. Total: `L = λ_d·L_data + λ_p·L_physics + λ_bc·L_bc`
-     g. Backward + optimizer step
-     h. Scheduler step with total loss
-     i. Log every 100 epochs
-  6. Save checkpoint with metadata
+**File: `integrated_engine.py`**
 
-### Phase 5: Unit Tests (`tests/test_le_pinn.py`)
+**2b. Wire dynamic efficiency into `run_full_cycle` (L1072-1116)**
 
-Create `tests/test_le_pinn.py` with these test functions using pytest:
+Replace the static `combustor_efficiency=0.98` parameter default with dynamic calculation. In `run_full_cycle`, before calling `run_combustor`, compute the dynamic efficiency:
 
-1. `test_global_network_shape`: Create `GlobalNetwork()`, pass `torch.randn(32, 6)`, assert output shape `(32, 9)`
-2. `test_boundary_network_shape`: Create `BoundaryNetwork()`, pass `torch.randn(32, 6)`, assert output shape `(32, 2)`
-3. `test_le_pinn_fusion_near_wall`: Create `LE_PINN()`, pass inputs with `wall_distances < 5e-4` for some points. Verify those points have P, T replaced by boundary network outputs.
-4. `test_le_pinn_no_fusion_far_wall`: Same but with `wall_distances > 5e-4`. Verify output equals global network output.
-5. `test_xavier_init`: Verify all Linear layers have Xavier uniform weights (check weight std is reasonable, not default init).
-6. `test_zero_bias_init`: Verify all Linear biases are initialized to zero.
-7. `test_min_max_normalizer`: Fit normalizer on known data, verify transform/inverse_transform round-trips correctly.
-8. `test_normalizer_epsilon`: Verify normalizer handles constant columns (max == min) without division by zero.
-9. `test_optimizer_config`: Call `setup_training()`, verify optimizer is AdamW with lr=1e-4, weight_decay=1e-5.
-10. `test_scheduler_config`: Call `setup_training()`, verify scheduler is ReduceLROnPlateau with patience=10, factor=0.5.
-11. `test_wall_distance_computation`: Create known wall points and query points, verify distances are correct.
-12. `test_rans_residuals_shape`: Verify `compute_rans_residuals` returns 5 tensors of correct shape.
-13. `test_existing_nozzle_pinn_import`: Import `NozzlePINN` from `simulation.nozzle.nozzle` and verify it still instantiates correctly — ensures no breakage to existing code.
+```python
+# If no explicit efficiency provided, use dynamic heuristic
+if combustor_efficiency is None:
+    combustor_efficiency = Combustor.estimate_efficiency(phi, fuel_blend)
+```
+
+Change the default parameter from `combustor_efficiency: float = 0.98` to `combustor_efficiency: Optional[float] = None`.
+
+---
+
+### Phase 3: Axisymmetric PDEs (Issue A)
+
+**File: `simulation/nozzle/le_pinn.py`**
+
+**3a. Update `compute_rans_residuals` function (L215-330)**
+
+Add the axisymmetric source terms. The `y` coordinate represents the radial distance `r`.
+
+- **Continuity** — add `ρv/y` term:
+  ```python
+  eps = 1e-8  # avoid division by zero at centerline
+  y = inputs[:, 1:2]
+  res_mass = (rho * du_dx + u * drho_dx) + (rho * dv_dy + v * drho_dy) + rho * v / (y + eps)
+  ```
+
+- **Y-momentum** — add hoop stress term `−P/r` (centrifugal pressure balance):
+  ```python
+  res_ymom = (
+      rho * (u * dv_dx + v * dv_dy) + dP_dy
+      - mu_eff * (d2v_dx2 + d2v_dy2)
+      + rho * (dUV_dx + dVV_dy)
+      - rho * v**2 / (y + eps)   # hoop stress
+  )
+  ```
+
+- **Energy** — add `ρv/r` geometric source:
+  ```python
+  # No additional energy source for axisymmetric, but the conduction term gets a 1/r d/dr(r dT/dr) form
+  # For the physics loss approximation, we add the 1/r term to the diffusion:
+  k_eff = mu_eff * cp / Pr_t
+  res_energy = rho * cp * (u * dT_dx + v * dT_dy) - k_eff * (d2T_dx2 + d2T_dy2 + dT_dy / (y + eps))
+  ```
+
+---
+
+### Phase 4: Turbulence Closure Fix (Issue C)
+
+**File: `simulation/nozzle/le_pinn.py`**
+
+**4a. Drop Reynolds stress terms from physics residuals**
+
+In `compute_rans_residuals`, remove the Reynolds stress gradient terms from x-momentum and y-momentum. The network still outputs UU, VV, UV (indices 5-7) so they can be trained via data loss, but the physics loss treats the flow as Euler/laminar Navier-Stokes:
+
+- **X-momentum** (remove `+ rho * (dUU_dx + dUV_dy)`):
+  ```python
+  res_xmom = (
+      rho * (u * du_dx + v * du_dy) + dP_dx
+      - mu_eff * (d2u_dx2 + d2u_dy2)
+  )
+  ```
+
+- **Y-momentum** (remove `+ rho * (dUV_dx + dVV_dy)`):
+  ```python
+  res_ymom = (
+      rho * (u * dv_dx + v * dv_dy) + dP_dy
+      - mu_eff * (d2v_dx2 + d2v_dy2)
+      - rho * v**2 / (y + eps)  # hoop stress (from Issue A)
+  )
+  ```
+
+- **Remove corresponding autograd computations** for `dUU_dx`, `dUV_dx`, `dUV_dy`, `dVV_dy` (L277-284) to avoid unnecessary computation.
+
+---
+
+### Phase 5: Heat Transfer BC Documentation (Issue E)
+
+**File: `simulation/nozzle/le_pinn.py`**
+
+**5a. Document the adiabatic assumption explicitly**
+
+Update the docstring for `compute_wall_bc_loss` (L337-380) to explicitly state:
+
+```
+NOTE: The nozzle wall is modeled as ADIABATIC (∂T/∂n = 0).
+This is acceptable for a proof-of-concept where heat transfer through
+the nozzle wall is negligible compared to the convective enthalpy flux.
+For production fidelity, replace with a convective BC:
+    k·∂T/∂n = h·(T_wall − T_ambient)
+```
+
+Also update the module-level docstring (L1-32) to mention the adiabatic wall assumption.
+
+---
 
 ## File-Level Edits
 
-### `simulation/nozzle/le_pinn.py` [NEW]
-- Complete LE-PINN implementation as described in Phases 1-4
-- ~500-700 lines of code
-- Imports: torch, torch.nn, numpy, typing, sys, pathlib
-- Imports `generate_nozzle_profile` from `scripts.visualization.nozzle_2d_geometry`
+### [MODIFY] [integrated_engine.py](file:///Users/arnavpatil/Desktop/JetEngineSimulation/integrated_engine.py)
 
-### `tests/test_le_pinn.py` [NEW]
-- 13 unit tests as described in Phase 5
-- ~200-300 lines of code
-- Uses pytest
+- L444-467: Rewrite `scale_turbine_exit_temp()` to use isentropic relation with polytropic efficiency
+- L528-573: Update `turbine_design` dict to remove `expansion_ratio`, add `P_out` and `eta_polytropic`
+- L843-849: Replace hardcoded expansion ratio delta-T calculation with dynamic isentropic formula
+- L1072-1077: Change `combustor_efficiency` default to `None`, add dynamic calculation before combustor call
+
+### [MODIFY] [combustor.py](file:///Users/arnavpatil/Desktop/JetEngineSimulation/simulation/combustor/combustor.py)
+
+- Add `estimate_efficiency()` static method to `Combustor` class (~25 lines)
+
+### [MODIFY] [le_pinn.py](file:///Users/arnavpatil/Desktop/JetEngineSimulation/simulation/nozzle/le_pinn.py)
+
+- L1-32: Update module docstring to mention adiabatic wall assumption
+- L215-330: Rewrite `compute_rans_residuals()`: add axisymmetric terms, remove Reynolds stress terms
+- L337-380: Update `compute_wall_bc_loss()` docstring with adiabatic documentation
+
+### [MODIFY] [test_le_pinn.py](file:///Users/arnavpatil/Desktop/JetEngineSimulation/tests/test_le_pinn.py)
+
+- Update `TestRANSResiduals.test_output_shapes` — the function signature and return shapes are the same (5 residuals), but verify the test still passes with the new axisymmetric equations.
 
 ## Commands to Run
 
 ```bash
-# After implementation, run the new tests:
+# Run all tests after implementation
+python -m pytest tests/ -v
+
+# Specifically run the LE-PINN tests
 python -m pytest tests/test_le_pinn.py -v
 
-# Verify existing tests still pass:
-python -m pytest tests/ -v --ignore=tests/test_le_pinn.py
-
-# Quick smoke test that import works:
-python -c "from simulation.nozzle.le_pinn import LE_PINN, GlobalNetwork, BoundaryNetwork; print('Import OK')"
+# Verify imports still work
+python -c "from simulation.nozzle.le_pinn import LE_PINN, compute_rans_residuals; print('LE-PINN import OK')"
+python -c "from simulation.combustor.combustor import Combustor; print(Combustor.estimate_efficiency(0.5)); print('Combustor import OK')"
+python -c "from integrated_engine import IntegratedTurbofanEngine; print('Engine import OK')"
 ```
 
 ## Tests
 
-### Automated Tests
+### Automated Tests -- Existing
 ```bash
-python -m pytest tests/test_le_pinn.py -v
+# All existing tests must still pass
+python -m pytest tests/ -v
 ```
 
-Expected: All 13 tests pass. Key validations:
-- Network shapes: GlobalNetwork (N,6)→(N,9), BoundaryNetwork (N,6)→(N,2)
-- Fusion: P and T replaced only for d < 5e-4
-- Initialization: Xavier uniform weights, zero biases
-- Normalization: epsilon-safe min-max
-- Optimizer: AdamW lr=1e-4, wd=1e-5
-- Scheduler: ReduceLROnPlateau patience=10, factor=0.5
+Specific expectations:
+- `tests/test_le_pinn.py::TestRANSResiduals::test_output_shapes` — must still pass (5 residuals, same shapes)
+- `tests/test_le_pinn.py::TestLE_PINN_Fusion` — unchanged, must pass
+- `tests/test_le_pinn.py::TestCFDFinetune` — unchanged, must pass (if dataset present)
+- `tests/test_nozzle_pinn_fix.py` — unchanged, must pass
+- `tests/test_nozzle_regression.py` — unchanged, must pass
 
-### Existing Tests (Regression)
+### Manual Verification
+After code changes, the user should retrain the LE-PINN and run the blends mode:
 ```bash
-python -m pytest tests/test_nozzle_pinn_fix.py tests/test_nozzle_regression.py -v
-```
+# Retrain LE-PINN (Phase 3 from user's plan — separate step)
+# python simulation/nozzle/le_pinn.py
 
-Expected: All existing tests pass unchanged.
+# Run blends comparison
+# python integrated_engine.py --mode blends
+```
 
 ## Acceptance Criteria
 
-- [ ] `GlobalNetwork` accepts `(N, 6)` and returns `(N, 9)` with 6 hidden layers × 400 neurons, ReLU
-- [ ] `BoundaryNetwork` accepts `(N, 6)` and returns `(N, 2)` with 6 hidden layers × 100 neurons, ReLU
-- [ ] `LE_PINN` fuses outputs: replaces P (idx 3) and T (idx 4) when `wall_distance < 5e-4`
-- [ ] RANS physics loss computes mass, x-mom, y-mom, energy, EOS residuals via autograd
-- [ ] Wall BC loss enforces u=0, v=0, ∂T/∂n=0 (Neumann)
-- [ ] Adaptive loss weighting uses sigmoid-based dynamic λ_data, λ_physics, λ_bc
-- [ ] AdamW optimizer with lr=1e-4, weight_decay=1e-5
-- [ ] ReduceLROnPlateau scheduler with patience=10, factor=0.5, min_lr=1e-8
-- [ ] Xavier uniform initialization on all Linear weights, zero biases
-- [ ] Min-max normalization with epsilon=1e-8
-- [ ] Wall geometry from `generate_nozzle_profile()` in `nozzle_2d_geometry.py`
-- [ ] Synthetic data generator produces valid (N,6) inputs and (N,9) outputs
-- [ ] All 13 new tests pass: `python -m pytest tests/test_le_pinn.py -v`
-- [ ] Existing tests unaffected: `python -m pytest tests/ -v` passes
-- [ ] No existing files modified
+- [x] `scale_turbine_exit_temp` uses isentropic expansion with η_t = 0.9 and fuel-specific gamma
+- [x] `run_turbine` default work target uses dynamic `delta_T` from isentropic formula, not hardcoded ratio
+- [x] `Combustor.estimate_efficiency(phi, fuel_blend)` returns dynamic efficiency based on φ and fuel type
+- [x] `run_full_cycle` uses dynamic combustor efficiency by default
+- [x] `compute_rans_residuals` uses axisymmetric continuity (`+ ρv/(y+ε)`) and momentum (hoop stress)
+- [x] Reynolds stress terms (UU, VV, UV gradients) removed from physics loss residuals
+- [x] Adiabatic wall BC explicitly documented in `compute_wall_bc_loss` and module docstring
+- [x] All existing tests pass: `python -m pytest tests/ -v`
+- [x] No model weights (`models/*.pt`) overwritten
+- [x] No chemical data files (`data/*.yaml`) modified
 
 ## Rollback Notes
 
-Pure additive change. Rollback by deleting:
+Each change is isolated to its own function/method:
 ```bash
-rm simulation/nozzle/le_pinn.py tests/test_le_pinn.py
+# Git revert is the cleanest rollback
+git diff HEAD~1 --stat   # review changes
+git revert HEAD          # undo if needed
 ```
 
 ## Escalation Guidance
 
-**Complexity: 8/10** — Full neural network architecture from paper spec with 2D autograd physics, multi-component adaptive loss, dual-network fusion, and synthetic data pipeline.
+**Complexity: 6/10** — Five localized fixes across three files. The math is precise but each change is self-contained. The LE-PINN PDE changes (axisymmetric terms) require the most care.
 
-**Recommended model: claude-opus** (high complexity, precise mathematical formulation required).
+**Recommended model: claude-sonnet** — Sufficient for localized, well-specified edits.

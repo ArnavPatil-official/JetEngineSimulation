@@ -441,28 +441,42 @@ def print_fuel_comparison(results_dict, baseline_fuel="Jet-A1"):
     print("="*90 + "\n")
 
 
-def scale_turbine_exit_temp(T_in, expansion_ratio_ref, cp=None, gamma=None):
+def scale_turbine_exit_temp(
+    T_in: float,
+    p_in: float,
+    p_out: float,
+    gamma: float,
+    eta_polytropic: float = 0.9,
+) -> float:
     """
-    Calculate turbine exit temperature using PINN-learned expansion ratio.
+    Calculate turbine exit temperature using the isentropic expansion relation
+    with a polytropic efficiency correction.
 
-    The PINN was trained on specific turbine operating conditions with a learned
-    temperature expansion ratio of T_out/T_in ≈ 0.59. This function applies that
-    learned ratio to new inlet conditions to maintain consistency.
+    Formula:
+        T_out = T_in × [1 − η_t × (1 − (P_out / P_in)^((γ−1)/γ))]
 
-    Note: This is a simplified approach. Future versions could adjust the expansion
-    ratio based on fuel-specific thermodynamic properties (cp, gamma) for improved accuracy.
+    Where:
+        η_t: Polytropic turbine efficiency (default 0.9)
+        γ: Heat capacity ratio (fuel-dependent, from combustion products)
+        P_out/P_in: Turbine pressure ratio
+
+    This replaces the old hardcoded expansion_ratio = 1005/1700 ≈ 0.59 approach,
+    which was fuel-blind. The new formula uses the fuel-specific γ from Cantera,
+    so different fuels now produce different turbine work extraction.
 
     Args:
         T_in: Turbine inlet temperature [K]
-        expansion_ratio_ref: Reference temperature expansion ratio from PINN training (≈ 0.59)
-        cp: Specific heat capacity at constant pressure [J/(kg·K)] (reserved for future use)
-        gamma: Heat capacity ratio (cp/cv) (reserved for future use)
+        p_in: Turbine inlet pressure [Pa]
+        p_out: Turbine exit pressure [Pa]
+        gamma: Heat capacity ratio (cp/cv) from combustion products
+        eta_polytropic: Polytropic turbine efficiency (default 0.9)
 
     Returns:
         T_out: Predicted turbine exit temperature [K]
     """
-    # Apply learned expansion ratio from PINN training
-    T_out = T_in * expansion_ratio_ref
+    pressure_ratio = p_out / p_in
+    exponent = (gamma - 1.0) / gamma
+    T_out = T_in * (1.0 - eta_polytropic * (1.0 - pressure_ratio ** exponent))
 
     return T_out
 
@@ -564,12 +578,12 @@ class IntegratedTurbofanEngine:
         self.turbine_pinn_path = turbine_pinn_path
         self.nozzle_pinn_path = nozzle_pinn_path
 
-        # Store turbine training reference conditions for temperature scaling
-        # The PINN was trained with specific inlet/outlet temperatures
+        # Turbine design-point parameters for isentropic expansion calculation
         self.turbine_design = {
-            'T_in': 1700.0,   # Training inlet temperature [K]
-            'T_out': 1005.0,  # Training outlet temperature [K]
-            'expansion_ratio': 1005.0 / 1700.0  # Learned temperature ratio ≈ 0.59
+            'T_in_ref': 1700.0,        # Reference inlet temperature [K]
+            'T_out_ref': 1005.0,       # Reference outlet temperature [K]
+            'P_out': 1.93e5,           # Turbine exit pressure [Pa]
+            'eta_polytropic': 0.9,     # Polytropic turbine efficiency
         }
 
         # Initialize emissions estimator for environmental optimization
@@ -842,11 +856,17 @@ class IntegratedTurbofanEngine:
 
         # Default target work (if not specified, use compressor work)
         if target_work_total is None:
-            # Estimate work from expansion ratio
+            # Estimate target work from fuel-dependent isentropic expansion
             cp = thermo_props['cp']
+            gamma = thermo_props['gamma']
             T_in = inlet_state['T']
-            delta_T_estimated = T_in * (1 - self.turbine_design['expansion_ratio'])
-            target_work_total = m_dot * cp * delta_T_estimated
+            p_in = inlet_state['p']
+            p_out = self.turbine_design['P_out']
+            eta_t = self.turbine_design['eta_polytropic']
+
+            T_out_est = scale_turbine_exit_temp(T_in, p_in, p_out, gamma, eta_t)
+            delta_T = T_in - T_out_est
+            target_work_total = m_dot * cp * delta_T
 
         # Call turbine PINN API
         result = run_turbine_pinn(
@@ -1073,7 +1093,7 @@ class IntegratedTurbofanEngine:
         self,
         fuel_blend: LocalFuelBlend,
         phi: float = 0.5,
-        combustor_efficiency: float = 0.98,
+        combustor_efficiency: Optional[float] = None,
         lca_factor: float = 1.0
     ) -> Dict[str, Any]:
         """
@@ -1082,7 +1102,9 @@ class IntegratedTurbofanEngine:
         Args:
             fuel_blend: LocalFuelBlend object
             phi: Equivalence ratio (default 0.5 for lean combustion)
-            combustor_efficiency: Combustion efficiency (default 0.98)
+            combustor_efficiency: Combustion efficiency. If None (default), computed
+                                  dynamically from phi and fuel_blend via
+                                  ``Combustor.estimate_efficiency()``.
             lca_factor: Lifecycle Carbon Assessment factor for CO₂ emissions
                        1.0 = conventional Jet-A1 (baseline)
                        <1.0 = reduced lifecycle emissions (e.g., SAF)
@@ -1107,6 +1129,10 @@ class IntegratedTurbofanEngine:
         comp_result = self.run_compressor(T_ambient, P_ambient)
 
         # 2. COMBUSTOR
+        # If no explicit efficiency provided, estimate dynamically
+        if combustor_efficiency is None:
+            combustor_efficiency = Combustor.estimate_efficiency(phi, fuel_blend)
+
         comb_result, f = self.run_combustor(
             T_in=comp_result['T_out'],
             p_in=comp_result['p_out'],

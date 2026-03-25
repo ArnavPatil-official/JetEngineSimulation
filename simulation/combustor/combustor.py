@@ -52,6 +52,40 @@ class Combustor:
         except Exception as e:
             raise RuntimeError(f"Failed to load Cantera mechanism '{mechanism_file}': {e}")
 
+    @staticmethod
+    def estimate_efficiency(phi: float, fuel_blend=None) -> float:
+        """
+        Estimate combustor efficiency based on equivalence ratio and fuel type.
+
+        Efficiency peaks near stoichiometric (φ = 1.0) and drops as φ deviates:
+            η = η_max − k_phi × (φ − 1.0)²
+
+        An additional 1–1.5% penalty is applied for heavier SAF blends based
+        on literature values for alternative fuel combustion characteristics.
+
+        Args:
+            phi: Equivalence ratio (lean < 1.0, stoichiometric = 1.0, rich > 1.0)
+            fuel_blend: Optional fuel blend object with a `name` attribute.
+                        Used to apply fuel-specific efficiency penalties.
+
+        Returns:
+            Estimated combustion efficiency in [0.90, 0.999]
+        """
+        eta_max = 0.995
+        k_phi = 0.04  # quadratic penalty coefficient
+
+        eta = eta_max - k_phi * (phi - 1.0) ** 2
+
+        # SAF blend penalty (heavier / alternative molecules = slightly lower efficiency)
+        if fuel_blend is not None:
+            blend_name = getattr(fuel_blend, 'name', '')
+            if 'Bio-SPK' in blend_name:
+                eta -= 0.015  # 1.5% penalty for pure synthetic paraffinic kerosene
+            elif 'HEFA' in blend_name:
+                eta -= 0.01   # 1.0% penalty for blended HEFA
+
+        return float(max(min(eta, 0.999), 0.90))
+
     def run(
         self,
         T_in: float,

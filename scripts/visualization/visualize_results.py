@@ -812,11 +812,15 @@ def plot_14_fuel_delta_heatmap(opt_df: pd.DataFrame) -> None:
     plt.close(fig)
 
 
-def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
+def _draw_engine_state_map(ax, row: pd.Series, title: str, font_scale: float = 1.0) -> None:
     ax.set_xlim(0, 12)
     ax.set_ylim(0, 6)
     ax.axis("off")
     ax.set_title(title)
+    # Fine-print annotations (arch strings, Cantera internals) must not scale
+    # proportionally — their positions are fixed in data coords, so large fonts
+    # cause overlap.  Cap detail text at 1.2× the base size.
+    detail_scale = min(font_scale, 1.2)
 
     # Outer nacelle shell (upper + lower) for an actual side-view cross-section feel.
     upper_shell = np.array(
@@ -934,7 +938,7 @@ def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
             nodes = [(float(x_layer), float(y)) for y in ys]
             node_layers.append(nodes)
             if width > shown:
-                ax.text(x_layer, cy + 0.30, f"{width}", ha="center", va="center", fontsize=6.8, color="#334155")
+                ax.text(x_layer, cy + 0.30, f"{width}", ha="center", va="center", fontsize=6.8 * detail_scale, color="#334155")
 
         for left, right in zip(node_layers[:-1], node_layers[1:]):
             for x0, y0 in left:
@@ -946,8 +950,8 @@ def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
                 ax.add_patch(Circle((x_node, y_node), 0.035, facecolor=color, edgecolor="white", lw=0.5, alpha=0.96))
 
         arch = "-".join(str(v) for v in layers)
-        ax.text(cx, cy + 0.58 if cy < 3.0 else cy - 0.60, name, ha="center", va="center", fontsize=8.5, weight="bold")
-        ax.text(cx, cy + 0.43 if cy < 3.0 else cy - 0.45, f"{arch}", ha="center", va="center", fontsize=6.8, color="#334155")
+        ax.text(cx, cy + 0.58 if cy < 3.0 else cy - 0.60, name, ha="center", va="center", fontsize=8.5 * font_scale, weight="bold")
+        ax.text(cx, cy + 0.43 if cy < 3.0 else cy - 0.45, f"{arch}", ha="center", va="center", fontsize=6.8 * detail_scale, color="#334155")
 
     def draw_cantera_panel(
         cx: float,
@@ -961,19 +965,19 @@ def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
 
         reactor = Ellipse((cx, cy), width=0.9, height=0.52, facecolor="#f8fafc", edgecolor="#475569", lw=1.0)
         ax.add_patch(reactor)
-        ax.text(cx, cy, "ct.Solution", ha="center", va="center", fontsize=6.8, color="#334155")
+        ax.text(cx, cy, "ct.Solution", ha="center", va="center", fontsize=6.8 * detail_scale, color="#334155")
 
         if mode == "compressor":
-            ax.text(cx - 0.48, cy + 0.17, "s = const", fontsize=6.6, color="#1e3a8a", ha="center")
-            ax.text(cx + 0.50, cy + 0.17, "TP", fontsize=6.6, color="#1e3a8a", ha="center")
+            ax.text(cx - 0.48, cy + 0.17, "s = const", fontsize=6.6 * detail_scale, color="#1e3a8a", ha="center")
+            ax.text(cx + 0.50, cy + 0.17, "TP", fontsize=6.6 * detail_scale, color="#1e3a8a", ha="center")
             for x_mol, y_mol in [(cx - 0.60, cy - 0.15), (cx - 0.52, cy), (cx - 0.62, cy + 0.12)]:
                 ax.add_patch(Circle((x_mol, y_mol), 0.022, facecolor="#60a5fa", edgecolor="#1d4ed8", lw=0.4))
             for x_mol, y_mol in [(cx + 0.56, cy - 0.12), (cx + 0.52, cy - 0.02), (cx + 0.58, cy + 0.09), (cx + 0.50, cy + 0.16)]:
                 ax.add_patch(Circle((x_mol, y_mol), 0.022, facecolor="#2563eb", edgecolor="#1d4ed8", lw=0.4))
             ax.add_patch(FancyArrowPatch((cx - 0.25, cy), (cx + 0.25, cy), arrowstyle="->", mutation_scale=8, lw=0.9, color=color))
         else:
-            ax.text(cx - 0.56, cy + 0.19, "Fuel + Air", fontsize=6.4, color="#9a3412", ha="center")
-            ax.text(cx + 0.56, cy + 0.19, "Eq Products", fontsize=6.4, color="#9a3412", ha="center")
+            ax.text(cx - 0.56, cy + 0.19, "Fuel + Air", fontsize=6.4 * detail_scale, color="#9a3412", ha="center")
+            ax.text(cx + 0.56, cy + 0.19, "Eq Products", fontsize=6.4 * detail_scale, color="#9a3412", ha="center")
             for x_mol, y_mol in [(cx - 0.62, cy - 0.12), (cx - 0.54, cy - 0.02), (cx - 0.60, cy + 0.10)]:
                 ax.add_patch(Circle((x_mol, y_mol), 0.022, facecolor="#fb923c", edgecolor="#c2410c", lw=0.4))
             for x_mol, y_mol in [(cx + 0.48, cy - 0.12), (cx + 0.56, cy - 0.02), (cx + 0.64, cy + 0.07), (cx + 0.52, cy + 0.14)]:
@@ -981,9 +985,9 @@ def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
             flame = np.array([[cx, cy - 0.16], [cx + 0.08, cy + 0.03], [cx, cy + 0.16], [cx - 0.06, cy + 0.02]])
             ax.add_patch(Polygon(flame, closed=True, facecolor="#f97316", edgecolor="#9a3412", lw=0.5))
             ax.add_patch(FancyArrowPatch((cx - 0.25, cy), (cx + 0.25, cy), arrowstyle="<->", mutation_scale=8, lw=0.9, color=color))
-            ax.text(cx, cy - 0.29, "equilibrate('HP')", fontsize=6.2, color="#7c2d12", ha="center")
+            ax.text(cx, cy - 0.29, "equilibrate('HP')", fontsize=6.2 * detail_scale, color="#7c2d12", ha="center")
 
-        ax.text(cx, cy + 0.58 if cy < 3.0 else cy - 0.60, name, ha="center", va="center", fontsize=8.5, weight="bold")
+        ax.text(cx, cy + 0.58 if cy < 3.0 else cy - 0.60, name, ha="center", va="center", fontsize=8.5 * font_scale, weight="bold")
 
     turbine_layers = linear_layer_sizes(NormalizedTurbinePINN())
     nozzle_layers = linear_layer_sizes(NozzlePINN())
@@ -1011,7 +1015,7 @@ def _draw_engine_state_map(ax, row: pd.Series, title: str) -> None:
             txt,
             ha="center",
             va="center",
-            fontsize=9,
+            fontsize=9 * font_scale,
             bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": "#64748b", "alpha": 0.95},
         )
 
@@ -1034,11 +1038,11 @@ def plot_15_annotated_cross_section(opt_df: pd.DataFrame, cycle_df: pd.DataFrame
     plt.close(fig)
 
 
-def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
+def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str, font_scale: float = 1.0):
     ax.set_xlim(0.0, 12.0)
     ax.set_ylim(-0.10, 6.20)
     ax.axis("off")
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=8)
+    ax.set_title(title, fontsize=11 * font_scale, fontweight="bold", pad=8)
 
     def linear_layer_sizes(model: torch.nn.Module) -> list[int]:
         layers: list[int] = []
@@ -1086,7 +1090,7 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
             layer_nodes = [(float(x_layer), float(y)) for y in ys]
             rendered_layers.append(layer_nodes)
             if width > shown:
-                ax.text(x_layer, cy + 0.32, f"{width}", ha="center", va="center", fontsize=6.4, color="#334155")
+                ax.text(x_layer, cy + 0.32, f"{width}", ha="center", va="center", fontsize=6.4 * font_scale, color="#334155")
 
         for left, right in zip(rendered_layers[:-1], rendered_layers[1:]):
             for x0, y0 in left:
@@ -1097,8 +1101,8 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
             for x_node, y_node in nodes:
                 ax.add_patch(Circle((x_node, y_node), 0.033, facecolor=color, edgecolor="white", lw=0.45, alpha=0.97))
 
-        ax.text(cx, cy + 0.66, title_text, ha="center", va="center", fontsize=8.4, weight="bold")
-        ax.text(cx, cy + 0.50, subtitle, ha="center", va="center", fontsize=6.6, color="#334155")
+        ax.text(cx, cy + 0.66, title_text, ha="center", va="center", fontsize=8.4 * font_scale, weight="bold")
+        ax.text(cx, cy + 0.50, subtitle, ha="center", va="center", fontsize=6.6 * font_scale, color="#334155")
 
         ax.add_patch(
             FancyArrowPatch(
@@ -1188,16 +1192,16 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
         yk = 3.0 + 1.35 * (yp / y_max)
         short_label = "P" + label.split("(")[0].strip().split()[-1]
         ax.scatter(xk, yk, s=16, color="#0f172a", zorder=5)
-        ax.text(xk, yk + 0.12, short_label, ha="center", va="bottom", fontsize=7.2)
+        ax.text(xk, yk + 0.12, short_label, ha="center", va="bottom", fontsize=7.2 * font_scale)
 
     x_p2 = 0.9 + 6.8 * (key_pts["Point 2 (End Inlet / Start Converging)"][0] - x_min) / x_span
     x_p3 = x_throat
     for xb in [x_p2, x_p3]:
         ax.plot([xb, xb], [2.0, 4.0], color="#475569", lw=0.8, linestyle=":", alpha=0.8, zorder=3)
 
-    ax.text(0.5 * (x_plot[0] + x_p2), 4.08, "Inlet", fontsize=7.4, ha="center", color="#1f2937")
-    ax.text(0.5 * (x_p2 + x_p3), 4.08, "Converging", fontsize=7.4, ha="center", color="#1f2937")
-    ax.text(0.5 * (x_p3 + x_exit), 4.08, "Diverging", fontsize=7.4, ha="center", color="#1f2937")
+    ax.text(0.5 * (x_plot[0] + x_p2), 4.08, "Inlet", fontsize=7.4 * font_scale, ha="center", color="#1f2937")
+    ax.text(0.5 * (x_p2 + x_p3), 4.08, "Converging", fontsize=7.4 * font_scale, ha="center", color="#1f2937")
+    ax.text(0.5 * (x_p3 + x_exit), 4.08, "Diverging", fontsize=7.4 * font_scale, ha="center", color="#1f2937")
 
     sample_x = np.linspace(x_plot[0] + 0.15, x_plot[-1] - 0.15, 34)
     wall_at_x = np.interp(sample_x, x_plot, y_up)
@@ -1216,11 +1220,11 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
     for x0, x1 in [(1.3, 2.7), (3.0, 4.6), (4.9, 6.7)]:
         ax.add_patch(FancyArrowPatch((x0, 3.0), (x1, 3.0), arrowstyle="-|>", mutation_scale=12, lw=1.2, color="#1f2937"))
 
-    ax.text(4.2, 5.32, "2D Axisymmetric Nozzle Section", ha="center", va="center", fontsize=9.3, weight="bold", color="#0f172a")
-    ax.text(4.2, 5.10, "Colour: LE-PINN Mach Number (turbo colormap, 0 → 3)", ha="center", va="center", fontsize=7.4, color="#1e40af", weight="semibold")
-    ax.text(4.2, 4.89, "● Light blue: interior collocation pts  ● Orange: LE-PINN boundary fusion strip", ha="center", va="center", fontsize=7.0, color="#334155")
-    ax.annotate("Throat", xy=(x_throat, 4.02), xytext=(x_throat + 0.35, 4.35), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0, color="#334155")
-    ax.annotate("Exit plane", xy=(x_exit, 3.0), xytext=(x_exit - 0.7, 4.45), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0, color="#334155")
+    ax.text(4.2, 5.32, "2D Axisymmetric Nozzle Section", ha="center", va="center", fontsize=9.3 * font_scale, weight="bold", color="#0f172a")
+    ax.text(4.2, 5.10, "Colour: LE-PINN Mach Number (turbo colormap, 0 → 3)", ha="center", va="center", fontsize=7.4 * font_scale, color="#1e40af", weight="semibold")
+    ax.text(4.2, 4.89, "● Light blue: interior collocation pts  ● Orange: LE-PINN boundary fusion strip", ha="center", va="center", fontsize=7.0 * font_scale, color="#334155")
+    ax.annotate("Throat", xy=(x_throat, 4.02), xytext=(x_throat + 0.35, 4.35), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0 * font_scale, color="#334155")
+    ax.annotate("Exit plane", xy=(x_exit, 3.0), xytext=(x_exit - 0.7, 4.45), arrowprops={"arrowstyle": "->", "lw": 0.8, "color": "#334155"}, fontsize=7.0 * font_scale, color="#334155")
 
     global_layers = linear_layer_sizes(GlobalNetwork())
     boundary_layers = linear_layer_sizes(BoundaryNetwork())
@@ -1275,7 +1279,7 @@ def _draw_lepinn_nozzle_cross_section(ax, row: pd.Series, title: str):
         stats_text,
         ha="left",
         va="bottom",
-        fontsize=8.0,
+        fontsize=8.0 * font_scale,
         bbox={"boxstyle": "round,pad=0.26", "fc": "white", "ec": "#64748b", "alpha": 0.95},
     )
 
@@ -1321,21 +1325,25 @@ def plot_16_lepinn_nozzle_cross_section(opt_df: pd.DataFrame, cycle_df: pd.DataF
 def plot_poster_hero_graphic(opt_df: pd.DataFrame, cycle_df: pd.DataFrame) -> None:
     """Vertical A0-poster infographic: engine cross-section (top) + LE-PINN nozzle (bottom)."""
     POSTER_RC = {
-        "font.size": 22,
-        "axes.titlesize": 26,
-        "axes.labelsize": 22,
-        "xtick.labelsize": 18,
-        "ytick.labelsize": 18,
-        "legend.fontsize": 18,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Helvetica Neue", "Helvetica", "Liberation Sans", "DejaVu Sans"],
+        "font.size": 28,
+        "axes.titlesize": 34,
+        "axes.labelsize": 26,
+        "axes.titleweight": "bold",
+        "xtick.labelsize": 22,
+        "ytick.labelsize": 22,
+        "legend.fontsize": 22,
+        "figure.facecolor": "white",
     }
     with plt.rc_context(POSTER_RC):
         fig = plt.figure(figsize=(22, 36), facecolor="white")
         gs = fig.add_gridspec(
             2, 1,
             height_ratios=[5, 8],
-            hspace=0.06,
+            hspace=0.14,
             left=0.02, right=0.98,
-            top=0.95, bottom=0.05,
+            top=0.89, bottom=0.09,
         )
         ax_top = fig.add_subplot(gs[0])
         ax_bot = fig.add_subplot(gs[1])
@@ -1347,12 +1355,13 @@ def plot_poster_hero_graphic(opt_df: pd.DataFrame, cycle_df: pd.DataFrame) -> No
                 ax.text(
                     0.5, 0.5,
                     "Run optimization first to generate engine data.",
-                    ha="center", va="center", fontsize=28,
+                    ha="center", va="center", fontsize=38,
                 )
         else:
             _draw_engine_state_map(
                 ax_top, best,
                 f"Best SAF Candidate — Trial {int(best['Trial'])}",
+                font_scale=2.8,
             )
             mappable = _draw_lepinn_nozzle_cross_section(
                 ax_bot, best,
@@ -1361,20 +1370,21 @@ def plot_poster_hero_graphic(opt_df: pd.DataFrame, cycle_df: pd.DataFrame) -> No
                     f"(NPR \u2248 {float(best.get('TurbOut_P_bar', 6.59)):.1f},  "
                     f"T\u1d35\u2099 \u2248 {float(best.get('TurbOut_T', 1700)):.0f} K)"
                 ),
+                font_scale=2.8,
             )
             if mappable is not None:
-                cbar_ax = fig.add_axes([0.15, 0.018, 0.70, 0.010])
+                cbar_ax = fig.add_axes([0.12, 0.040, 0.76, 0.016])
                 cbar = fig.colorbar(mappable, cax=cbar_ax, orientation="horizontal")
                 cbar.set_label(
                     "LE-PINN Mach Number (turbo colormap)",
-                    fontsize=20, labelpad=8,
+                    fontsize=28, labelpad=10,
                 )
-                cbar.ax.tick_params(labelsize=16)
+                cbar.ax.tick_params(labelsize=24)
                 cbar.set_ticks([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
 
         fig.suptitle(
             "Jet-Engine Thermodynamic Cycle with LE-PINN 2-D Nozzle Flow",
-            fontsize=34, fontweight="bold", y=0.975,
+            fontsize=42, fontweight="bold", y=0.945,
         )
         out_path = PLOTS_DIR / "poster_hero_graphic.png"
         plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")

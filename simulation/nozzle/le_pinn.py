@@ -1,8 +1,8 @@
 """
 Locally Enhanced Physics-Informed Neural Network (LE-PINN) Surrogate Model.
 
-Implements the dual-network architecture from Ma et al. for 2D RANS nozzle
-flow field prediction.
+Implements the dual-network architecture from Ma et al. for axisymmetric RANS
+nozzle flow field prediction.
 
 Architecture
 ------------
@@ -17,11 +17,25 @@ Architecture
 - **Fusion** : If min wall distance d(x) < δ (δ = 5e-4), replace the global
   network's pressure and temperature with the boundary network's predictions.
 
+Physics
+-------
+- **Axisymmetric RANS**: The y coordinate is treated as the radial distance r.
+  Continuity, radial momentum, and energy equations include geometric source
+  terms (ρv/r, hoop stress ρv²/r, 1/r diffusion correction).
+- **Turbulence closure**: Reynolds stress outputs (UU, VV, UV) are trained
+  purely via the data loss (L_data). They are NOT included in the physics
+  residuals, which follow an Euler/laminar Navier-Stokes formulation.
+
+Boundary Conditions
+-------------------
+- Wall no-slip: u = v = 0
+- **Adiabatic wall**: ∂T/∂n = 0. The nozzle wall is modeled as perfectly
+  insulated. This is acceptable for a proof-of-concept where convective heat
+  transfer through the wall is negligible compared to the enthalpy flux.
+
 Training
 --------
 - Loss: L = λ_data·L_data + λ_physics·L_physics + λ_BC·L_BC
-- Physics: 2D RANS residuals (mass, x-mom, y-mom, energy) + ideal gas EOS
-- BC: Wall no-slip (u=v=0) + adiabatic wall (∂T/∂n=0)
 - Adaptive sigmoid-based loss weighting
 - Optimizer: AdamW (lr=1e-4, wd=1e-5)
 - Scheduler: ReduceLROnPlateau (patience 10, factor 0.5, min_lr 1e-8)
@@ -220,12 +234,19 @@ def compute_rans_residuals(
     Pr_t: float = PR_T,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    Compute 2D RANS PDE residuals + ideal gas EOS via automatic differentiation.
+    Compute axisymmetric RANS PDE residuals + ideal gas EOS via automatic differentiation.
+
+    The y coordinate is treated as the radial distance r. Geometric source terms
+    (ρv/r for continuity, hoop stress for radial momentum, 1/r diffusion for
+    energy) are included with an ε guard to prevent division by zero at the
+    centreline (y = 0).
+
+    Reynolds stress outputs (UU, VV, UV) are NOT included in the physics
+    residuals. They are trained purely via the data loss (L_data), avoiding
+    the need for a turbulence closure model in the physics loss.
 
     All spatial derivatives are computed w.r.t. the *full* ``inputs`` tensor and
     the x / y components are extracted from the resulting Jacobian columns.
-    This avoids second-order autograd failures that occur when differentiating
-    w.r.t. sliced sub-tensors.
 
     Args:
         inputs: ``(N, 6)`` with ``requires_grad=True`` — ``[x, y, A5, A6, P_in, T_in]``
@@ -243,17 +264,20 @@ def compute_rans_residuals(
     v      = outputs[:, 2:3]
     P      = outputs[:, 3:4]
     T      = outputs[:, 4:5]
-    UU     = outputs[:, 5:6]
-    VV     = outputs[:, 6:7]
-    UV     = outputs[:, 7:8]
+    # UU, VV, UV (indices 5-7) are NOT used in physics loss — trained via data loss only
     mu_eff = outputs[:, 8:9]
+
+    # Radial coordinate (y) with epsilon guard for centreline
+    y = inputs[:, 1:2]
+    eps = 1e-8
+    y_safe = y + eps  # prevent division by zero at r = 0
 
     ones = torch.ones_like(rho)
 
-    def _grad_wrt_inputs(y: torch.Tensor) -> torch.Tensor:
+    def _grad_wrt_inputs(y_field: torch.Tensor) -> torch.Tensor:
         """Gradient of scalar field y w.r.t. full inputs → (N, 6)."""
         g = torch.autograd.grad(
-            y, inputs, grad_outputs=ones, create_graph=True, retain_graph=True,
+            y_field, inputs, grad_outputs=ones, create_graph=True, retain_graph=True,
             allow_unused=True,
         )[0]
         return g if g is not None else torch.zeros_like(inputs)
@@ -274,17 +298,7 @@ def compute_rans_residuals(
     grad_T = _grad_wrt_inputs(T)
     dT_dx, dT_dy = grad_T[:, 0:1], grad_T[:, 1:2]
 
-    grad_UU = _grad_wrt_inputs(UU)
-    dUU_dx = grad_UU[:, 0:1]
-
-    grad_UV = _grad_wrt_inputs(UV)
-    dUV_dx, dUV_dy = grad_UV[:, 0:1], grad_UV[:, 1:2]
-
-    grad_VV = _grad_wrt_inputs(VV)
-    dVV_dy = grad_VV[:, 1:2]
-
     # --- Second derivatives (viscous terms) ---
-    # Differentiate the first derivative scalars again w.r.t. full inputs.
     grad_du_dx = _grad_wrt_inputs(du_dx)
     d2u_dx2 = grad_du_dx[:, 0:1]
 
@@ -303,26 +317,32 @@ def compute_rans_residuals(
     grad_dT_dy = _grad_wrt_inputs(dT_dy)
     d2T_dy2 = grad_dT_dy[:, 1:2]
 
-    # ---- 1. Mass continuity: ∂(ρu)/∂x + ∂(ρv)/∂y = 0 ----
-    res_mass = (rho * du_dx + u * drho_dx) + (rho * dv_dy + v * drho_dy)
+    # ---- 1. Axisymmetric continuity: ∂(ρu)/∂x + ∂(ρv)/∂y + ρv/r = 0 ----
+    res_mass = (
+        (rho * du_dx + u * drho_dx)
+        + (rho * dv_dy + v * drho_dy)
+        + rho * v / y_safe
+    )
 
-    # ---- 2. X-momentum ----
+    # ---- 2. X-momentum (no Reynolds stress terms — Euler/laminar N-S) ----
     res_xmom = (
         rho * (u * du_dx + v * du_dy) + dP_dx
         - mu_eff * (d2u_dx2 + d2u_dy2)
-        + rho * (dUU_dx + dUV_dy)
     )
 
-    # ---- 3. Y-momentum ----
+    # ---- 3. Y-momentum with hoop stress (no Reynolds stress terms) ----
     res_ymom = (
         rho * (u * dv_dx + v * dv_dy) + dP_dy
         - mu_eff * (d2v_dx2 + d2v_dy2)
-        + rho * (dUV_dx + dVV_dy)
+        - rho * v ** 2 / y_safe  # hoop stress: -ρv²/r
     )
 
-    # ---- 4. Energy ----
+    # ---- 4. Energy with axisymmetric diffusion correction ----
     k_eff = mu_eff * cp / Pr_t
-    res_energy = rho * cp * (u * dT_dx + v * dT_dy) - k_eff * (d2T_dx2 + d2T_dy2)
+    res_energy = (
+        rho * cp * (u * dT_dx + v * dT_dy)
+        - k_eff * (d2T_dx2 + d2T_dy2 + dT_dy / y_safe)
+    )
 
     # ---- 5. Ideal gas EOS: P − ρ R T = 0 ----
     res_eos = P - rho * R * T
@@ -341,6 +361,13 @@ def compute_wall_bc_loss(
 ) -> torch.Tensor:
     """
     Wall boundary condition loss: no-slip + adiabatic wall.
+
+    NOTE: The nozzle wall is modeled as ADIABATIC (∂T/∂n = 0).
+    This is acceptable for a proof-of-concept where heat transfer through
+    the nozzle wall is negligible compared to the convective enthalpy flux.
+    For production fidelity, replace the Neumann BC with a convective BC:
+        k·∂T/∂n = h·(T_wall − T_ambient)
+    where h is a convective heat transfer coefficient.
 
     Args:
         model: LE_PINN instance
