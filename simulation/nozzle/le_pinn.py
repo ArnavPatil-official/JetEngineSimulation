@@ -670,6 +670,326 @@ def generate_synthetic_training_data(
 
 
 # ============================================================================
+# 7b. SAJBEN EXPERIMENTAL DATA PARSING
+# ============================================================================
+
+def _expand_fortran_tokens(text: str) -> list:
+    """
+    Expand Fortran list-directed repeat notation in a whitespace/comma token stream.
+
+    E.g. ``'6*2.59650254'`` → ``[2.59650254] * 6``.
+    Plain numeric strings are returned as single-element lists.
+    Non-numeric tokens (e.g. column headers) are silently skipped.
+    """
+    import re
+    values: list = []
+    for token in re.split(r"[,\s]+", text.strip()):
+        token = token.strip()
+        if not token:
+            continue
+        if "*" in token:
+            parts = token.split("*", 1)
+            try:
+                count = int(parts[0])
+                val = float(parts[1])
+                values.extend([val] * count)
+            except (ValueError, IndexError):
+                pass
+        else:
+            try:
+                values.append(float(token))
+            except ValueError:
+                pass
+    return values
+
+
+def parse_sajben_experimental_data(filepath: str) -> Dict[str, object]:
+    """
+    Parse the Sajben / Hseih et al. (1987) Mach-0.46 experimental data file.
+
+    File structure (``data.Mach46.txt``):
+
+    * Lines 1-15  : Header.  Throat height H = 0.14435 ft = 4.407 cm.
+      All distances normalised by H.
+    * Lines 17-53 : Surface static pressure table.  Two side-by-side columns:
+
+      .. code-block::
+
+         TOP WALL (X/H*, P/P0)  |  BOTTOM WALL (X/H*, P/P0)
+
+      The top-wall column has 37 rows; the bottom-wall column has 36 rows
+      (the final top-wall line has no matching bottom-wall entry).
+
+    * Lines 61-207 : Axial velocity profiles at four X/H stations:
+      1.729, 2.882, 4.611, 6.340.  Each section lists rows of
+      ``(Y/H, X-VELOCITY [m/s])``.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to ``data.Mach46.txt``.
+
+    Returns
+    -------
+    dict with keys:
+
+    ``top_wall``
+        ``{'xh': ndarray, 'pp0': ndarray}`` — X/H* and P/P₀ on the top wall.
+    ``bot_wall``
+        ``{'xh': ndarray, 'pp0': ndarray}`` — same for the bottom wall.
+    ``vel_profiles``
+        ``{station_label: {'yh': ndarray, 'u_ms': ndarray}}``
+        where station labels are ``'1.729'``, ``'2.882'``, ``'4.611'``, ``'6.340'``.
+    ``H_m``
+        Throat height in metres (0.044014).
+    """
+    fpath = Path(filepath)
+    if not fpath.exists():
+        raise FileNotFoundError(f"Sajben data file not found: {fpath}")
+
+    lines = fpath.read_text().splitlines()
+
+    # ------------------------------------------------------------------ #
+    # 1. Surface static pressure                                           #
+    # ------------------------------------------------------------------ #
+    top_xh: list = []
+    top_pp0: list = []
+    bot_xh: list = []
+    bot_pp0: list = []
+
+    # Locate header line containing both "X/H*" and "P/P0"
+    pressure_start: Optional[int] = None
+    for idx, line in enumerate(lines):
+        if "X/H*" in line and "P/P0" in line:
+            pressure_start = idx + 1
+            break
+    if pressure_start is None:
+        raise ValueError("Could not find pressure-table header in data file.")
+
+    i = pressure_start
+    while i < len(lines):
+        line = lines[i].strip()
+        i += 1
+        if not line:
+            continue
+        # Stop at the velocity profiles section
+        if "VELOCITY" in line.upper() or ("X/H" in line and "=" in line):
+            break
+        # Collect numeric tokens from this line (up to 4 floats)
+        nums = []
+        for tok in line.split():
+            try:
+                nums.append(float(tok))
+            except ValueError:
+                pass
+        if len(nums) >= 2:
+            top_xh.append(nums[0])
+            top_pp0.append(nums[1])
+        if len(nums) >= 4:
+            bot_xh.append(nums[2])
+            bot_pp0.append(nums[3])
+
+    # ------------------------------------------------------------------ #
+    # 2. Velocity profiles                                                 #
+    # ------------------------------------------------------------------ #
+    # Nominal X/H labels (as they appear in file headers)
+    _STATION_CANON = {
+        "1.729": "1.729", "1.73": "1.729",
+        "2.882": "2.882", "2.88": "2.882",
+        "4.611": "4.611", "4.61": "4.611",
+        "6.340": "6.340", "6.34": "6.340",
+    }
+
+    vel_profiles: Dict[str, dict] = {}
+    current_station: Optional[str] = None
+    yh_buf: list = []
+    u_buf: list = []
+
+    for line in lines:
+        line_s = line.strip()
+        # Detect station header: "X/H = 1.729" or "X/H= 2.882" etc.
+        if "X/H" in line_s and "=" in line_s:
+            # Flush previous station buffer
+            if current_station is not None and yh_buf:
+                vel_profiles[current_station] = {
+                    "yh":  np.array(yh_buf, dtype=np.float32),
+                    "u_ms": np.array(u_buf, dtype=np.float32),
+                }
+            yh_buf, u_buf = [], []
+            current_station = None
+            # Extract numeric value after '='
+            try:
+                val_str = line_s.split("=", 1)[1].strip().split()[0]
+                # Strip trailing non-numeric chars
+                val_str_clean = val_str.rstrip(",.:;")
+                # Map to canonical label
+                # Try exact match first, then first-3-decimal match
+                if val_str_clean in _STATION_CANON:
+                    current_station = _STATION_CANON[val_str_clean]
+                else:
+                    # Try matching first 4 characters
+                    for k, v in _STATION_CANON.items():
+                        if val_str_clean.startswith(k[:4]):
+                            current_station = v
+                            break
+            except (IndexError, ValueError):
+                pass
+            continue
+
+        if current_station is None:
+            continue
+        # Skip blank lines and column header lines
+        if not line_s or "Y/H" in line_s or "M/S" in line_s or "VELOCITY" in line_s.upper():
+            continue
+
+        nums = []
+        for tok in line_s.split():
+            try:
+                nums.append(float(tok))
+            except ValueError:
+                pass
+        if len(nums) >= 2:
+            yh_buf.append(nums[0])
+            u_buf.append(nums[1])
+
+    # Flush final station
+    if current_station is not None and yh_buf:
+        vel_profiles[current_station] = {
+            "yh":  np.array(yh_buf, dtype=np.float32),
+            "u_ms": np.array(u_buf, dtype=np.float32),
+        }
+
+    H_m = 0.14435 * 0.3048  # 0.14435 ft → metres
+
+    return {
+        "top_wall": {
+            "xh":  np.array(top_xh,  dtype=np.float32),
+            "pp0": np.array(top_pp0, dtype=np.float32),
+        },
+        "bot_wall": {
+            "xh":  np.array(bot_xh,  dtype=np.float32),
+            "pp0": np.array(bot_pp0, dtype=np.float32),
+        },
+        "vel_profiles": vel_profiles,
+        "H_m": float(H_m),
+    }
+
+
+def parse_sajben_geometry(filepath: str) -> Dict[str, object]:
+    """
+    Parse a Plot3D formatted 2D geometry file (``sajben.x.fmt``).
+
+    Format:
+
+    * Line 1  : number of blocks (= 1 for Sajben).
+    * Line 2  : ``ni, nj, nk`` grid dimensions (81 × 51 × 1 for Sajben).
+    * Remaining lines: ``ni*nj`` x-values then ``ni*nj`` y-values stored in
+      Fortran i-major order (i varies fastest).  Fortran list-directed
+      repeat notation ``N*val`` is expanded transparently.  A z-coordinate
+      array (all zeros for a 2D problem) is ignored if present.
+
+    The Sajben coordinates are in **inches**.  Confirmation: the x-range
+    (−6.998 to +14.984 in) equals the experimental X/H range (−4.04 to +8.65)
+    scaled by H = 1.7322 in (0.14435 ft).  The maximum upper-wall y (≈ 2.598 in)
+    equals the exit channel height = 1.5 H ✓.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to ``sajben.x.fmt``.
+
+    Returns
+    -------
+    dict with keys:
+
+    ``x_in``, ``y_in`` : (ni, nj) arrays — coordinates in inches.
+    ``x_m``,  ``y_m``  : (ni, nj) arrays — coordinates in metres.
+    ``ni``, ``nj``     : grid dimensions.
+    ``H_in``, ``H_m``  : throat height in inches / metres (= min upper-wall y).
+    ``x_vec``          : (ni,) 1-D x-vector (same for all j, in inches).
+    ``upper_wall_y_m`` : (ni,) upper wall y-coordinates in metres.
+    ``lower_wall_y_m`` : (ni,) lower wall y-coordinates in metres (≈ 0).
+    ``AR_entrance``    : entrance-to-throat area ratio (2D: height ratio).
+    ``AR_exit``        : exit-to-throat area ratio.
+    """
+    fpath = Path(filepath)
+    if not fpath.exists():
+        raise FileNotFoundError(f"Plot3D geometry file not found: {fpath}")
+
+    text = fpath.read_text()
+    lines = text.splitlines()
+
+    # Header
+    n_blocks = int(lines[0].strip())
+    if n_blocks != 1:
+        raise ValueError(f"Expected 1 block, got {n_blocks}")
+
+    dim_parts = lines[1].replace(",", " ").split()
+    ni, nj, nk = int(dim_parts[0]), int(dim_parts[1]), int(dim_parts[2])
+    n_pts = ni * nj  # points per coordinate array
+
+    # Parse all numeric values from remaining lines
+    all_values: list = []
+    for line in lines[2:]:
+        all_values.extend(_expand_fortran_tokens(line))
+
+    # Determine how many coordinate arrays are present
+    if len(all_values) >= 3 * n_pts:
+        n_arrays = 3
+    elif len(all_values) >= 2 * n_pts:
+        n_arrays = 2
+    else:
+        raise ValueError(
+            f"Insufficient values in Plot3D file: got {len(all_values)}, "
+            f"expected ≥ {2 * n_pts} for ni={ni}, nj={nj}."
+        )
+
+    vals = np.array(all_values[: n_arrays * n_pts], dtype=np.float64)
+    x_flat = vals[:n_pts]
+    y_flat = vals[n_pts : 2 * n_pts]
+
+    # Reshape: Fortran i-major order → (nj, ni) → transpose to (ni, nj)
+    x_2d = x_flat.reshape((nj, ni)).T  # (ni, nj)
+    y_2d = y_flat.reshape((nj, ni)).T  # (ni, nj)
+
+    INCH_TO_M = 0.0254
+    x_m = x_2d * INCH_TO_M
+    y_m = y_2d * INCH_TO_M
+
+    lower_wall_y_m = y_m[:, 0]
+    upper_wall_y_m = y_m[:, -1]
+
+    # Throat height = minimum upper-wall y (narrowest cross-section)
+    H_in = float(y_2d[:, -1].min())
+    H_m  = H_in * INCH_TO_M
+
+    x_vec = x_2d[:, 0]  # (ni,) same for all j
+
+    # Area ratios (2D channel: area ∝ height = upper_y − lower_y)
+    h_entrance = float(y_2d[0, -1]  - y_2d[0,  0])
+    h_exit      = float(y_2d[-1, -1] - y_2d[-1, 0])
+    h_throat    = H_in
+    AR_entrance = h_entrance / h_throat if h_throat > 0 else float("nan")
+    AR_exit     = h_exit     / h_throat if h_throat > 0 else float("nan")
+
+    return {
+        "x_in": x_2d,
+        "y_in": y_2d,
+        "x_m":  x_m,
+        "y_m":  y_m,
+        "ni":   ni,
+        "nj":   nj,
+        "H_in": H_in,
+        "H_m":  H_m,
+        "x_vec": x_vec,
+        "upper_wall_y_m": upper_wall_y_m,
+        "lower_wall_y_m": lower_wall_y_m,
+        "AR_entrance": AR_entrance,
+        "AR_exit":     AR_exit,
+    }
+
+
+# ============================================================================
 # 8. TRAINING SETUP
 # ============================================================================
 
@@ -957,6 +1277,7 @@ def finetune_on_cfd_data(
     lr: float = 1e-5,
     val_fraction: float = 0.2,
     physics_loss_weight: float = 0.05,
+    physics_max_points: Optional[int] = None,
     device: str = "cpu",
     verbose: bool = True,
 ) -> Tuple["LE_PINN", Dict[str, list]]:
@@ -984,13 +1305,18 @@ def finetune_on_cfd_data(
         val_fraction: Fraction of data held out for validation.
         physics_loss_weight: Scaling factor for the RANS physics loss term.
             Set to 0 to disable physics loss entirely during fine-tuning.
-        device: ``"cpu"`` or ``"cuda"``.
+        physics_max_points: Optional cap on the number of training points used
+            for physics loss per epoch. If ``None`` and device is ``"mps"``,
+            a default cap is applied to reduce Apple GPU memory pressure.
+        device: ``"cpu"``, ``"cuda"``, or ``"mps"``.
         verbose: Print epoch progress every 50 steps.
 
     Returns:
         ``(fine_tuned_model, history_dict)``
     """
     dev = torch.device(device)
+    if physics_max_points is None and dev.type == "mps":
+        physics_max_points = 16384
 
     # ---- Resolve default paths ----
     if dataset_path is None:
@@ -1121,6 +1447,8 @@ def finetune_on_cfd_data(
         print(f"  Dataset : {dataset_path}")
         print(f"  Train/Val: {n_train} / {n_val}   Epochs: {n_epochs}   LR: {lr}")
         print(f"  Physics weight: {physics_loss_weight}")
+        if physics_max_points is not None and physics_max_points > 0:
+            print(f"  Physics points/epoch cap: {physics_max_points}")
         print("=" * 70)
 
     for epoch in range(n_epochs):
@@ -1133,7 +1461,19 @@ def finetune_on_cfd_data(
 
         # Physics loss (non-fatal; returns zero tensor on failure)
         if physics_loss_weight > 0:
-            loss_physics = _safe_physics_loss(model, inputs_train_n, wall_dists_train)
+            phys_inputs = inputs_train_n
+            phys_walls = wall_dists_train
+            if (
+                physics_max_points is not None
+                and physics_max_points > 0
+                and inputs_train_n.shape[0] > physics_max_points
+            ):
+                phys_idx = torch.randperm(
+                    inputs_train_n.shape[0], device=inputs_train_n.device
+                )[:physics_max_points]
+                phys_inputs = inputs_train_n[phys_idx]
+                phys_walls = wall_dists_train[phys_idx]
+            loss_physics = _safe_physics_loss(model, phys_inputs, phys_walls)
         else:
             loss_physics = torch.tensor(0.0, device=dev)
 
