@@ -59,6 +59,49 @@ RANKINE_TO_K: float = 5.0 / 9.0
 
 
 # ============================================================================
+# 0.  Helpers
+# ============================================================================
+
+def _estimate_transverse_velocity(
+    x_flat: np.ndarray,
+    y_flat: np.ndarray,
+    rho_2d: np.ndarray,
+    u_2d: np.ndarray,
+    ni: int,
+    nj: int,
+) -> np.ndarray:
+    """
+    Estimate v from 2D continuity: ∂(ρu)/∂x + ∂(ρv)/∂y = 0.
+
+    Uses axial finite differences of ρu, then integrates vertically
+    (trapezoidal) from the lower wall (v=0) to each y-station.
+    """
+    rho_u = (rho_2d * u_2d).reshape(ni, nj)
+    x_1d = x_flat.reshape(ni, nj)[:, 0]
+    y_2d = y_flat.reshape(ni, nj)
+    rho_2d_r = rho_2d.reshape(ni, nj)
+
+    # d(ρu)/dx via central differences (forward/backward at edges)
+    d_rhou_dx = np.zeros((ni, nj))
+    d_rhou_dx[1:-1, :] = (rho_u[2:, :] - rho_u[:-2, :]) / (
+        (x_1d[2:] - x_1d[:-2])[:, None]
+    )
+    d_rhou_dx[0, :] = (rho_u[1, :] - rho_u[0, :]) / max(x_1d[1] - x_1d[0], 1e-12)
+    d_rhou_dx[-1, :] = (rho_u[-1, :] - rho_u[-2, :]) / max(x_1d[-1] - x_1d[-2], 1e-12)
+
+    # Integrate: v(x, y) = -(1/ρ) ∫₀ʸ d(ρu)/dx dy', with v(y=0) = 0
+    v_2d = np.zeros((ni, nj))
+    for i in range(ni):
+        for j in range(1, nj):
+            dy = y_2d[i, j] - y_2d[i, j - 1]
+            integrand = 0.5 * (d_rhou_dx[i, j] + d_rhou_dx[i, j - 1])
+            rho_local = max(rho_2d_r[i, j], 1e-12)
+            v_2d[i, j] = v_2d[i, j - 1] - integrand * dy / rho_local
+
+    return v_2d.ravel()
+
+
+# ============================================================================
 # 1.  Parse .dat run-configuration files
 # ============================================================================
 
@@ -270,8 +313,11 @@ def _pack_case(
     rho_2d = np.repeat(rho_axial, nj)
     u_2d   = np.repeat(u_axial,   nj)
     mu_2d  = np.repeat(mu_axial,  nj)
-    v_2d   = np.zeros(ni * nj)
-    zero   = np.zeros(ni * nj)
+    # Estimate transverse velocity from planar continuity (∂(ρu)/∂x + ∂(ρv)/∂y = 0)
+    v_2d   = _estimate_transverse_velocity(x_flat, y_flat, rho_2d, u_2d, ni, nj)
+    # Reynolds stresses (cols 5-7) are unused in data loss — mark as NaN sentinel
+    # finetune_on_cfd_data only uses targets[:, :5]; NaN rows for cols 5-7 are safe
+    nan_col = np.full(ni * nj, np.nan)
 
     inputs = np.column_stack([
         x_flat, y_flat,
@@ -283,7 +329,7 @@ def _pack_case(
 
     targets = np.column_stack([
         rho_2d, u_2d, v_2d, P_2d, T_2d,
-        zero, zero, zero, mu_2d,
+        nan_col, nan_col, nan_col, mu_2d,
     ]).astype(np.float32)
 
     return inputs, targets
@@ -322,7 +368,6 @@ def generate_sajben_dataset(
     x_m = geom["x_m"]                    # (ni, nj)
     y_m = geom["y_m"]                    # (ni, nj)
     ni, nj = geom["ni"], geom["nj"]
-    H_m  = geom["H_m"]
     upper_y = geom["upper_wall_y_m"]     # (ni,)
     lower_y = geom["lower_wall_y_m"]     # (ni,)
     AR_exit = geom["AR_exit"]
@@ -334,10 +379,11 @@ def generate_sajben_dataset(
     AR_vec   = np.maximum(h_vec / h_throat, 1.0)       # A/A_throat, ≥ 1
     h_inlet_to_throat = h_inlet / h_throat              # ≈ 1.30
 
-    # A5, A6: axisymmetric equivalents (mirror train_sajben.py / le_pinn.py)
-    r_throat = H_m / 2.0
-    A5 = float(np.pi * r_throat ** 2)
-    A6 = A5 * float(AR_exit)
+    # A5, A6: planar channel areas (height × unit depth = h)
+    # Sajben is a 2D planar diffuser, NOT axisymmetric.
+    # Using πr² would create inconsistency with the planar PDE residuals.
+    A5 = float(h_throat)          # throat area per unit depth [m]
+    A6 = A5 * float(AR_exit)     # exit area per unit depth [m]
 
     x_flat = x_m.ravel()   # (ni*nj,)  C-order: index = i*nj + j
     y_flat = y_m.ravel()
@@ -386,8 +432,9 @@ def generate_sajben_dataset(
     ).astype(int)
     shock_stations = [div_valid[i] for i in shock_stations]
 
-    all_inputs:  list[np.ndarray] = []
-    all_targets: list[np.ndarray] = []
+    all_inputs:   list[np.ndarray] = []
+    all_targets:  list[np.ndarray] = []
+    all_weights:  list[np.ndarray] = []
 
     print(f"Family A — shock in domain ({len(shock_stations)} cases):")
     for ci, k in enumerate(shock_stations):
@@ -396,7 +443,9 @@ def generate_sajben_dataset(
         )
         inp, tgt = _pack_case(x_flat, y_flat, ni, nj, M_axial, P0_axial,
                                T0, A5, A6, P0)
-        all_inputs.append(inp);  all_targets.append(tgt)
+        all_inputs.append(inp)
+        all_targets.append(tgt)
+        all_weights.append(np.ones(len(inp), dtype=np.float32))
         P_back_approx = float(_p_isen(M_axial[-1:], P0_axial[-1])[0])
         print(f"  [{ci+1:02d}/{len(shock_stations)}] k={k:2d}"
               f"  x_shock={x_m[k,0]:.3f} m"
@@ -410,14 +459,16 @@ def generate_sajben_dataset(
     M_axial_sup, P0_axial_sup = solve_fully_supersonic(
         AR_vec, M_sub_conv, M_sup, idx_throat, P0
     )
-    # All n_supersonic copies are identical flow fields with same P0, T0
-    for ci in range(n_supersonic):
-        inp, tgt = _pack_case(x_flat, y_flat, ni, nj,
-                               M_axial_sup, P0_axial_sup, T0, A5, A6, P0)
-        all_inputs.append(inp);  all_targets.append(tgt)
+    # Single copy with elevated per-sample weight instead of row duplication.
+    # The weight equals n_supersonic so training emphasis is unchanged.
+    inp_sup, tgt_sup = _pack_case(x_flat, y_flat, ni, nj,
+                                   M_axial_sup, P0_axial_sup, T0, A5, A6, P0)
+    all_inputs.append(inp_sup)
+    all_targets.append(tgt_sup)
+    all_weights.append(np.full(len(inp_sup), float(n_supersonic), dtype=np.float32))
     P_exit_sup = float(_p_isen(M_axial_sup[-1:], P0)[0])
     print(f"  M_exit={M_axial_sup[-1]:.3f},  P_exit≈{P_exit_sup:.0f} Pa  "
-          f"(×{n_supersonic} copies for weighting)")
+          f"(weight={n_supersonic} instead of {n_supersonic} copies)")
 
     # ------------------------------------------------------------------
     # Family C: subsonic unchoked (varying inlet Mach)
@@ -430,7 +481,9 @@ def generate_sajben_dataset(
         )
         inp, tgt = _pack_case(x_flat, y_flat, ni, nj,
                                M_axial_sub, P0_axial_sub, T0, A5, A6, P0)
-        all_inputs.append(inp);  all_targets.append(tgt)
+        all_inputs.append(inp)
+        all_targets.append(tgt)
+        all_weights.append(np.ones(len(inp), dtype=np.float32))
         print(f"  [{ci+1:02d}/{n_subsonic}] M_in={M_in_sub:.3f}"
               f"  M_throat≈{M_axial_sub[idx_throat]:.3f}"
               f"  M_exit≈{M_axial_sub[-1]:.3f}")
@@ -440,16 +493,20 @@ def generate_sajben_dataset(
     # ------------------------------------------------------------------
     inputs_all  = np.concatenate(all_inputs,  axis=0)
     targets_all = np.concatenate(all_targets, axis=0)
+    weights_all = np.concatenate(all_weights, axis=0)
 
+    # Cols 5-7 (Reynolds stresses) are NaN sentinels — exclude from finiteness check
+    phys_cols = list(range(5)) + [8]  # [ρ, u, v, P, T, μ_eff]
     valid = (
         np.isfinite(inputs_all).all(axis=1)
-        & np.isfinite(targets_all).all(axis=1)
+        & np.isfinite(targets_all[:, phys_cols]).all(axis=1)
         & (targets_all[:, 0] > 0)    # ρ > 0
         & (targets_all[:, 3] > 0)    # P > 0
         & (targets_all[:, 4] > 0)    # T > 0
     )
     inputs_all  = inputs_all[valid]
     targets_all = targets_all[valid]
+    weights_all = weights_all[valid]
 
     n_dropped = (~valid).sum()
     print(f"\nTotal valid points : {len(inputs_all):,}"
@@ -462,14 +519,16 @@ def generate_sajben_dataset(
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "inputs":  torch.from_numpy(inputs_all),
-            "targets": torch.from_numpy(targets_all),
+            "inputs":          torch.from_numpy(inputs_all),
+            "targets":         torch.from_numpy(targets_all),
+            "sample_weights":  torch.from_numpy(weights_all),
         },
         out,
     )
     print(f"Saved → {out}")
-    print(f"  inputs  shape: {inputs_all.shape}")
-    print(f"  targets shape: {targets_all.shape}")
+    print(f"  inputs         shape: {inputs_all.shape}")
+    print(f"  targets        shape: {targets_all.shape}")
+    print(f"  sample_weights shape: {weights_all.shape}")
     return inputs_all, targets_all
 
 

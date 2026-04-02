@@ -232,14 +232,15 @@ def compute_rans_residuals(
     R: float = R_GAS,
     cp: float = CP,
     Pr_t: float = PR_T,
+    geometry: str = "axisymmetric",
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    Compute axisymmetric RANS PDE residuals + ideal gas EOS via automatic differentiation.
+    Compute RANS PDE residuals + ideal gas EOS via automatic differentiation.
 
-    The y coordinate is treated as the radial distance r. Geometric source terms
-    (ρv/r for continuity, hoop stress for radial momentum, 1/r diffusion for
-    energy) are included with an ε guard to prevent division by zero at the
-    centreline (y = 0).
+    Supports two geometry modes:
+    - ``"axisymmetric"``: y is treated as radial distance r; geometric source
+      terms (ρv/r, hoop stress ρv²/r, 1/r diffusion) are included.
+    - ``"planar"``: Cartesian 2D; axisymmetric source terms are dropped.
 
     Reynolds stress outputs (UU, VV, UV) are NOT included in the physics
     residuals. They are trained purely via the data loss (L_data), avoiding
@@ -254,6 +255,9 @@ def compute_rans_residuals(
         R: specific gas constant [J/(kg·K)]
         cp: specific heat [J/(kg·K)]
         Pr_t: turbulent Prandtl number
+        geometry: ``"axisymmetric"`` (default, engine nozzle) or ``"planar"``
+            (Sajben 2D diffuser). Controls whether axisymmetric source terms
+            are included in continuity, y-momentum, and energy residuals.
 
     Returns:
         Tuple of 5 residual tensors:
@@ -317,12 +321,15 @@ def compute_rans_residuals(
     grad_dT_dy = _grad_wrt_inputs(dT_dy)
     d2T_dy2 = grad_dT_dy[:, 1:2]
 
-    # ---- 1. Axisymmetric continuity: ∂(ρu)/∂x + ∂(ρv)/∂y + ρv/r = 0 ----
+    # ---- 1. Continuity ----
+    # Axisymmetric: ∂(ρu)/∂x + ∂(ρv)/∂y + ρv/r = 0
+    # Planar:       ∂(ρu)/∂x + ∂(ρv)/∂y         = 0
     res_mass = (
         (rho * du_dx + u * drho_dx)
         + (rho * dv_dy + v * drho_dy)
-        + rho * v / y_safe
     )
+    if geometry == "axisymmetric":
+        res_mass = res_mass + rho * v / y_safe
 
     # ---- 2. X-momentum (no Reynolds stress terms — Euler/laminar N-S) ----
     res_xmom = (
@@ -330,19 +337,26 @@ def compute_rans_residuals(
         - mu_eff * (d2u_dx2 + d2u_dy2)
     )
 
-    # ---- 3. Y-momentum with hoop stress (no Reynolds stress terms) ----
+    # ---- 3. Y-momentum (no Reynolds stress terms) ----
+    # Axisymmetric: includes hoop stress -ρv²/r
+    # Planar: no hoop stress term
     res_ymom = (
         rho * (u * dv_dx + v * dv_dy) + dP_dy
         - mu_eff * (d2v_dx2 + d2v_dy2)
-        - rho * v ** 2 / y_safe  # hoop stress: -ρv²/r
     )
+    if geometry == "axisymmetric":
+        res_ymom = res_ymom - rho * v ** 2 / y_safe  # hoop stress: -ρv²/r
 
-    # ---- 4. Energy with axisymmetric diffusion correction ----
+    # ---- 4. Energy ----
+    # Axisymmetric: includes 1/r diffusion correction (+dT_dy/r)
+    # Planar: standard 2D Laplacian only
     k_eff = mu_eff * cp / Pr_t
     res_energy = (
         rho * cp * (u * dT_dx + v * dT_dy)
-        - k_eff * (d2T_dx2 + d2T_dy2 + dT_dy / y_safe)
+        - k_eff * (d2T_dx2 + d2T_dy2)
     )
+    if geometry == "axisymmetric":
+        res_energy = res_energy - k_eff * dT_dy / y_safe
 
     # ---- 5. Ideal gas EOS: P − ρ R T = 0 ----
     res_eos = P - rho * R * T
@@ -1031,6 +1045,7 @@ def train_le_pinn(
     save_path: Optional[str] = None,
     device: str = "cpu",
     verbose: bool = True,
+    geometry: str = "axisymmetric",
 ) -> Tuple[LE_PINN, Dict[str, list]]:
     """
     Full training loop for the LE-PINN.
@@ -1113,13 +1128,19 @@ def train_le_pinn(
         preds = model(inputs_n, wall_dists)
         loss_data = nn.functional.mse_loss(preds, targets_n)
 
-        # ---- 2. Physics loss ----
-        # Need gradients w.r.t. spatial inputs
-        inputs_phys = inputs_n.detach().clone().requires_grad_(True)
-        preds_phys = model(inputs_phys, wall_dists)
+        # ---- 2. Physics loss (de-normalized for correct chain-rule scaling) ----
+        # De-normalize to physical space so PDE coefficients (cp, R, Pr_t) are
+        # applied to physical quantities, not min-max-scaled surrogates.
+        inputs_phys_raw = input_norm.inverse_transform(
+            inputs_n.detach().clone()
+        ).requires_grad_(True)
+        # Re-run forward pass through normalizer→model→denormalizer so autograd
+        # traces the full chain: physical inputs → normalized → model → denorm
+        preds_phys_raw = model(input_norm.transform(inputs_phys_raw), wall_dists)
+        preds_phys_denorm = output_norm.inverse_transform(preds_phys_raw)
 
         res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
-            inputs_phys, preds_phys,
+            inputs_phys_raw, preds_phys_denorm, geometry=geometry,
         )
         loss_physics = (
             (res_mass ** 2).mean()
@@ -1236,32 +1257,82 @@ def _safe_physics_loss(
     model: "LE_PINN",
     inputs_n: torch.Tensor,
     wall_dists: torch.Tensor,
+    input_norm: Optional["MinMaxNormalizer"] = None,
+    output_norm: Optional["MinMaxNormalizer"] = None,
+    geometry: str = "axisymmetric",
+    max_failures: int = 10,
 ) -> torch.Tensor:
     """
-    Compute the RANS physics loss, returning a zero scalar on failure.
+    Compute the RANS physics loss in physical (de-normalized) space.
 
-    Failures (e.g. autograd graph issues) are reported via ``warnings.warn``
-    rather than raised, so a single bad batch does not abort training.
+    Failures (e.g. autograd graph issues) are reported via ``warnings.warn``.
+    After ``max_failures`` consecutive failures a ``RuntimeError`` is raised to
+    prevent silent training drift.
+
+    Args:
+        model: The LE_PINN model.
+        inputs_n: Normalized input tensor ``(N, 6)``.
+        wall_dists: Wall distance tensor ``(N, 1)``.
+        input_norm: Input normalizer. When provided, inputs are de-normalized
+            before PDE evaluation so residuals are physically meaningful.
+        output_norm: Output normalizer for de-normalizing predictions.
+        geometry: ``"axisymmetric"`` or ``"planar"`` — passed to
+            :func:`compute_rans_residuals`.
+        max_failures: Raise ``RuntimeError`` after this many consecutive
+            failures (default 10). Guards against silent zero-loss drift.
     """
+    if not hasattr(_safe_physics_loss, "_fail_count"):
+        _safe_physics_loss._fail_count = 0  # type: ignore[attr-defined]
+
     try:
-        inputs_phys = inputs_n.detach().clone().requires_grad_(True)
-        preds_phys = model(inputs_phys, wall_dists)
-        res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
-            inputs_phys, preds_phys
-        )
-        return (
+        if input_norm is not None and output_norm is not None:
+            # De-normalize to physical space for correct PDE scaling.
+            # Handles partial normalizers (e.g. output_norm fitted on first 5
+            # columns only): denormalize covered columns, keep rest as-is.
+            inputs_phys_raw = input_norm.inverse_transform(
+                inputs_n.detach().clone()
+            ).requires_grad_(True)
+            preds_phys_raw = model(input_norm.transform(inputs_phys_raw), wall_dists)
+            n_norm_cols = output_norm.data_min.shape[0]  # type: ignore[union-attr]
+            preds_denorm_part = output_norm.inverse_transform(preds_phys_raw[:, :n_norm_cols])
+            if n_norm_cols < preds_phys_raw.shape[1]:
+                preds_denorm = torch.cat(
+                    [preds_denorm_part, preds_phys_raw[:, n_norm_cols:]], dim=1
+                )
+            else:
+                preds_denorm = preds_denorm_part
+            res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
+                inputs_phys_raw, preds_denorm, geometry=geometry,
+            )
+        else:
+            # Fallback: operate on normalized space (legacy behaviour)
+            inputs_phys = inputs_n.detach().clone().requires_grad_(True)
+            preds_phys = model(inputs_phys, wall_dists)
+            res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
+                inputs_phys, preds_phys, geometry=geometry,
+            )
+        loss = (
             (res_mass ** 2).mean()
             + (res_xmom ** 2).mean()
             + (res_ymom ** 2).mean()
             + (res_energy ** 2).mean()
             + (res_eos ** 2).mean()
         )
+        _safe_physics_loss._fail_count = 0  # type: ignore[attr-defined]
+        return loss
     except Exception as exc:
+        _safe_physics_loss._fail_count += 1  # type: ignore[attr-defined]
+        count = _safe_physics_loss._fail_count  # type: ignore[attr-defined]
         warnings.warn(
-            f"Physics loss computation failed (non-fatal, set to 0): {exc}",
+            f"Physics loss failed ({count}/{max_failures}): {exc}",
             RuntimeWarning,
             stacklevel=2,
         )
+        if count >= max_failures:
+            raise RuntimeError(
+                f"Physics loss failed {max_failures} consecutive times. "
+                "Aborting training to prevent silent drift."
+            ) from exc
         return torch.tensor(0.0, device=inputs_n.device)
 
 
@@ -1280,6 +1351,7 @@ def finetune_on_cfd_data(
     physics_max_points: Optional[int] = None,
     device: str = "cpu",
     verbose: bool = True,
+    geometry: str = "planar",
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1344,6 +1416,9 @@ def finetune_on_cfd_data(
 
     inputs_raw: torch.Tensor = cfd["inputs"].float()   # (N, 6)
     targets_raw: torch.Tensor = cfd["targets"].float() # (N, 9)
+    weights_raw: Optional[torch.Tensor] = (
+        cfd["sample_weights"].float() if "sample_weights" in cfd else None
+    )  # (N,) or None
 
     if inputs_raw.shape[1] != 6:
         raise ValueError(f"Expected inputs with 6 columns, got {inputs_raw.shape[1]}")
@@ -1364,6 +1439,8 @@ def finetune_on_cfd_data(
         )
     inputs_raw = inputs_raw[valid]
     targets_raw = targets_raw[valid]
+    if weights_raw is not None:
+        weights_raw = weights_raw[valid]
 
     if len(inputs_raw) == 0:
         raise RuntimeError("No valid rows in CFD dataset after NaN filtering.")
@@ -1382,6 +1459,7 @@ def finetune_on_cfd_data(
     targets_train = targets_raw[train_idx]
     inputs_val = inputs_raw[val_idx]
     targets_val = targets_raw[val_idx]
+    weights_train = weights_raw[train_idx] if weights_raw is not None else None
 
     # ---- Normalizers fitted on training split only ----
     input_norm = MinMaxNormalizer().fit(inputs_train)
@@ -1455,9 +1533,15 @@ def finetune_on_cfd_data(
         model.train()
         optimizer.zero_grad()
 
-        # Data loss on first 5 output columns
+        # Data loss on first 5 output columns (weighted if sample_weights present)
         preds = model(inputs_train_n, wall_dists_train)
-        loss_data = nn.functional.mse_loss(preds[:, :5], targets_train_5n)
+        if weights_train is not None:
+            w = weights_train.to(dev)
+            w = w / (w.mean() + 1e-12)  # normalize so mean weight ≈ 1
+            sq_err = (preds[:, :5] - targets_train_5n) ** 2  # (N, 5)
+            loss_data = (sq_err.mean(dim=1) * w).mean()
+        else:
+            loss_data = nn.functional.mse_loss(preds[:, :5], targets_train_5n)
 
         # Physics loss (non-fatal; returns zero tensor on failure)
         if physics_loss_weight > 0:
@@ -1473,7 +1557,12 @@ def finetune_on_cfd_data(
                 )[:physics_max_points]
                 phys_inputs = inputs_train_n[phys_idx]
                 phys_walls = wall_dists_train[phys_idx]
-            loss_physics = _safe_physics_loss(model, phys_inputs, phys_walls)
+            loss_physics = _safe_physics_loss(
+                model, phys_inputs, phys_walls,
+                input_norm=input_norm,
+                output_norm=output_norm_5,
+                geometry=geometry,
+            )
         else:
             loss_physics = torch.tensor(0.0, device=dev)
 

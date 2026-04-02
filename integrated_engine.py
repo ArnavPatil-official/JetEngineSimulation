@@ -961,7 +961,7 @@ class IntegratedTurbofanEngine:
         if abs(delta_p) < pressure_tol:
             F_pressure = 0.0
         else:
-            F_pressure = max(delta_p, 0.0) * A_exit  # Do not allow negative thrust from pressure term
+            F_pressure = delta_p * A_exit  # Signed: negative for over-expanded jets
         F_total = F_momentum + F_pressure
 
         print(f"[Nozzle]")
