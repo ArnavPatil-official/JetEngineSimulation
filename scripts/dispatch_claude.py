@@ -19,9 +19,11 @@ from pathlib import Path
 
 # ── Model mapping ────────────────────────────────────────────────────────────
 MODELS = {
-    "low":    "claude-haiku",
-    "medium": "claude-sonnet",
-    "high":   "claude-opus",
+    # Claude Code CLI expects aliases (e.g. "sonnet"/"opus") or full
+    # dated model names, not legacy "claude-*" ids.
+    "low":    "haiku",
+    "medium": "sonnet",
+    "high":   "opus",
 }
 
 REPO_ROOT = Path(__file__).resolve().parent.parent

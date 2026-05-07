@@ -17,6 +17,8 @@ import torch.nn as nn
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import simulation.nozzle.le_pinn as le_pinn_module
+
 from simulation.nozzle.le_pinn import (
     GlobalNetwork,
     BoundaryNetwork,
@@ -236,6 +238,52 @@ class TestRANSResiduals:
         for r in res:
             assert r.shape == (N, 1), f"Expected ({N}, 1), got {r.shape}"
 
+    def test_normalized_residuals_finite(self) -> None:
+        """Normalized residuals should be finite and dimensionless-scaled."""
+        N = 50
+        inputs = torch.randn(N, 6, requires_grad=True)
+        net = nn.Sequential(nn.Linear(6, 32), nn.Tanh(), nn.Linear(32, 9))
+        outputs = net(inputs)
+
+        res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
+            inputs, outputs, geometry="planar", normalize=True
+        )
+
+        # All should be finite
+        assert torch.isfinite(res_mass).all()
+        assert torch.isfinite(res_xmom).all()
+        assert torch.isfinite(res_ymom).all()
+        assert torch.isfinite(res_energy).all()
+        assert torch.isfinite(res_eos).all()
+
+        # After normalization, magnitudes should be reasonable (not 1e12+)
+        assert res_mass.abs().max() < 1e6
+        assert res_xmom.abs().max() < 1e6
+        assert res_ymom.abs().max() < 1e6
+        assert res_energy.abs().max() < 1e6
+        assert res_eos.abs().max() < 1e6
+
+    def test_planar_vs_axisymmetric_geometry(self) -> None:
+        """Planar and axisymmetric modes should produce different residuals."""
+        N = 20
+        inputs = torch.randn(N, 6, requires_grad=True)
+        net = nn.Sequential(nn.Linear(6, 32), nn.Tanh(), nn.Linear(32, 9))
+        outputs = net(inputs)
+
+        res_planar = compute_rans_residuals(inputs, outputs, geometry="planar", normalize=False)
+        inputs2 = inputs.detach().clone().requires_grad_(True)
+        outputs2 = net(inputs2)
+        res_axi = compute_rans_residuals(inputs2, outputs2, geometry="axisymmetric", normalize=False)
+
+        # Residuals should differ (axisymmetric has extra source terms)
+        # At least one residual should be different
+        different = False
+        for rp, ra in zip(res_planar, res_axi):
+            if not torch.allclose(rp, ra, atol=1e-6):
+                different = True
+                break
+        assert different, "Planar and axisymmetric residuals should differ"
+
 
 # ============================================================================
 # 8. Existing PINN non-regression
@@ -259,6 +307,26 @@ class TestExistingPINNUnaffected:
 DATASET_PATH = str(
     Path(__file__).parent.parent / "data" / "processed" / "master_shock_dataset.pt"
 )
+
+
+def _load_cfd_dataset() -> dict:
+    try:
+        return torch.load(DATASET_PATH, weights_only=True)
+    except TypeError:
+        return torch.load(DATASET_PATH)
+
+
+def _write_cfd_subset(path: Path, max_rows: int = 128) -> str:
+    dataset = _load_cfd_dataset()
+    n_rows = min(max_rows, int(dataset["inputs"].shape[0]))
+    subset = {
+        "inputs": dataset["inputs"][:n_rows].clone(),
+        "targets": dataset["targets"][:n_rows].clone(),
+    }
+    if "sample_weights" in dataset:
+        subset["sample_weights"] = dataset["sample_weights"][:n_rows].clone()
+    torch.save(subset, path)
+    return str(path)
 
 
 @pytest.mark.skipif(
@@ -326,17 +394,78 @@ class TestCFDFinetune:
             assert f"r2_{var}" in metrics, f"Missing r2_{var}"
             assert np.isfinite(metrics[f"rmse_{var}"]), f"rmse_{var} is not finite"
 
-    def test_validate_skips_zero_range_columns(self) -> None:
-        """Columns with zero range (v=0, T=900) should be skipped with a warning."""
+    def test_validate_handles_warning_for_missing_normalizer(self) -> None:
+        """validate_le_pinn should warn if no checkpoint normalizer available."""
         import warnings
         model = LE_PINN()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             metrics = validate_le_pinn(model, dataset_path=DATASET_PATH, verbose=False)
-        zero_range_warned = any(
-            "zero range" in str(w.message).lower() for w in caught
+        # Should warn about missing output normalizer when no checkpoint provided
+        normalizer_warned = any(
+            "normaliser" in str(w.message).lower() or "normalizer" in str(w.message).lower()
+            for w in caught
         )
-        assert zero_range_warned, "Expected warnings for zero-range target columns"
-        # v and T should be absent from metrics
-        assert "rmse_v" not in metrics or metrics.get("rmse_v") is None
-        assert "rmse_T" not in metrics or metrics.get("rmse_T") is None
+        assert normalizer_warned, "Expected warning about missing output normalizer"
+
+
+@pytest.mark.skipif(
+    not Path(DATASET_PATH).exists(),
+    reason="master_shock_dataset.pt not present — run parse_sajben_cfd.py",
+)
+class TestSchedulerMonitor:
+    def test_scheduler_steps_on_data_loss_not_total(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        subset_path = _write_cfd_subset(tmp_path / "scheduler_subset.pt")
+        calls: list[float] = []
+        original_step = torch.optim.lr_scheduler.ReduceLROnPlateau.step
+
+        def record_step(self, metrics, *args, **kwargs):
+            calls.append(float(metrics))
+            return original_step(self, metrics, *args, **kwargs)
+
+        def fake_physics_loss(*args, **kwargs) -> torch.Tensor:
+            return torch.tensor(3.0, device=args[1].device)
+
+        monkeypatch.setattr(
+            torch.optim.lr_scheduler.ReduceLROnPlateau,
+            "step",
+            record_step,
+        )
+        monkeypatch.setattr(le_pinn_module, "_safe_physics_loss", fake_physics_loss)
+
+        _, history = finetune_on_cfd_data(
+            dataset_path=subset_path,
+            n_epochs=5,
+            save_path=str(tmp_path / "scheduler_monitor.pt"),
+            physics_loss_weight=0.1,
+            physics_max_points=64,
+            device="cpu",
+            verbose=False,
+        )
+
+        assert len(calls) == 5
+        assert calls == pytest.approx(history["loss_data"])
+        assert any(
+            abs(metric - total) > 1e-12
+            for metric, total in zip(calls, history["loss_total"])
+        )
+
+    def test_lr_does_not_immediately_collapse(self, tmp_path: Path) -> None:
+        subset_path = _write_cfd_subset(tmp_path / "lr_subset.pt")
+
+        _, history = finetune_on_cfd_data(
+            dataset_path=subset_path,
+            n_epochs=50,
+            save_path=str(tmp_path / "lr_guard.pt"),
+            physics_loss_weight=0.1,
+            physics_max_points=64,
+            device="cpu",
+            verbose=False,
+        )
+
+        assert len(history["lr"]) == 50
+        assert history["lr"][-1] > 1e-9

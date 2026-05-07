@@ -344,8 +344,6 @@ class EmissionsEstimator:
 # ============================================================================
 # INTEGRATED TURBOFAN ENGINE CLASS
 # ============================================================================
-# NOTE: Legacy NormalizedPINN class removed. Turbine and nozzle models are now
-# accessed via run_turbine_pinn() and run_nozzle_pinn() API functions.
 
 def fuel_comparison_summary(results_dict, baseline_fuel="Jet-A1"):
     """
@@ -587,12 +585,7 @@ class IntegratedTurbofanEngine:
         }
 
         # Initialize emissions estimator for environmental optimization
-        try:
-            self.emissions = EmissionsEstimator(icao_data_path=icao_data_path)
-        except Exception as e:
-            print(f"⚠️  Warning: Emissions estimator initialization failed: {e}")
-            print(f"   Emissions modeling will be disabled.")
-            self.emissions = None
+        self.emissions = EmissionsEstimator(icao_data_path=icao_data_path)
 
         print("✓ IntegratedTurbofanEngine initialized successfully\n")
 
@@ -1170,49 +1163,14 @@ class IntegratedTurbofanEngine:
 
         thrust = nozz_result['thrust_total']
 
-        # ========================================================================
-        # TSFC AND THERMAL EFFICIENCY DEFINITIONS (STATIC TEST STAND)
-        # ========================================================================
-        # CRITICAL: These metrics are only valid for positive thrust.
-        # For static test stand, efficiency is poorly defined because there's
-        # no useful propulsive work (no flight speed).
-
-        # ====================================================================
-        # TSFC: Thrust Specific Fuel Consumption
-        # ====================================================================
-        # DEFINITION: Mass flow rate of fuel per unit of thrust produced
-        #   TSFC = ṁ_fuel / F_thrust
-        #
-        # UNITS:
-        #   SI base:  kg/(N·s) = (kg/s) / N
-        #   Common:   mg/(N·s) = kg/(N·s) × 1,000,000  (convert kg→mg)
-        #   Aviation: lb/(lbf·hr) (not used here)
-        #
-        # TYPICAL VALUES (for reference):
-        #   Modern turbofan: 50-90 mg/(N·s) or 0.05-0.09 kg/(N·s)
-        #   Older engines:   80-120 mg/(N·s)
-        #
-        # INTERPRETATION:
-        #   Lower TSFC = more efficient (less fuel per thrust)
-        #   TSFC = ∞ when thrust ≤ 0 (undefined)
-        #
-        # CRITICAL BUG FIX (v3.1):
-        #   Previous code converted kg→mg by ×1000 instead of ×1,000,000
-        #   This gave unrealistic values like 0.04 mg/(N·s)
-        #   Correct conversion: multiply by 1e6
-
+        # TSFC: ṁ_fuel / F_thrust [kg/(N·s)], reported in mg/(N·s)
         if thrust <= 0:
-            tsfc_SI = np.inf  # kg/(N·s) - undefined for non-positive thrust
-            tsfc_mg = np.inf  # mg/(N·s)
+            tsfc_SI = np.inf
+            tsfc_mg = np.inf
             tsfc_valid = False
         else:
-            # Calculate TSFC in SI units (kg/(N·s))
-            tsfc_SI = m_dot_fuel / thrust  # (kg/s) / N = kg/(N·s)
-
-            # Convert to common reporting units (mg/(N·s))
-            # 1 kg = 1,000,000 mg, so multiply by 1e6
-            tsfc_mg = tsfc_SI * 1.0e6  # mg/(N·s)
-
+            tsfc_SI = m_dot_fuel / thrust
+            tsfc_mg = tsfc_SI * 1.0e6
             tsfc_valid = True
 
         # Thermal Efficiency: η_th = (Useful Power Out) / (Fuel Power In)
@@ -1261,42 +1219,22 @@ class IntegratedTurbofanEngine:
         print(f"  Compressor Work:     {comp_result['work_specific']*m_dot_core/1e6:.2f} MW")
         print(f"  Turbine Work:        {turb_result['work_total']/1e6:.2f} MW")
 
-        # ========================================================================
-        # EMISSIONS CALCULATIONS
-        # ========================================================================
-        nox_g_s = 0.0
-        co_g_s = 0.0
-        net_co2_g_s = 0.0
+        # Emissions calculations
+        OPR = comp_result['p_out'] / self.design_point['P_ambient']
+        nox_g_s = self.emissions.estimate_nox(OPR=OPR, m_dot_fuel=m_dot_fuel)
+        co_g_s = self.emissions.estimate_co(
+            combustor_efficiency=combustor_efficiency,
+            m_dot_fuel=m_dot_fuel
+        )
+        net_co2_g_s = self.emissions.estimate_co2(
+            m_dot_fuel=m_dot_fuel,
+            lca_factor=lca_factor
+        )
 
-        if self.emissions is not None:
-            try:
-                # Calculate Overall Pressure Ratio (OPR) = P_compressor_exit / P_ambient
-                OPR = comp_result['p_out'] / self.design_point['P_ambient']
-
-                # Estimate NOx emissions using ICAO correlation
-                nox_g_s = self.emissions.estimate_nox(OPR=OPR, m_dot_fuel=m_dot_fuel)
-
-                # Estimate CO emissions from combustion inefficiency
-                co_g_s = self.emissions.estimate_co(
-                    combustor_efficiency=combustor_efficiency,
-                    m_dot_fuel=m_dot_fuel
-                )
-
-                # Calculate lifecycle CO₂ emissions
-                net_co2_g_s = self.emissions.estimate_co2(
-                    m_dot_fuel=m_dot_fuel,
-                    lca_factor=lca_factor
-                )
-
-                # Display emissions summary
-                print(f"\n  Emissions Summary:")
-                print(f"    NOx:     {nox_g_s:.3f} g/s  ({nox_g_s/m_dot_fuel:.2f} g/kg fuel)")
-                print(f"    CO:      {co_g_s:.3f} g/s  ({co_g_s/m_dot_fuel:.2f} g/kg fuel)")
-                print(f"    CO₂:     {net_co2_g_s:.2f} g/s  (LCA factor: {lca_factor:.2f})")
-
-            except Exception as e:
-                print(f"\n  ⚠️  Emissions calculation failed: {e}")
-                print(f"      Emissions set to zero.")
+        print(f"\n  Emissions Summary:")
+        print(f"    NOx:     {nox_g_s:.3f} g/s  ({nox_g_s/m_dot_fuel:.2f} g/kg fuel)")
+        print(f"    CO:      {co_g_s:.3f} g/s  ({co_g_s/m_dot_fuel:.2f} g/kg fuel)")
+        print(f"    CO₂:     {net_co2_g_s:.2f} g/s  (LCA factor: {lca_factor:.2f})")
 
         # ========================================================================
         # PHYSICS VALIDATION CHECKLIST
@@ -1518,66 +1456,46 @@ def main():
     print("="*70 + "\n")
 
     if mode == "validation":
-        # ====================================================================
-        # VALIDATION MODE: HyChem Jet-A1 ICAO Benchmark
-        # ====================================================================
         print("MODE: HyChem Validation (Jet-A1 ICAO Benchmark)")
         print("="*70 + "\n")
 
-        try:
-            engine = IntegratedTurbofanEngine(
-                mechanism_profile="validation",
-                creck_mechanism_path="data/creck_c1c16_full.yaml",
-                hychem_mechanism_path="data/A1highT.yaml",
-                turbine_pinn_path="turbine_pinn.pt",
-                nozzle_pinn_path="nozzle_pinn.pt"
-            )
-        except Exception as e:
-            print(f"❌ Engine initialization failed: {e}")
-            return
+        engine = IntegratedTurbofanEngine(
+            mechanism_profile="validation",
+            creck_mechanism_path="data/creck_c1c16_full.yaml",
+            hychem_mechanism_path="data/A1highT.yaml",
+            turbine_pinn_path="turbine_pinn.pt",
+            nozzle_pinn_path="nozzle_pinn.pt"
+        )
 
-        try:
-            result = engine.run_hychem_validation_case(
-                phi=0.5,
-                combustor_efficiency=0.98
-            )
+        result = engine.run_hychem_validation_case(
+            phi=0.5,
+            combustor_efficiency=0.98
+        )
 
-            print("="*70)
-            print("VALIDATION SUMMARY")
-            print("="*70)
-            print(f"  Mechanism:  {result['validation_metadata']['mechanism']}")
-            print(f"  Fuel:       {result['validation_metadata']['fuel']}")
-            print(f"  Purpose:    {result['validation_metadata']['purpose']}")
-            print(f"  ---")
-            print(f"  Thrust:     {result['performance']['thrust_kN']:.2f} kN")
-            print(f"  TSFC:       {result['performance']['tsfc_mg_per_Ns']:.2f} mg/(N·s)")
-            print(f"  η_thermal:  {result['performance']['thermal_efficiency']*100:.2f}%")
-            print("="*70 + "\n")
-
-        except Exception as e:
-            print(f"❌ Validation run failed: {e}\n")
-            return
+        print("="*70)
+        print("VALIDATION SUMMARY")
+        print("="*70)
+        print(f"  Mechanism:  {result['validation_metadata']['mechanism']}")
+        print(f"  Fuel:       {result['validation_metadata']['fuel']}")
+        print(f"  Purpose:    {result['validation_metadata']['purpose']}")
+        print(f"  ---")
+        print(f"  Thrust:     {result['performance']['thrust_kN']:.2f} kN")
+        print(f"  TSFC:       {result['performance']['tsfc_mg_per_Ns']:.2f} mg/(N·s)")
+        print(f"  η_thermal:  {result['performance']['thermal_efficiency']*100:.2f}%")
+        print("="*70 + "\n")
 
     elif mode == "blends":
-        # ====================================================================
-        # BLENDS MODE: CRECK Mechanism for Comparative Studies
-        # ====================================================================
         print("MODE: Blend Comparison (CRECK Mechanism)")
         print("="*70 + "\n")
 
-        try:
-            engine = IntegratedTurbofanEngine(
-                mechanism_profile="blends",
-                creck_mechanism_path="data/creck_c1c16_full.yaml",
-                hychem_mechanism_path="data/A1highT.yaml",
-                turbine_pinn_path="turbine_pinn.pt",
-                nozzle_pinn_path="nozzle_pinn.pt"
-            )
-        except Exception as e:
-            print(f"❌ Engine initialization failed: {e}")
-            return
+        engine = IntegratedTurbofanEngine(
+            mechanism_profile="blends",
+            creck_mechanism_path="data/creck_c1c16_full.yaml",
+            hychem_mechanism_path="data/A1highT.yaml",
+            turbine_pinn_path="turbine_pinn.pt",
+            nozzle_pinn_path="nozzle_pinn.pt"
+        )
 
-        # Fuels to test (all using CRECK mechanism)
         fuels_to_test = [
             FUEL_LIBRARY["Jet-A1"],
             FUEL_LIBRARY["Bio-SPK"],
@@ -1585,18 +1503,13 @@ def main():
         ]
 
         results = {}
-
         for fuel in fuels_to_test:
-            try:
-                result = engine.run_full_cycle(
-                    fuel_blend=fuel,
-                    phi=0.5,  # Lean combustion
-                    combustor_efficiency=0.98
-                )
-                results[fuel.name] = result
-            except Exception as e:
-                print(f"Error simulating {fuel.name}: {e}\n")
-                continue
+            result = engine.run_full_cycle(
+                fuel_blend=fuel,
+                phi=0.5,
+                combustor_efficiency=0.98
+            )
+            results[fuel.name] = result
 
         # Comparative analysis using fuel comparison function
         if len(results) > 1:

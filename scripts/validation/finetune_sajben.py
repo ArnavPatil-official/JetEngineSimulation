@@ -56,6 +56,41 @@ def main() -> None:
     pretrained     = str(REPO_ROOT / "models" / "le_pinn_sajben.pt")
     save_path      = str(REPO_ROOT / "models" / "le_pinn_sajben_finetuned.pt")
 
+    # ---- Phase 1: Lock Correct Sajben Data Path ----
+    # Verify dataset existence and schema before training starts
+    import torch
+    if not Path(dataset_path).exists():
+        raise FileNotFoundError(
+            f"Sajben dataset not found: {dataset_path}\n"
+            f"Run 'python3 scripts/parse_sajben_cfd.py' to generate it."
+        )
+
+    # Load and validate schema
+    try:
+        dataset = torch.load(dataset_path, weights_only=True)
+    except TypeError:
+        dataset = torch.load(dataset_path)
+
+    required_keys = {"inputs", "targets"}
+    missing = required_keys - set(dataset.keys())
+    if missing:
+        raise ValueError(
+            f"Dataset schema validation failed. Missing keys: {missing}\n"
+            f"Expected keys: {required_keys}"
+        )
+
+    # Print dataset summary for traceability
+    print("Dataset validation passed:")
+    print(f"  Resolved path: {Path(dataset_path).resolve()}")
+    print(f"  Inputs shape : {dataset['inputs'].shape}")
+    print(f"  Targets shape: {dataset['targets'].shape}")
+    if "sample_weights" in dataset:
+        print(f"  Sample weights: {dataset['sample_weights'].shape}")
+    else:
+        print(f"  Sample weights: None")
+    print(f"  Geometry mode: planar (Sajben 2D diffuser)")
+    print()
+
     # Use fresh init if the pretrained checkpoint is missing
     if not Path(pretrained).exists():
         print(f"Warning: pretrained checkpoint not found at {pretrained}. "
@@ -85,6 +120,7 @@ def main() -> None:
         physics_max_points=args.physics_max_points,
         device=args.device,
         verbose=True,
+        geometry="planar",  # Sajben is a 2D planar diffuser (not axisymmetric)
     )
 
     # Summary

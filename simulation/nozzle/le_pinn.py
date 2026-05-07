@@ -51,7 +51,7 @@ import sys
 import warnings
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -79,10 +79,32 @@ PR_T: float = 0.9          # turbulent Prandtl number
 SUTHERLAND_C1: float = 1.458e-6  # Sutherland constant C1
 SUTHERLAND_S: float = 110.4      # Sutherland constant S (K)
 FUSION_DELTA: float = 5e-4       # wall-distance fusion threshold
+_PHYSICS_FAIL_COUNTER: Dict[str, int] = {"count": 0}
+
+
+def _safe_torch_load(path: str, **kwargs) -> dict:
+    """Load a PyTorch checkpoint with weights_only fallback for older versions."""
+    try:
+        return torch.load(path, weights_only=True, **kwargs)
+    except TypeError:
+        return torch.load(path, **kwargs)  # type: ignore[call-overload]
 
 
 # ============================================================================
-# 1. NETWORK ARCHITECTURE
+# 1. WEIGHT INITIALIZATION
+# ============================================================================
+
+def _xavier_init(module: nn.Module) -> None:
+    """Xavier uniform init (weights), zero init (biases)."""
+    for m in module.modules():
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+
+# ============================================================================
+# 2. NETWORK ARCHITECTURE
 # ============================================================================
 
 class GlobalNetwork(nn.Module):
@@ -107,15 +129,7 @@ class GlobalNetwork(nn.Module):
         layers.append(nn.Linear(400, 9))
 
         self.net = nn.Sequential(*layers)
-        self._initialize_weights()
-
-    def _initialize_weights(self) -> None:
-        """Xavier uniform init (weights), zero init (biases)."""
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+        _xavier_init(self)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -142,15 +156,7 @@ class BoundaryNetwork(nn.Module):
         layers.append(nn.Linear(100, 2))
 
         self.net = nn.Sequential(*layers)
-        self._initialize_weights()
-
-    def _initialize_weights(self) -> None:
-        """Xavier uniform init (weights), zero init (biases)."""
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+        _xavier_init(self)
 
     def forward(self, x_b: torch.Tensor) -> torch.Tensor:
         return self.net(x_b)
@@ -212,11 +218,28 @@ class MinMaxNormalizer:
 
     def transform(self, data: torch.Tensor) -> torch.Tensor:
         assert self.data_min is not None and self.data_max is not None, "Call fit() first"
-        return (data - self.data_min) / (self.data_max - self.data_min + self.epsilon)
+        delta = self.data_max - self.data_min
+        const_mask = delta.abs() < self.epsilon
+        safe_delta = torch.where(const_mask, torch.ones_like(delta), delta)
+        data_norm = (data - self.data_min) / safe_delta
+        # If a feature was constant during fit, keep it at 0 in normalized space.
+        # This avoids exploding values during inference when callers provide
+        # different inputs for that dimension.
+        if const_mask.any():
+            data_norm = data_norm.clone()
+            data_norm[..., const_mask] = 0.0
+        return data_norm
 
     def inverse_transform(self, data_norm: torch.Tensor) -> torch.Tensor:
         assert self.data_min is not None and self.data_max is not None, "Call fit() first"
-        return data_norm * (self.data_max - self.data_min + self.epsilon) + self.data_min
+        delta = self.data_max - self.data_min
+        const_mask = delta.abs() < self.epsilon
+        safe_delta = torch.where(const_mask, torch.zeros_like(delta), delta)
+        data = data_norm * safe_delta + self.data_min
+        if const_mask.any():
+            data = data.clone()
+            data[..., const_mask] = self.data_min[..., const_mask]
+        return data
 
     def fit_transform(self, data: torch.Tensor) -> torch.Tensor:
         return self.fit(data).transform(data)
@@ -226,6 +249,53 @@ class MinMaxNormalizer:
 # 3. PHYSICS LOSS — 2D RANS RESIDUALS
 # ============================================================================
 
+def _compute_reference_scales(
+    outputs: torch.Tensor,
+    geometry: str = "axisymmetric",
+) -> dict:
+    """
+    Compute physically meaningful reference scales for residual normalization.
+
+    Args:
+        outputs: ``(N, 9)`` — predicted ``[ρ, u, v, P, T, UU, VV, UV, μ_eff]``
+        geometry: ``"axisymmetric"`` or ``"planar"``
+
+    Returns:
+        Dictionary with reference scales for mass, momentum, energy, and EOS residuals.
+    """
+    rho = outputs[:, 0:1]
+    u = outputs[:, 1:2]
+    v = outputs[:, 2:3]
+    P = outputs[:, 3:4]
+    T = outputs[:, 4:5]
+
+    # Reference scales (using mean + std to avoid outliers)
+    rho_ref = rho.abs().mean() + rho.std() + 1e-8
+    u_ref = u.abs().mean() + u.std() + 1e-8
+    v_ref = v.abs().mean() + v.std() + 1e-8
+    P_ref = P.abs().mean() + P.std() + 1e-8
+    T_ref = T.abs().mean() + T.std() + 1e-8
+
+    # Mass residual scale: rho * u (convective flux magnitude)
+    mass_scale = rho_ref * u_ref
+
+    # Momentum residual scale: rho * u^2 (inertia term magnitude)
+    momentum_scale = rho_ref * u_ref ** 2
+
+    # Energy residual scale: rho * cp * u * T (convective enthalpy flux)
+    energy_scale = rho_ref * CP * u_ref * T_ref
+
+    # EOS residual scale: P (pressure magnitude)
+    eos_scale = P_ref
+
+    return {
+        "mass": mass_scale,
+        "momentum": momentum_scale,
+        "energy": energy_scale,
+        "eos": eos_scale,
+    }
+
+
 def compute_rans_residuals(
     inputs: torch.Tensor,
     outputs: torch.Tensor,
@@ -233,6 +303,7 @@ def compute_rans_residuals(
     cp: float = CP,
     Pr_t: float = PR_T,
     geometry: str = "axisymmetric",
+    normalize: bool = True,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Compute RANS PDE residuals + ideal gas EOS via automatic differentiation.
@@ -258,10 +329,13 @@ def compute_rans_residuals(
         geometry: ``"axisymmetric"`` (default, engine nozzle) or ``"planar"``
             (Sajben 2D diffuser). Controls whether axisymmetric source terms
             are included in continuity, y-momentum, and energy residuals.
+        normalize: If ``True`` (default), scale residuals by physically meaningful
+            reference values to prevent magnitude imbalance during training.
 
     Returns:
         Tuple of 5 residual tensors:
         ``(res_mass, res_xmom, res_ymom, res_energy, res_eos)``
+        Each tensor is dimensionless-scaled if ``normalize=True``.
     """
     rho    = outputs[:, 0:1]
     u      = outputs[:, 1:2]
@@ -360,6 +434,15 @@ def compute_rans_residuals(
 
     # ---- 5. Ideal gas EOS: P − ρ R T = 0 ----
     res_eos = P - rho * R * T
+
+    # ---- Phase 2: Apply dimensionless scaling ----
+    if normalize:
+        scales = _compute_reference_scales(outputs, geometry=geometry)
+        res_mass = res_mass / scales["mass"]
+        res_xmom = res_xmom / scales["momentum"]
+        res_ymom = res_ymom / scales["momentum"]
+        res_energy = res_energy / scales["energy"]
+        res_eos = res_eos / scales["eos"]
 
     return res_mass, res_xmom, res_ymom, res_energy, res_eos
 
@@ -593,54 +676,32 @@ def generate_synthetic_training_data(
     A_throat = A5  # already π r_t²
     area_ratio = A_local / A_throat
 
-    # Mach from area-Mach relation (subsonic branch for converging section,
-    # supersonic for diverging) — use Newton iteration.
-    mach = np.ones(N) * 0.5  # initial guess (subsonic)
-    # Identify throat location
+    def _newton_mach(area_ratio, gamma, m_init, m_lo, m_hi, n_iter=50):
+        """Solve area-Mach relation via Newton iteration."""
+        mach = np.full_like(area_ratio, m_init)
+        gp1, gm1 = gamma + 1.0, gamma - 1.0
+        for _ in range(n_iter):
+            M2 = mach ** 2
+            term = (2.0 / gp1) * (1.0 + 0.5 * gm1 * M2)
+            ar_func = (1.0 / mach) * term ** (0.5 * gp1 / gm1)
+            f = ar_func - area_ratio
+            dM = 1e-6
+            M_pert = mach + dM
+            term_pert = (2.0 / gp1) * (1.0 + 0.5 * gm1 * (M_pert ** 2))
+            ar_pert = (1.0 / M_pert) * term_pert ** (0.5 * gp1 / gm1)
+            df = (ar_pert - area_ratio - f) / dM
+            df = np.where(np.abs(df) < 1e-12, 1e-12, df)
+            mach = mach - f / df
+            mach = np.clip(mach, m_lo, m_hi)
+        return mach
+
+    # Subsonic branch (converging section)
+    mach = _newton_mach(area_ratio, gamma, m_init=0.5, m_lo=0.01, m_hi=3.0)
+
+    # Supersonic branch (diverging section downstream of throat)
     x_throat = x_wall[np.argmin(y_upper)]
-
-    for _ in range(50):  # Newton iterations
-        g = gamma
-        gp1 = g + 1.0
-        gm1 = g - 1.0
-        M2 = mach ** 2
-
-        # f(M) = (A/A*)² − [ (2/(γ+1) (1 + (γ-1)/2 M²))^((γ+1)/(γ-1)) ] / M²
-        term = (2.0 / gp1) * (1.0 + 0.5 * gm1 * M2)
-        ar_func = (1.0 / mach) * term ** (0.5 * gp1 / gm1)
-
-        f = ar_func - area_ratio
-        # Derivative df/dM via numerical perturbation
-        dM = 1e-6
-        M_pert = mach + dM
-        M2_pert = M_pert ** 2
-        term_pert = (2.0 / gp1) * (1.0 + 0.5 * gm1 * M2_pert)
-        ar_pert = (1.0 / M_pert) * term_pert ** (0.5 * gp1 / gm1)
-        df = (ar_pert - area_ratio - f) / dM
-
-        df = np.where(np.abs(df) < 1e-12, 1e-12, df)
-        mach = mach - f / df
-        mach = np.clip(mach, 0.01, 3.0)
-
-    # For points downstream of throat and where AR > 1, use supersonic branch
     supersonic_mask = (x_pts > x_throat) & (area_ratio > 1.01)
-    # Re-solve supersonic branch for those points
-    mach_sup = np.ones(N) * 1.5
-    for _ in range(50):
-        M2 = mach_sup ** 2
-        term = (2.0 / (gamma + 1.0)) * (1.0 + 0.5 * (gamma - 1.0) * M2)
-        ar_func = (1.0 / mach_sup) * term ** (0.5 * (gamma + 1.0) / (gamma - 1.0))
-        f = ar_func - area_ratio
-        dM = 1e-6
-        M_pert = mach_sup + dM
-        M2_pert = M_pert ** 2
-        term_pert = (2.0 / (gamma + 1.0)) * (1.0 + 0.5 * (gamma - 1.0) * M2_pert)
-        ar_pert = (1.0 / M_pert) * term_pert ** (0.5 * (gamma + 1.0) / (gamma - 1.0))
-        df = (ar_pert - area_ratio - f) / dM
-        df = np.where(np.abs(df) < 1e-12, 1e-12, df)
-        mach_sup = mach_sup - f / df
-        mach_sup = np.clip(mach_sup, 1.0, 5.0)
-
+    mach_sup = _newton_mach(area_ratio, gamma, m_init=1.5, m_lo=1.0, m_hi=5.0)
     mach[supersonic_mask] = mach_sup[supersonic_mask]
 
     # Isentropic relations
@@ -1140,7 +1201,7 @@ def train_le_pinn(
         preds_phys_denorm = output_norm.inverse_transform(preds_phys_raw)
 
         res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
-            inputs_phys_raw, preds_phys_denorm, geometry=geometry,
+            inputs_phys_raw, preds_phys_denorm, geometry=geometry, normalize=True,
         )
         loss_physics = (
             (res_mass ** 2).mean()
@@ -1161,7 +1222,9 @@ def train_le_pinn(
         loss_total.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
-        scheduler.step(loss_total.item())
+        # Phase 3: Step scheduler on stable monitor metric (data loss) instead of
+        # adaptively weighted total loss to prevent premature LR collapse
+        scheduler.step(loss_data.item())
 
         # ---- Logging ----
         history["loss_total"].append(loss_total.item())
@@ -1281,9 +1344,6 @@ def _safe_physics_loss(
         max_failures: Raise ``RuntimeError`` after this many consecutive
             failures (default 10). Guards against silent zero-loss drift.
     """
-    if not hasattr(_safe_physics_loss, "_fail_count"):
-        _safe_physics_loss._fail_count = 0  # type: ignore[attr-defined]
-
     try:
         if input_norm is not None and output_norm is not None:
             # De-normalize to physical space for correct PDE scaling.
@@ -1301,15 +1361,20 @@ def _safe_physics_loss(
                 )
             else:
                 preds_denorm = preds_denorm_part
+            if n_norm_cols < 9 and preds_denorm.shape[1] > 8:
+                T_phys = preds_denorm[:, 4:5].clamp(min=100.0, max=5000.0)
+                mu_eff = SUTHERLAND_C1 * T_phys.pow(1.5) / (T_phys + SUTHERLAND_S)
+                preds_denorm = preds_denorm.clone()
+                preds_denorm[:, 8:9] = mu_eff.clamp(min=1e-6, max=1e-3)
             res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
-                inputs_phys_raw, preds_denorm, geometry=geometry,
+                inputs_phys_raw, preds_denorm, geometry=geometry, normalize=True,
             )
         else:
             # Fallback: operate on normalized space (legacy behaviour)
             inputs_phys = inputs_n.detach().clone().requires_grad_(True)
             preds_phys = model(inputs_phys, wall_dists)
             res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
-                inputs_phys, preds_phys, geometry=geometry,
+                inputs_phys, preds_phys, geometry=geometry, normalize=True,
             )
         loss = (
             (res_mass ** 2).mean()
@@ -1318,11 +1383,11 @@ def _safe_physics_loss(
             + (res_energy ** 2).mean()
             + (res_eos ** 2).mean()
         )
-        _safe_physics_loss._fail_count = 0  # type: ignore[attr-defined]
+        _PHYSICS_FAIL_COUNTER["count"] = 0
         return loss
     except Exception as exc:
-        _safe_physics_loss._fail_count += 1  # type: ignore[attr-defined]
-        count = _safe_physics_loss._fail_count  # type: ignore[attr-defined]
+        _PHYSICS_FAIL_COUNTER["count"] += 1
+        count = _PHYSICS_FAIL_COUNTER["count"]
         warnings.warn(
             f"Physics loss failed ({count}/{max_failures}): {exc}",
             RuntimeWarning,
@@ -1403,16 +1468,7 @@ def finetune_on_cfd_data(
         )
 
     # ---- Load dataset (weights_only with fallback for older PyTorch) ----
-    try:
-        cfd = torch.load(dataset_path, weights_only=True)
-    except TypeError:
-        warnings.warn(
-            "torch.load weights_only not supported in this PyTorch version; "
-            "loading without restriction.",
-            RuntimeWarning,
-            stacklevel=1,
-        )
-        cfd = torch.load(dataset_path)  # type: ignore[call-overload]
+    cfd = _safe_torch_load(dataset_path)
 
     inputs_raw: torch.Tensor = cfd["inputs"].float()   # (N, 6)
     targets_raw: torch.Tensor = cfd["targets"].float() # (N, 9)
@@ -1489,10 +1545,7 @@ def finetune_on_cfd_data(
             )
         else:
             try:
-                try:
-                    ckpt = torch.load(pretrained_path, map_location=dev, weights_only=True)
-                except TypeError:
-                    ckpt = torch.load(pretrained_path, map_location=dev)  # type: ignore[call-overload]
+                ckpt = _safe_torch_load(pretrained_path, map_location=dev)
                 model.load_state_dict(ckpt["model_state_dict"])
                 if verbose:
                     print(f"Loaded pretrained weights from {pretrained_path}")
@@ -1572,7 +1625,8 @@ def finetune_on_cfd_data(
         loss_total.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
-        scheduler.step(loss_total.item())
+        # Phase 3: Step scheduler on stable monitor metric (data loss)
+        scheduler.step(loss_data.item())
 
         history["loss_total"].append(loss_total.item())
         history["loss_data"].append(loss_data.item())
@@ -1665,15 +1719,7 @@ def validate_le_pinn(
     if not Path(dataset_path).exists():
         raise FileNotFoundError(f"CFD dataset not found: {dataset_path}")
 
-    try:
-        cfd = torch.load(dataset_path, weights_only=True)
-    except TypeError:
-        warnings.warn(
-            "torch.load weights_only not supported; loading without restriction.",
-            RuntimeWarning,
-            stacklevel=1,
-        )
-        cfd = torch.load(dataset_path)  # type: ignore[call-overload]
+    cfd = _safe_torch_load(dataset_path)
 
     inputs_raw: torch.Tensor = cfd["inputs"].float()
     targets_raw: torch.Tensor = cfd["targets"].float()
@@ -1707,10 +1753,7 @@ def validate_le_pinn(
             )
         else:
             try:
-                try:
-                    ckpt = torch.load(checkpoint_path, map_location=dev, weights_only=True)
-                except TypeError:
-                    ckpt = torch.load(checkpoint_path, map_location=dev)  # type: ignore[call-overload]
+                ckpt = _safe_torch_load(checkpoint_path, map_location=dev)
                 model.load_state_dict(ckpt["model_state_dict"])
                 model.to(dev)
                 # Input normalizer
@@ -1723,6 +1766,18 @@ def validate_le_pinn(
                 out_min = ckpt.get("output_norm_min")
                 out_max = ckpt.get("output_norm_max")
                 if out_min is not None and out_max is not None:
+                    # Some older checkpoints store 9-column output normalizers
+                    # while validation compares only first 5 targets.
+                    if out_min.shape[0] >= 5 and out_max.shape[0] >= 5:
+                        out_min = out_min[:5]
+                        out_max = out_max[:5]
+                    else:
+                        warnings.warn(
+                            "Checkpoint output normalizer has fewer than 5 columns; "
+                            "validation de-normalization may be unavailable.",
+                            RuntimeWarning,
+                            stacklevel=1,
+                        )
                     output_norm_5 = MinMaxNormalizer()
                     output_norm_5.data_min = out_min.to("cpu")
                     output_norm_5.data_max = out_max.to("cpu")
@@ -1793,3 +1848,486 @@ def validate_le_pinn(
         print("=" * 50)
 
     return metrics
+
+
+def _restore_normalizer(
+    data_min: torch.Tensor,
+    data_max: torch.Tensor,
+) -> "MinMaxNormalizer":
+    """Rebuild a ``MinMaxNormalizer`` from checkpoint statistics."""
+    normalizer = MinMaxNormalizer()
+    normalizer.data_min = data_min.detach().clone().to("cpu").float()
+    normalizer.data_max = data_max.detach().clone().to("cpu").float()
+    return normalizer
+
+
+def _safe_rel_error(
+    predicted: float,
+    actual: float,
+    floor: float = 1e-12,
+) -> float:
+    """Relative error with a small denominator floor."""
+    denom = max(abs(actual), floor)
+    return float(abs(predicted - actual) / denom)
+
+
+def _converging_area_profile(
+    x: np.ndarray,
+    A_in: float,
+    A_exit: float,
+    length: float,
+) -> np.ndarray:
+    """Cosine-shaped converging nozzle area profile."""
+    if length <= 0.0:
+        raise ValueError(f"length must be positive, got {length:.6f}")
+    return A_in + (A_exit - A_in) * (1.0 - np.cos(np.pi * x / (2.0 * length)))
+
+
+def _build_scalar_consistent_profile(
+    inlet_state: Dict[str, float],
+    exit_state: Dict[str, float],
+    A_in: float,
+    A_exit: float,
+    length: float,
+    thermo_props: Dict[str, float],
+    n_points: int,
+) -> Dict[str, np.ndarray]:
+    """
+    Build a 1D analytical profile consistent with a prescribed scalar exit state.
+
+    This is used for fallback rows so the returned profile matches the scalar
+    exit state reported by the wrapper.
+    """
+    x = np.linspace(0.0, length, n_points, dtype=np.float64)
+    A_x = _converging_area_profile(x, A_in, A_exit, length)
+    gamma = thermo_props["gamma"]
+    cp = thermo_props["cp"]
+    gas_constant = thermo_props["R"]
+
+    s = (A_in - A_x) / max(A_in - A_exit, 1e-12)
+    s = np.clip(s, 0.0, 1.0)
+
+    p_in = float(inlet_state["p"])
+    T_in = float(inlet_state["T"])
+    u_in = float(inlet_state["u"])
+    p_exit = float(exit_state["p"])
+
+    p = p_in - (p_in - p_exit) * s
+    p_ratio = np.clip(p / max(p_in, 1e-12), 1e-12, None)
+    T = T_in * p_ratio ** ((gamma - 1.0) / gamma)
+    u_sq = u_in ** 2 + 2.0 * cp * (T_in - T)
+    u = np.sqrt(np.maximum(u_sq, 0.0))
+    rho = p / np.maximum(gas_constant * T, 1e-12)
+
+    return {
+        "x": x.astype(np.float32),
+        "rho": rho.astype(np.float32),
+        "u": u.astype(np.float32),
+        "p": p.astype(np.float32),
+        "T": T.astype(np.float32),
+    }
+
+
+def _resolve_le_checkpoint_path(model_path: str) -> Path:
+    """Resolve the requested LE checkpoint, including the engine-unified fallback."""
+    requested = Path(model_path)
+    if requested.exists():
+        return requested
+
+    if requested.name == "le_pinn_unified.pt":
+        fallback = requested.with_name("le_pinn_engine_unified.pt")
+        if fallback.exists():
+            return fallback
+
+    raise FileNotFoundError(f"LE-PINN checkpoint not found: {model_path}")
+
+
+def _adapt_nozzle_result_to_le_schema(
+    nozzle_result: Dict[str, Any],
+    inlet_state: Dict[str, float],
+    m_dot: float,
+    force_reason: str,
+) -> Dict[str, Any]:
+    """Adapt ``run_nozzle_pinn`` output to the LE wrapper schema."""
+    inlet_verification = dict(nozzle_result.get("inlet_verification", {}))
+    relative_errors = dict(inlet_verification.get("relative_errors", {}))
+    mass_conservation = dict(nozzle_result.get("mass_conservation", {}))
+
+    rho_match = float(relative_errors.get("rho", 1.0))
+    u_match = float(relative_errors.get("u", 1.0))
+    p_match = float(relative_errors.get("p", 1.0))
+    T_match = float(relative_errors.get("T", 1.0))
+
+    max_error_fraction = float(mass_conservation.get("error_pct", 100.0)) / 100.0
+    adapted = {
+        "exit_state": dict(nozzle_result["exit_state"]),
+        "thrust_total": float(nozzle_result["thrust_total"]),
+        "thrust_momentum": float(nozzle_result["thrust_momentum"]),
+        "thrust_pressure": float(nozzle_result["thrust_pressure"]),
+        "thrust_model": nozzle_result["thrust_model"],
+        "used_fallback": True,
+        "fallback_reason": force_reason,
+        "inlet_verification": {
+            "rho_match": rho_match,
+            "u_match": u_match,
+            "p_match": p_match,
+            "T_match": T_match,
+            "inlet_actual": inlet_verification.get(
+                "inlet_actual",
+                {k: float(inlet_state[k]) for k in ("rho", "u", "p", "T")},
+            ),
+            "inlet_predicted": inlet_verification.get("inlet_predicted", {}),
+            "relative_errors": relative_errors,
+            "max_error": float(inlet_verification.get("max_error", max(rho_match, u_match, p_match, T_match))),
+            "check_passed": bool(inlet_verification.get("check_passed", False)),
+        },
+        "mass_conservation": {
+            "inlet_mdot": float(mass_conservation.get("m_dot_input", m_dot)),
+            "exit_mdot": float(mass_conservation.get("m_dot_exit_predicted", 0.0)),
+            "max_error": max_error_fraction,
+            "m_dot_input": float(mass_conservation.get("m_dot_input", m_dot)),
+            "m_dot_inlet_predicted": float(mass_conservation.get("m_dot_inlet_predicted", 0.0)),
+            "m_dot_exit_predicted": float(mass_conservation.get("m_dot_exit_predicted", 0.0)),
+            "inlet_error_pct": float(mass_conservation.get("inlet_error_pct", 100.0)),
+            "exit_error_pct": float(mass_conservation.get("exit_error_pct", 100.0)),
+            "error_pct": float(mass_conservation.get("error_pct", 100.0)),
+            "check_passed": bool(mass_conservation.get("check_passed", False)),
+        },
+    }
+    if "profiles" in nozzle_result:
+        adapted["profiles"] = nozzle_result["profiles"]
+    return adapted
+
+
+def run_le_pinn(
+    model_path: str,
+    inlet_state: Dict[str, float],
+    ambient_p: float,
+    A_in: float,
+    A_exit: float,
+    length: float,
+    thermo_props: Dict[str, float],
+    m_dot: float,
+    n_axial: int = 50,
+    n_radial: int = 20,
+    device: str = "cpu",
+    return_profile: bool = False,
+    thrust_model: str = "static_test_stand",
+) -> Dict[str, Any]:
+    """
+    Run the LE-PINN with a ``run_nozzle_pinn``-compatible interface.
+
+    The LE-PINN predicts a 2D flowfield that is reduced to a 1D centerline
+    profile for thrust and diagnostics. When the LE checkpoint is unavailable
+    or the predicted exit state is non-physical, the wrapper falls back to an
+    analytical nozzle model.
+    """
+    from simulation.nozzle.nozzle import analytical_isentropic_nozzle, run_nozzle_pinn
+
+    if m_dot <= 0.0:
+        raise ValueError(f"Mass flow must be positive, got {m_dot:.3f} kg/s")
+    if inlet_state["u"] <= 0.0:
+        raise ValueError(f"Inlet velocity must be positive, got {inlet_state['u']:.3f} m/s")
+    if inlet_state["p"] <= 0.0:
+        raise ValueError(f"Inlet pressure must be positive, got {inlet_state['p']:.3f} Pa")
+    if inlet_state["T"] <= 0.0:
+        raise ValueError(f"Inlet temperature must be positive, got {inlet_state['T']:.3f} K")
+    if thermo_props["cp"] <= 0.0:
+        raise ValueError(f"cp must be positive, got {thermo_props['cp']:.3f}")
+    if thermo_props["R"] <= 0.0:
+        raise ValueError(f"R must be positive, got {thermo_props['R']:.3f}")
+    if thermo_props["gamma"] <= 1.0:
+        raise ValueError(f"gamma must be > 1.0, got {thermo_props['gamma']:.3f}")
+    if A_in <= 0.0 or A_exit <= 0.0:
+        raise ValueError(f"Nozzle areas must be positive, got A_in={A_in:.6f}, A_exit={A_exit:.6f}")
+    if length <= 0.0:
+        raise ValueError(f"length must be positive, got {length:.6f} m")
+    if n_axial < 2:
+        raise ValueError(f"n_axial must be >= 2, got {n_axial}")
+    if n_radial < 1:
+        raise ValueError(f"n_radial must be >= 1, got {n_radial}")
+
+    if inlet_state["p"] <= ambient_p:
+        warnings.warn(
+            f"Nozzle inlet pressure ({inlet_state['p']/1e3:.2f} kPa) <= ambient "
+            f"({ambient_p/1e3:.2f} kPa). Over-expanded turbine. Thrust may be low/negative."
+        )
+
+    try:
+        resolved_model_path = _resolve_le_checkpoint_path(model_path)
+    except FileNotFoundError:
+        regular_model_path = _REPO_ROOT / "models" / "nozzle_pinn.pt"
+        if not regular_model_path.exists():
+            raise FileNotFoundError(
+                f"LE-PINN checkpoint not found ({model_path}) and regular PINN fallback "
+                f"checkpoint is also missing: {regular_model_path}"
+            ) from None
+
+        delegated = run_nozzle_pinn(
+            model_path=str(regular_model_path),
+            inlet_state=inlet_state,
+            ambient_p=ambient_p,
+            A_in=A_in,
+            A_exit=A_exit,
+            length=length,
+            thermo_props=thermo_props,
+            m_dot=m_dot,
+            device=device,
+            return_profile=return_profile,
+            thrust_model=thrust_model,
+        )
+        delegated_reason = "LE checkpoint unavailable; delegated to run_nozzle_pinn"
+        if delegated.get("fallback_reason"):
+            delegated_reason = f"{delegated_reason}; {delegated['fallback_reason']}"
+        adapted = _adapt_nozzle_result_to_le_schema(
+            delegated,
+            inlet_state=inlet_state,
+            m_dot=m_dot,
+            force_reason=delegated_reason,
+        )
+        if return_profile and delegated.get("used_fallback"):
+            adapted["profiles"] = _build_scalar_consistent_profile(
+                inlet_state=inlet_state,
+                exit_state=adapted["exit_state"],
+                A_in=A_in,
+                A_exit=A_exit,
+                length=length,
+                thermo_props=thermo_props,
+                n_points=n_axial,
+            )
+        return adapted
+
+    ckpt = _safe_torch_load(str(resolved_model_path), map_location="cpu")
+    if "model_state_dict" not in ckpt:
+        raise KeyError(f"Checkpoint missing model_state_dict: {resolved_model_path}")
+    if "input_norm_min" not in ckpt or "input_norm_max" not in ckpt:
+        raise KeyError(f"Checkpoint missing input normalizer statistics: {resolved_model_path}")
+    if "output_norm_min" not in ckpt or "output_norm_max" not in ckpt:
+        raise KeyError(f"Checkpoint missing output normalizer statistics: {resolved_model_path}")
+
+    input_norm = _restore_normalizer(ckpt["input_norm_min"], ckpt["input_norm_max"])
+    output_norm = _restore_normalizer(ckpt["output_norm_min"][:5], ckpt["output_norm_max"][:5])
+
+    dev = torch.device(device)
+    model = LE_PINN().to(dev)
+    model.load_state_dict(ckpt["model_state_dict"])
+    model.eval()
+
+    x_stations = np.linspace(0.0, length, n_axial, dtype=np.float32)
+    A_x = _converging_area_profile(x_stations.astype(np.float64), A_in, A_exit, length).astype(np.float32)
+    radii = np.sqrt(np.maximum(A_x, 1e-12) / np.pi).astype(np.float32)
+
+    inputs_rows = []
+    y_rows = []
+    for x_i, radius_i in zip(x_stations, radii):
+        y_i = np.linspace(0.0, 0.98 * radius_i, n_radial, dtype=np.float32)
+        y_rows.append(y_i)
+        inputs_rows.append(
+            np.column_stack(
+                [
+                    np.full(n_radial, x_i, dtype=np.float32),
+                    y_i,
+                    np.full(n_radial, A_in, dtype=np.float32),
+                    np.full(n_radial, A_exit, dtype=np.float32),
+                    np.full(n_radial, inlet_state["p"], dtype=np.float32),
+                    np.full(n_radial, inlet_state["T"], dtype=np.float32),
+                ]
+            )
+        )
+
+    inputs_phys = torch.from_numpy(np.concatenate(inputs_rows, axis=0)).float()
+    y_matrix = np.stack(y_rows, axis=0)
+    x_ref = torch.from_numpy(x_stations).float()
+    r_ref = torch.from_numpy(radii).float()
+    wall_dists = _estimate_wall_distances(inputs_phys[:, :2], x_ref, r_ref).to(dev)
+    inputs_norm = input_norm.transform(inputs_phys).to(dev)
+
+    with torch.no_grad():
+        preds_raw = model(inputs_norm, wall_dists).cpu()
+
+    preds_denorm_5 = output_norm.inverse_transform(preds_raw[:, :5])
+    preds_denorm = torch.cat([preds_denorm_5, preds_raw[:, 5:]], dim=1)
+    T_safe = preds_denorm[:, 4:5].clamp(min=100.0, max=5000.0)
+    mu_eff = SUTHERLAND_C1 * T_safe.pow(1.5) / (T_safe + SUTHERLAND_S)
+    preds_denorm = preds_denorm.clone()
+    preds_denorm[:, 8:9] = mu_eff.clamp(min=1e-6, max=1e-3)
+
+    preds_grid = preds_denorm.reshape(n_axial, n_radial, preds_denorm.shape[1])
+    centerline_idx = torch.from_numpy(np.argmin(y_matrix, axis=1)).long()
+    centerline = preds_grid[torch.arange(n_axial), centerline_idx]
+
+    rho_1d = centerline[:, 0].numpy().astype(np.float64)
+    u_raw_1d = centerline[:, 1].numpy().astype(np.float64)
+    p_1d = centerline[:, 3].numpy().astype(np.float64)
+    T_1d = centerline[:, 4].numpy().astype(np.float64)
+
+    raw_centerline_finite = (
+        np.isfinite(rho_1d).all()
+        and np.isfinite(u_raw_1d).all()
+        and np.isfinite(p_1d).all()
+        and np.isfinite(T_1d).all()
+    )
+    rho_positive = raw_centerline_finite and np.all(rho_1d > 0.0)
+
+    if raw_centerline_finite and rho_positive:
+        u_corrected = m_dot / np.maximum(rho_1d * A_x.astype(np.float64), 1e-12)
+        raw_mdot_profile = rho_1d * u_raw_1d * A_x.astype(np.float64)
+        max_raw_mdot_error = float(
+            np.max(np.abs(raw_mdot_profile - m_dot) / max(abs(m_dot), 1e-12))
+        )
+        exit_mdot_raw = float(raw_mdot_profile[-1])
+        rho_match = _safe_rel_error(float(rho_1d[0]), float(inlet_state["rho"]))
+        u_match = _safe_rel_error(float(u_raw_1d[0]), float(inlet_state["u"]), floor=1.0)
+        p_match = _safe_rel_error(float(p_1d[0]), float(inlet_state["p"]))
+        T_match = _safe_rel_error(float(T_1d[0]), float(inlet_state["T"]))
+        inlet_predicted = {
+            "rho": float(rho_1d[0]),
+            "u": float(u_raw_1d[0]),
+            "p": float(p_1d[0]),
+            "T": float(T_1d[0]),
+        }
+    else:
+        u_corrected = np.full(n_axial, np.nan, dtype=np.float64)
+        raw_mdot_profile = np.full(n_axial, np.nan, dtype=np.float64)
+        max_raw_mdot_error = 1.0
+        exit_mdot_raw = 0.0
+        rho_match = 1.0
+        u_match = 1.0
+        p_match = 1.0
+        T_match = 1.0
+        inlet_predicted = {"rho": 0.0, "u": 0.0, "p": 0.0, "T": 0.0}
+
+    relative_errors = {
+        "rho": rho_match,
+        "u": u_match,
+        "p": p_match,
+        "T": T_match,
+    }
+
+    used_fallback = False
+    fallback_reason: Optional[str] = None
+    exit_state = {
+        "rho": float(rho_1d[-1]) if raw_centerline_finite else np.nan,
+        "u": float(u_corrected[-1]) if np.isfinite(u_corrected[-1]) else np.nan,
+        "p": float(p_1d[-1]) if raw_centerline_finite else np.nan,
+        "T": float(T_1d[-1]) if raw_centerline_finite else np.nan,
+    }
+
+    invalid_reasons = []
+    if not raw_centerline_finite:
+        invalid_reasons.append("LE centerline contains NaN/Inf")
+    elif not rho_positive:
+        invalid_reasons.append("LE centerline density is non-positive")
+    elif max(relative_errors.values()) > 0.50:
+        invalid_reasons.append(
+            f"inlet mismatch ({max(relative_errors.values()) * 100.0:.2f}%)"
+        )
+    elif max_raw_mdot_error > 0.50:
+        invalid_reasons.append(
+            f"mass conservation error ({max_raw_mdot_error * 100.0:.2f}%)"
+        )
+
+    for name in ("rho", "u", "p", "T"):
+        value = exit_state[name]
+        if not np.isfinite(value) or value <= 0.0:
+            invalid_reasons.append(f"non-physical exit {name}")
+
+    if raw_centerline_finite and rho_positive:
+        if exit_state["T"] < max(80.0, 0.18 * float(inlet_state["T"])) or exit_state["T"] > 1.2 * float(inlet_state["T"]):
+            invalid_reasons.append("implausible exit temperature")
+        if exit_state["p"] < max(5_000.0, 0.03 * float(inlet_state["p"])) or exit_state["p"] > 1.2 * float(inlet_state["p"]):
+            invalid_reasons.append("implausible exit pressure")
+        if exit_state["u"] < 0.0 or exit_state["u"] > 2_500.0:
+            invalid_reasons.append("implausible exit velocity")
+        if exit_state["rho"] <= 1e-8 or exit_state["rho"] > 20.0:
+            invalid_reasons.append("implausible exit density")
+
+    profile_payload = {
+        "x": x_stations.astype(np.float32),
+        "rho": rho_1d.astype(np.float32),
+        "u": u_corrected.astype(np.float32),
+        "p": p_1d.astype(np.float32),
+        "T": T_1d.astype(np.float32),
+    }
+
+    if invalid_reasons:
+        fallback_reason = "; ".join(dict.fromkeys(invalid_reasons))
+        fallback_exit = analytical_isentropic_nozzle(
+            inlet_state=inlet_state,
+            ambient_p=ambient_p,
+            A_exit=A_exit,
+            thermo_props=thermo_props,
+            m_dot=m_dot,
+        )
+        exit_state = {
+            "rho": float(fallback_exit["rho"]),
+            "u": float(fallback_exit["u"]),
+            "p": float(fallback_exit["p"]),
+            "T": float(fallback_exit["T"]),
+        }
+        profile_payload = _build_scalar_consistent_profile(
+            inlet_state=inlet_state,
+            exit_state=exit_state,
+            A_in=A_in,
+            A_exit=A_exit,
+            length=length,
+            thermo_props=thermo_props,
+            n_points=n_axial,
+        )
+        used_fallback = True
+
+    if thrust_model == "static_test_stand":
+        thrust_momentum = m_dot * exit_state["u"]
+    elif thrust_model == "incremental_nozzle":
+        thrust_momentum = m_dot * (exit_state["u"] - inlet_state["u"])
+    else:
+        raise ValueError(
+            f"Invalid thrust_model: {thrust_model}. "
+            "Use 'static_test_stand' or 'incremental_nozzle'"
+        )
+
+    thrust_pressure = (exit_state["p"] - ambient_p) * A_exit
+    thrust_total = thrust_momentum + thrust_pressure
+
+    inlet_verification = {
+        "rho_match": float(rho_match),
+        "u_match": float(u_match),
+        "p_match": float(p_match),
+        "T_match": float(T_match),
+        "inlet_actual": {k: float(inlet_state[k]) for k in ("rho", "u", "p", "T")},
+        "inlet_predicted": inlet_predicted,
+        "relative_errors": relative_errors,
+        "max_error": float(max(relative_errors.values())),
+        "check_passed": bool(max(relative_errors.values()) < 0.05),
+    }
+    mass_conservation = {
+        "inlet_mdot": float(m_dot),
+        "exit_mdot": float(exit_mdot_raw),
+        "max_error": float(max_raw_mdot_error),
+        "m_dot_input": float(m_dot),
+        "m_dot_inlet_predicted": float(raw_mdot_profile[0]) if np.isfinite(raw_mdot_profile[0]) else 0.0,
+        "m_dot_exit_predicted": float(exit_mdot_raw),
+        "inlet_error_pct": float(
+            abs(raw_mdot_profile[0] - m_dot) / max(abs(m_dot), 1e-12) * 100.0
+        ) if np.isfinite(raw_mdot_profile[0]) else 100.0,
+        "exit_error_pct": float(
+            abs(exit_mdot_raw - m_dot) / max(abs(m_dot), 1e-12) * 100.0
+        ) if np.isfinite(exit_mdot_raw) else 100.0,
+        "error_pct": float(max_raw_mdot_error * 100.0),
+        "check_passed": bool(max_raw_mdot_error < 0.05),
+    }
+
+    result: Dict[str, Any] = {
+        "exit_state": exit_state,
+        "thrust_total": float(thrust_total),
+        "thrust_momentum": float(thrust_momentum),
+        "thrust_pressure": float(thrust_pressure),
+        "thrust_model": thrust_model,
+        "used_fallback": used_fallback,
+        "fallback_reason": fallback_reason,
+        "inlet_verification": inlet_verification,
+        "mass_conservation": mass_conservation,
+    }
+    if return_profile:
+        result["profiles"] = profile_payload
+    return result

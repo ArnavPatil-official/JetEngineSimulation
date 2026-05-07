@@ -44,13 +44,13 @@ class TestChokingDetection:
 
     def test_detect_choking_unchoked(self):
         """Test detection of unchoked flow (high ambient pressure)."""
-        p_inlet = 200000.0  # 2 bar
+        p_inlet = 180000.0  # 1.8 bar
         p_ambient = 101325.0  # 1 bar (sea level)
         gamma = 1.33
 
         is_choked, p_critical = detect_choking(p_inlet, p_ambient, gamma)
 
-        # p_ambient/p_inlet = 0.506 > pr_critical ≈ 0.541
+        # p_ambient/p_inlet = 0.563 > pr_critical ≈ 0.541
         # Therefore NOT choked
         assert not is_choked, "Flow should NOT be choked for p_amb/p_in > pr_critical"
         assert p_critical < p_ambient, "Critical pressure should be below ambient"

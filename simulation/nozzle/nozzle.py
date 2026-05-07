@@ -236,13 +236,7 @@ from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 import warnings
 
-# Suppress pandas import warnings if CSV not available
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-    warnings.warn("Pandas not available. ICAO data loading will be disabled.")
+import pandas as pd
 
 # ============================================================================
 # CONFIGURATION & REPRODUCIBILITY
@@ -299,28 +293,27 @@ def load_engine_conditions_from_icao(
     p_inlet_nozzle = 193000.0  # Pa
     thrust_total = 310.9e3  # N
 
-    if PANDAS_AVAILABLE:
-        try:
-            data_path = DATA_DIR / filename
-            df = pd.read_csv(data_path)
-            row = df[(df['Engine ID'].str.contains(engine_id, regex=False)) &
-                     (df['Mode'] == mode)].iloc[0]
+    try:
+        data_path = DATA_DIR / filename
+        df = pd.read_csv(data_path)
+        row = df[(df['Engine ID'].str.contains(engine_id, regex=False)) &
+                 (df['Mode'] == mode)].iloc[0]
 
-            fuel_flow = float(row['Fuel Flow (kg/s)'])
-            pr_overall = float(row['Pressure Ratio'])
-            thrust_total = float(row['Rated Thrust (kN)']) * 1000.0
+        fuel_flow = float(row['Fuel Flow (kg/s)'])
+        pr_overall = float(row['Pressure Ratio'])
+        thrust_total = float(row['Rated Thrust (kN)']) * 1000.0
 
-            # Estimate core mass flow from fuel flow
-            FAR = 0.030  # Typical fuel-air ratio
-            core_air = fuel_flow / FAR
-            mass_flow = core_air + fuel_flow
+        # Estimate core mass flow from fuel flow
+        FAR = 0.030  # Typical fuel-air ratio
+        core_air = fuel_flow / FAR
+        mass_flow = core_air + fuel_flow
 
-            # Estimate nozzle inlet pressure from overall pressure ratio
-            p_amb = 101325.0
-            p_inlet_nozzle = p_amb * pr_overall * 0.045  # Empirical correlation
+        # Estimate nozzle inlet pressure from overall pressure ratio
+        p_amb = 101325.0
+        p_inlet_nozzle = p_amb * pr_overall * 0.045  # Empirical correlation
 
-        except Exception as e:
-            warnings.warn(f"Could not load ICAO data: {e}. Using defaults.")
+    except Exception as e:
+        warnings.warn(f"Could not load ICAO data: {e}. Using defaults.")
 
     # Use provided thermo props or defaults
     if thermo_props is not None:
