@@ -55,18 +55,20 @@ class Combustor:
     @staticmethod
     def estimate_efficiency(phi: float, fuel_blend=None) -> float:
         """
-        Estimate combustor efficiency based on equivalence ratio and fuel type.
+        Estimate combustor efficiency based on equivalence ratio.
 
         Efficiency peaks near stoichiometric (φ = 1.0) and drops as φ deviates:
             η = η_max − k_phi × (φ − 1.0)²
 
-        An additional 1–1.5% penalty is applied for heavier SAF blends based
-        on literature values for alternative fuel combustion characteristics.
+        Fuel identity does not affect the estimate. Earlier versions applied
+        name-triggered penalties (−1.5% for 'Bio-SPK', −1.0% for 'HEFA'); these
+        had no literature source and were removed — see
+        outputs/parameter_provenance.md and scripts/validation/ablate_saf_penalty.py
+        for the quantified effect of that removal.
 
         Args:
             phi: Equivalence ratio (lean < 1.0, stoichiometric = 1.0, rich > 1.0)
-            fuel_blend: Optional fuel blend object with a `name` attribute.
-                        Used to apply fuel-specific efficiency penalties.
+            fuel_blend: Unused; retained for call-signature compatibility.
 
         Returns:
             Estimated combustion efficiency in [0.90, 0.999]
@@ -75,14 +77,6 @@ class Combustor:
         k_phi = 0.04  # quadratic penalty coefficient
 
         eta = eta_max - k_phi * (phi - 1.0) ** 2
-
-        # SAF blend penalty (heavier / alternative molecules = slightly lower efficiency)
-        if fuel_blend is not None:
-            blend_name = getattr(fuel_blend, 'name', '')
-            if 'Bio-SPK' in blend_name:
-                eta -= 0.015  # 1.5% penalty for pure synthetic paraffinic kerosene
-            elif 'HEFA' in blend_name:
-                eta -= 0.01   # 1.0% penalty for blended HEFA
 
         return float(max(min(eta, 0.999), 0.90))
 
