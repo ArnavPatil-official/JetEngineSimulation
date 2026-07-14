@@ -7,20 +7,32 @@ from pathlib import Path
 # Add project root to sys.path so imports resolve correctly
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+import argparse
+import os
 import optuna
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import contextlib
-import io
-import re
 from mpl_toolkits.mplot3d import Axes3D
 from integrated_engine import IntegratedTurbofanEngine, LocalFuelBlend
 from simulation.fuels import make_saf_blend
 from optuna.trial import TrialState
 
 # --- CONFIGURATION ---
-N_TRIALS = 1000           # Number of optimization trials
+parser = argparse.ArgumentParser(description="4-objective SAF blend optimization")
+parser.add_argument("--n-trials", type=int, default=1000,
+                    help="Number of Optuna trials (default 1000)")
+parser.add_argument("--seed", type=int, default=42,
+                    help="Sampler seed for reproducibility (default 42)")
+parser.add_argument("--output-csv", default="outputs/results/optimization_results.csv",
+                    help="Where to write the per-trial results CSV")
+parser.add_argument("--plots-dir", default="outputs/plots",
+                    help="Directory for generated plots")
+args = parser.parse_args()
+
+N_TRIALS = args.n_trials
+SEED = args.seed
 TIT_HARD_LIMIT = 2800.0   # Physics failure point [K]
 TIT_SOFT_LIMIT = 1850.0   # Cooling penalty threshold [K]
 LCA_FACTORS = {
@@ -34,7 +46,7 @@ optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 print("="*80)
 print("🚀 4-OBJECTIVE OPTIMIZATION: Performance + Environment")
-print(f"Targeting: {N_TRIALS} Trials")
+print(f"Targeting: {N_TRIALS} Trials (seed={SEED})")
 print("Output Format: Single-line summary per trial")
 print("="*80 + "\n")
 
@@ -55,20 +67,6 @@ class SafeFuelWrapper:
     def as_composition_string(self):
         return ", ".join([f"{k}:{v}" for k, v in self.composition.items()])
     def __repr__(self): return f"SafeFuelWrapper({self.name})"
-
-# --- 3. SCRAPER ---
-def scrape_log_data(log_text):
-    try:
-        tsfc = float(re.search(r"TSFC:\s+([\d\.]+)", log_text).group(1))
-        thrust = float(re.search(r"Thrust:\s+([\d\.]+)", log_text).group(1))
-        t4_match = re.search(r"Combustor.*?Outlet:\s*T=([\d\.]+)", log_text, re.DOTALL) or \
-                   re.search(r"Turbine.*?Inlet:\s*T=([\d\.]+)", log_text, re.DOTALL)
-        t4 = float(t4_match.group(1)) if t4_match else 2000.0
-        nox = float(re.search(r"NOx:\s+([\d\.]+)", log_text).group(1))
-        co2 = float(re.search(r"CO₂:\s+([\d\.]+)", log_text).group(1))
-        return tsfc, thrust, t4, nox, co2
-    except: return None, None, None, None, None
-
 
 def compute_blend_components(params):
     saf = params.get('saf_total', 0.0)
@@ -136,31 +134,25 @@ def objective(trial):
     lca_factor = (jet_a * LCA_FACTORS['JetA'] + p_h * LCA_FACTORS['HEFA'] +
                   p_f * LCA_FACTORS['FT'] + p_a * LCA_FACTORS['ATJ'])
 
-    # --- B. Simulation (Captured) ---
-    capture_buffer = io.StringIO()
-    
+    # --- B. Simulation ---
     try:
         raw_blend = make_saf_blend(jet_a, p_h, p_f, p_a, enforce_astm=True)
         fuel = SafeFuelWrapper(f"Trial_{trial.number}", raw_blend.species)
 
-        # CAPTURE ALL OUTPUT (Suppress engine noise)
-        with contextlib.redirect_stdout(capture_buffer):
+        # Suppress engine console noise only — all data is read from the
+        # structured result dict below; nothing is parsed from printed output.
+        with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
             result = engine.run_full_cycle(
                 fuel_blend=fuel, phi=phi, combustor_efficiency=0.98, lca_factor=lca_factor
             )
 
-        # --- C. Data Extraction ---
-        if 'performance' in result and 'emissions' in result:
-            tsfc = result['performance']['tsfc_mg_per_Ns']
-            thrust = result['performance']['thrust_kN']
-            nox = result['emissions']['NOx_g_s']
-            co2 = result['emissions']['Net_CO2_g_s']
-            m_dot = result['performance']['total_mass_flow'] - result['performance']['fuel_mass_flow']
-            t4 = result['combustor']['T_out']
-        else:
-            tsfc, thrust, t4, nox, co2 = scrape_log_data(capture_buffer.getvalue())
-            if tsfc is None: raise optuna.TrialPruned()
-            m_dot = 79.9
+        # --- C. Data Extraction (structured results only; KeyError = failed trial) ---
+        tsfc = result['performance']['tsfc_mg_per_Ns']
+        thrust = result['performance']['thrust_kN']
+        nox = result['emissions']['NOx_g_s']
+        co2 = result['emissions']['Net_CO2_g_s']
+        m_dot = result['performance']['total_mass_flow'] - result['performance']['fuel_mass_flow']
+        t4 = result['combustor']['T_out']
 
         # --- D. Constraints & Penalties ---
         if t4 > TIT_HARD_LIMIT:
@@ -174,6 +166,16 @@ def objective(trial):
         final_co2 = co2 * penalty
         final_nox = nox * penalty
 
+        # Record raw (pre-penalty) values so reported objectives are traceable
+        # to structured engine outputs.
+        trial.set_user_attr("raw_tsfc_mg_per_Ns", tsfc)
+        trial.set_user_attr("raw_thrust_kN", thrust)
+        trial.set_user_attr("raw_T4_K", t4)
+        trial.set_user_attr("raw_NOx_g_s", nox)
+        trial.set_user_attr("raw_Net_CO2_g_s", co2)
+        trial.set_user_attr("core_air_mass_flow_kg_s", m_dot)
+        trial.set_user_attr("tit_penalty_factor", penalty)
+
         # --- E. ONE-LINE SUMMARY ---
         blend_summary = f"[H:{p_h:.2f} F:{p_f:.2f} A:{p_a:.2f}]"
         print(f"Trial {trial.number:03d}: SAF={saf_total*100:4.1f}% {blend_summary} | "
@@ -182,12 +184,27 @@ def objective(trial):
 
         return final_tsfc, spec_thrust, final_co2, final_nox
 
-    except optuna.TrialPruned: raise
-    except Exception: return 1000.0, 0.0, 10000.0, 1000.0
+    except optuna.TrialPruned:
+        raise
+    except Exception as e:
+        # No default values are ever substituted: the trial fails loudly and is
+        # recorded as FAIL by Optuna (see catch= in study.optimize below).
+        print(f"Trial {trial.number:03d}: ❌ FAILED ({type(e).__name__}: {e})")
+        raise
 
 # --- 5. RUNNER ---
-study = optuna.create_study(directions=["minimize", "maximize", "minimize", "minimize"])
-study.optimize(objective, n_trials=N_TRIALS)
+study = optuna.create_study(
+    directions=["minimize", "maximize", "minimize", "minimize"],
+    sampler=optuna.samplers.NSGAIISampler(seed=SEED),
+)
+# catch=(Exception,): crashed trials are recorded as FAIL and excluded from
+# results — they never contribute default/penalty objective values.
+study.optimize(objective, n_trials=N_TRIALS, catch=(Exception,))
+
+n_failed = len([t for t in study.trials if t.state == TrialState.FAIL])
+n_pruned = len([t for t in study.trials if t.state == TrialState.PRUNED])
+print(f"\nTrial states: {len(study.trials)} total | "
+      f"{n_failed} failed | {n_pruned} pruned")
 
 # --- 6. EXTRACT & SAVE (ALL TRIALS + PARETO FLAG) ---
 print("\n📊 Saving detailed results for all completed trials...")
@@ -210,7 +227,14 @@ for t in completed_trials:
         'HEFA_Frac': p_h,
         'FT_Frac': p_f,
         'ATJ_Frac': p_a,
-        'State': t.state.name
+        'State': t.state.name,
+        # Raw structured engine outputs (pre-TIT-penalty) for traceability
+        'Raw_TSFC': t.user_attrs.get('raw_tsfc_mg_per_Ns'),
+        'Raw_Thrust_kN': t.user_attrs.get('raw_thrust_kN'),
+        'Raw_T4_K': t.user_attrs.get('raw_T4_K'),
+        'Raw_NOx_g_s': t.user_attrs.get('raw_NOx_g_s'),
+        'Raw_Net_CO2_g_s': t.user_attrs.get('raw_Net_CO2_g_s'),
+        'TIT_Penalty': t.user_attrs.get('tit_penalty_factor'),
     })
 
 df_results = pd.DataFrame(rows)
@@ -220,13 +244,13 @@ objective_cols = ['TSFC', 'SpecThrust', 'CO2', 'NOx']
 pareto_mask = identify_pareto_front(df_results, objective_cols, [True, False, True, True])
 df_results['ParetoOptimal'] = pareto_mask
 
-df_results.to_csv('outputs/results/optimization_results.csv', index=False)
-print(f"✅ Saved {len(df_results)} rows to 'outputs/results/optimization_results.csv' with ParetoOptimal flag ({pareto_mask.sum()} Pareto points).")
+os.makedirs(os.path.dirname(args.output_csv), exist_ok=True)
+df_results.to_csv(args.output_csv, index=False)
+print(f"✅ Saved {len(df_results)} rows to '{args.output_csv}' with ParetoOptimal flag ({pareto_mask.sum()} Pareto points).")
 
 # --- 7. VISUALIZATION (Standard) ---
 print("📈 Generating plots...")
-import os
-os.makedirs('outputs/plots', exist_ok=True)
+os.makedirs(args.plots_dir, exist_ok=True)
 
 # 3D Plot
 fig = plt.figure(figsize=(10, 8))
@@ -235,7 +259,7 @@ sc = ax.scatter(df_results['TSFC'], df_results['SpecThrust'], df_results['CO2'],
                 c=df_results['NOx'], cmap='RdYlGn_r', s=60, edgecolors='k')
 ax.set_xlabel('TSFC (mg/N·s)'); ax.set_ylabel('Spec Thrust'); ax.set_zlabel('CO2 (g/s)')
 plt.colorbar(sc, label='NOx (g/s)')
-plt.savefig('outputs/plots/pareto_3d.png', dpi=300)
+plt.savefig(os.path.join(args.plots_dir, 'pareto_3d.png'), dpi=300)
 
 # Parallel Coordinates
 plt.figure(figsize=(12, 6))
@@ -245,6 +269,6 @@ norm_df = (norm_df - norm_df.min()) / (norm_df.max() - norm_df.min())
 for i, r in norm_df.iterrows():
     plt.plot(range(4), r, color=plt.cm.viridis(df_results.loc[i, 'SAF_Total']*2), alpha=0.3)
 plt.xticks(range(4), ['TSFC', 'Thrust(Inv)', 'CO2', 'NOx'])
-plt.savefig('outputs/plots/parallel_coordinates.png', dpi=300)
+plt.savefig(os.path.join(args.plots_dir, 'parallel_coordinates.png'), dpi=300)
 
 print("✅ Optimization Complete.")
