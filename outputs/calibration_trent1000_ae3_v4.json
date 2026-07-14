@@ -1,0 +1,65 @@
+{
+  "description": "One-time Optuna calibration of LTO fuel flow against ICAO certification data for the Trent 1000-AE3 (in-sample fit, not validation). Part-power throttle law version.",
+  "schema": "part_power_v2",
+  "calibration_engine": "Trent 1000-AE3",
+  "icao_uid": "02P23RR126",
+  "date": "2026-07-14",
+  "seed": 42,
+  "n_trials": 100,
+  "fuel": "Jet-A1",
+  "icao_targets": {
+    "Idle": {
+      "power_fraction": 0.07,
+      "fuel_flow_kg_s": 0.244
+    },
+    "Approach": {
+      "power_fraction": 0.3,
+      "fuel_flow_kg_s": 0.643
+    },
+    "Takeoff": {
+      "power_fraction": 1.0,
+      "fuel_flow_kg_s": 2.327
+    }
+  },
+  "best_mean_abs_pct_error": 0.01619039847849928,
+  "best_params": {
+    "eta_combustor": 0.9963347754418137,
+    "pressure_loss": 0.0442453140416395,
+    "k_pi": 0.561834047335499,
+    "k_mdot": 0.6217921052413873,
+    "phi_idle": 0.29534021495306023,
+    "phi_app": 0.3052826104671048,
+    "phi_to": 0.5409261230079053
+  },
+  "per_mode_states": {
+    "Idle": {
+      "power_fraction": 0.07,
+      "pi_c": 10.472163994255366,
+      "mass_flow_core_kg_s": 15.29106936009498
+    },
+    "Approach": {
+      "power_fraction": 0.3,
+      "pi_c": 22.45563484272094,
+      "mass_flow_core_kg_s": 37.79417794398847
+    },
+    "Takeoff": {
+      "power_fraction": 1.0,
+      "pi_c": 43.2,
+      "mass_flow_core_kg_s": 79.9
+    }
+  },
+  "fixed_parameters": {
+    "base_pi_c": 43.2,
+    "base_airflow_kg_s": 79.9,
+    "fpr_rated": 1.45,
+    "eta_fan": 0.9,
+    "combustor_air_fraction": 0.8,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9
+  },
+  "notes": [
+    "Part-power law: pi_c = 1 + (pi_rated - 1) * x^k_pi; m_dot = m_dot_rated * x^k_mdot; x = ICAO power setting.",
+    "pressure_loss is now consumed: design_point['combustor_pressure_loss'] applies p_comb = p3 * (1 - p_loss) in run_full_cycle.",
+    "Climb is excluded: data/icao_engine_data.csv has no CLIMB rows; the former 2.050 kg/s climb target was untraceable and has been removed."
+  ]
+}

@@ -118,8 +118,10 @@ engine = IntegratedTurbofanEngine(
     icao_data_path="data/icao_engine_data.csv"
 )
 # Rated design point (take-off, x=1): pi_c 43.2 / FPR 1.45 defaults apply;
-# combustor pressure loss from the frozen v3 calibration.
+# combustor pressure loss and airflow split from the frozen calibration.
 engine.design_point['combustor_pressure_loss'] = P_LOSS
+engine.design_point['combustor_air_fraction'] = (
+    CALIB['fixed_parameters'].get('combustor_air_fraction', 1.0))
 
 # --- 2. FUEL WRAPPER ---
 class SafeFuelWrapper:

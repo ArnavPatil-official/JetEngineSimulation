@@ -100,6 +100,9 @@ def configure_engine_for_row(engine, calib, row, thrust_ratio):
         engine.design_point["pi_c"] = pi_c
         engine.design_point["mass_flow_core"] = m_dot
         engine.design_point["combustor_pressure_loss"] = best["pressure_loss"]
+        # Airflow split (Phase 3.4): beta from the frozen calibration
+        engine.design_point["combustor_air_fraction"] = fixed.get(
+            "combustor_air_fraction", 1.0)
         # Fan pressure ratio follows the same throttle law as pi_c
         fpr_rated = fixed.get("fpr_rated", 1.45)
         engine.design_point["fpr"] = (

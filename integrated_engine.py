@@ -623,6 +623,15 @@ class IntegratedTurbofanEngine:
                                               # (p_comb = p3 * (1 - loss)); 0 = legacy
             'combustor_heat_loss_fraction': 0.0,  # Case/liner heat loss xi (Phase 2.6);
                                                   # temperature rise scales by (1 - xi)
+            'combustor_air_fraction': 1.0,    # beta (Phase 3.4): fraction of core air
+                                              # burned at phi; (1-beta) bypasses the
+                                              # burner as cooling/dilution air and
+                                              # remixes before the turbine. beta ~
+                                              # 0.7-0.8 for conventional/RQL-era
+                                              # combustors (Lefebvre & Ballal, Gas
+                                              # Turbine Combustion: ~20-30% of
+                                              # combustor air is liner cooling +
+                                              # dilution). 1.0 = legacy behavior.
             'A_combustor_exit': 0.207,        # Combustor exit area [m^2]
             'A_nozzle_inlet': 0.375,          # Nozzle inlet area [m^2] (matches PINN training)
             'A_nozzle_exit': 0.340,           # Nozzle exit area [m^2]
@@ -1373,6 +1382,13 @@ class IntegratedTurbofanEngine:
             raise ValueError(f"combustor_pressure_loss must be in [0, 1), got {p_loss}")
         p_comb_in = comp_result['p_out'] * (1.0 - p_loss)
 
+        # Combustor airflow split (Phase 3.4): only beta * m_dot_core is
+        # burned at phi; the rest bypasses as liner-cooling/dilution air.
+        beta = self.design_point.get('combustor_air_fraction', 1.0)
+        if not 0.0 < beta <= 1.0:
+            raise ValueError(f"combustor_air_fraction must be in (0, 1], got {beta}")
+        m_dot_burn = beta * m_dot_core
+
         comb_result, f = self.run_combustor(
             T_in=comp_result['T_out'],
             p_in=p_comb_in,
@@ -1381,10 +1397,39 @@ class IntegratedTurbofanEngine:
             efficiency=combustor_efficiency
         )
 
-        # Calculate actual mass flows including fuel
-        m_dot_fuel = f * m_dot_core  # kg/s
+        # Calculate actual mass flows including fuel (phi applies to burner air)
+        m_dot_fuel = f * m_dot_burn  # kg/s
         m_dot_total = m_dot_core + m_dot_fuel  # kg/s (core stream incl. fuel)
         comp_work_total = comp_result['work_specific'] * m_dot_core
+
+        if beta < 1.0:
+            # Remix the unburned (1-beta) core air with the combustion
+            # products before the turbine: enthalpy balance with constant-cp
+            # mixing sets the diluted turbine inlet temperature. Mixture
+            # transport properties are mass-weighted (0-D fidelity).
+            m_prod = m_dot_burn + m_dot_fuel
+            m_byp_air = (1.0 - beta) * m_dot_core
+            cp_p = comb_result['cp_out']
+            R_p = comb_result['R_out']
+            self.gas.TPX = comp_result['T_out'], p_comb_in, "O2:0.21, N2:0.79"
+            cp_air = self.gas.cp_mass
+            R_air = ct.gas_constant / self.gas.mean_molecular_weight
+            T4_mix = ((m_prod * cp_p * comb_result['T_out'] +
+                       m_byp_air * cp_air * comp_result['T_out']) /
+                      (m_prod * cp_p + m_byp_air * cp_air))
+            cp_mix = (m_prod * cp_p + m_byp_air * cp_air) / m_dot_total
+            R_mix = (m_prod * R_p + m_byp_air * R_air) / m_dot_total
+            print(f"[Combustor dilution mix] beta={beta:.2f}: "
+                  f"T_burner={comb_result['T_out']:.1f} K -> "
+                  f"T4_mixed={T4_mix:.1f} K "
+                  f"({m_byp_air:.1f} kg/s dilution air at {comp_result['T_out']:.1f} K)\n")
+            comb_result = dict(
+                comb_result,
+                T_out=T4_mix,
+                cp_out=cp_mix,
+                R_out=R_mix,
+                gamma_out=cp_mix / (cp_mix - R_mix),
+            )
 
         # Convert Cantera output to flow state for PINN input
         turb_inlet_state = self._cantera_to_flow_state(

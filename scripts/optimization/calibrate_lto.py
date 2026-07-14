@@ -41,6 +41,10 @@ parser.add_argument("--tag", default="v2",
                     help="Version tag for the output JSON (default 'v2')")
 parser.add_argument("--n-trials", type=int, default=50)
 parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--beta", type=float, default=1.0,
+                    help="Combustor air fraction (Phase 3.4): fraction of core "
+                         "air burned at phi; sourced range 0.7-0.8 "
+                         "(Lefebvre & Ballal). Default 1.0 = legacy")
 args = parser.parse_args()
 
 print("======================================================================")
@@ -94,6 +98,7 @@ def objective(trial):
             engine.design_point['pi_c'] = pi_c
             engine.design_point['mass_flow_core'] = m_dot
             engine.design_point['combustor_pressure_loss'] = p_loss
+            engine.design_point['combustor_air_fraction'] = args.beta
             # Fan pressure ratio follows the same throttle law as pi_c
             # (rated FPR at full power would demand rated fan work at idle)
             x = target['power_fraction']
@@ -188,6 +193,7 @@ calibration_record = {
         "base_airflow_kg_s": BASE_AIRFLOW,
         "fpr_rated": FPR_RATED,
         "eta_fan": 0.90,
+        "combustor_air_fraction": args.beta,
         "eta_compressor": 0.86,
         "eta_turbine_polytropic": 0.9,
     },
