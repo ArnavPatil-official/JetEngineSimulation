@@ -195,6 +195,30 @@ ATJ_SPK = FuelSurrogate(
 )
 
 
+def carbon_fraction_of_composition(species: Mapping[str, float]) -> float:
+    """
+    Carbon mass fraction w_C of an arbitrary surrogate composition dict.
+
+    Args:
+        species: Mapping of species name -> mole fraction (need not be
+                 normalized). All species must appear in SPECIES_ATOMS.
+
+    Returns:
+        Carbon mass fraction m_C / (m_C + m_H) of the mixture
+    """
+    M_C, M_H = 12.011, 1.008
+    m_c = m_h = 0.0
+    for sp, x in species.items():
+        if x <= 0.0:
+            continue
+        n_c, n_h = SPECIES_ATOMS[sp]
+        m_c += x * n_c * M_C
+        m_h += x * n_h * M_H
+    if m_c + m_h <= 0.0:
+        raise ValueError("Composition has no positive species fractions.")
+    return m_c / (m_c + m_h)
+
+
 # ---------------------------------------------------------------------------
 # Fuel Blending Utilities
 # ---------------------------------------------------------------------------
