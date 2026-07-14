@@ -87,6 +87,7 @@ class Combustor:
         fuel_blend,
         phi: float,
         efficiency: float = 1.0,
+        heat_loss_fraction: float = 0.0,
     ) -> Dict[str, Any]:
         """
         Simulate combustion and extract fuel-dependent thermodynamic properties.
@@ -104,6 +105,10 @@ class Combustor:
             phi: Equivalence ratio (phi < 1 is lean, phi = 1 is stoichiometric)
             efficiency: Combustion efficiency accounting for incomplete combustion (0-1)
                        Typical value: 0.98 for modern combustors
+            heat_loss_fraction: Fraction xi of the heat release lost through the
+                       combustor case/liner (Phase 2.6, V9). The temperature
+                       rise scales by (1 - xi) in addition to `efficiency`.
+                       Default 0.0 preserves all prior results.
 
         Returns:
             Dictionary containing outlet state and fuel-dependent properties:
@@ -137,9 +142,14 @@ class Combustor:
         T_ideal = gas_eq.T
         Y_ideal = gas_eq.Y  # Product mass fractions (CO2, H2O, N2, etc.)
 
-        # Apply combustion efficiency to temperature rise
-        # Real combustors have heat losses and incomplete combustion
-        T_out = T_in + efficiency * (T_ideal - T_in)
+        # Apply combustion efficiency and case/liner heat loss to the
+        # temperature rise. `efficiency` lumps incomplete combustion;
+        # `heat_loss_fraction` (xi) is the Phase 2.6 explicit heat-loss hook.
+        if not 0.0 <= heat_loss_fraction < 1.0:
+            raise ValueError(
+                f"heat_loss_fraction must be in [0, 1), got {heat_loss_fraction}"
+            )
+        T_out = T_in + efficiency * (1.0 - heat_loss_fraction) * (T_ideal - T_in)
 
         # Set outlet state with equilibrium composition at efficiency-corrected temperature
         gas_out = ct.Solution(self.mechanism_file)

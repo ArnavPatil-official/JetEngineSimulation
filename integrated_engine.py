@@ -621,6 +621,8 @@ class IntegratedTurbofanEngine:
             'combustor_pressure_loss': 0.0,   # Fractional total-pressure loss between
                                               # compressor exit and combustor
                                               # (p_comb = p3 * (1 - loss)); 0 = legacy
+            'combustor_heat_loss_fraction': 0.0,  # Case/liner heat loss xi (Phase 2.6);
+                                                  # temperature rise scales by (1 - xi)
             'A_combustor_exit': 0.207,        # Combustor exit area [m^2]
             'A_nozzle_inlet': 0.375,          # Nozzle inlet area [m^2] (matches PINN training)
             'A_nozzle_exit': 0.340,           # Nozzle exit area [m^2]
@@ -881,13 +883,15 @@ class IntegratedTurbofanEngine:
             combustor = self.combustor_creck
             mech_label = "CRECK"
 
-        # Run Cantera combustion model
+        # Run Cantera combustion model (heat_loss_fraction: Phase 2.6 hook,
+        # 0.0 by default via design_point)
         result = combustor.run(
             T_in=T_in,
             p_in=p_in,
             fuel_blend=fuel_blend,
             phi=phi,
-            efficiency=efficiency
+            efficiency=efficiency,
+            heat_loss_fraction=self.design_point.get('combustor_heat_loss_fraction', 0.0)
         )
 
         print(f"[Combustor - {mech_label}]")
@@ -899,6 +903,60 @@ class IntegratedTurbofanEngine:
         print(f"  Efficiency: {efficiency*100:.1f}%\n")
 
         return result, f
+
+    def run_turbine_analytic(
+        self,
+        flow_state_in: Dict[str, float],
+        m_dot: float,
+        target_work_total: float
+    ) -> Dict[str, float]:
+        """
+        Analytic turbine counterpart for PINN ablations (Phase 2.5).
+
+        Work-matched polytropic expansion using the same fuel-dependent
+        thermodynamic properties as the PINN path:
+            T5 = T4 - W / (m_dot cp)
+            p5 = p4 (T5/T4)^(gamma / (eta_poly (gamma - 1)))
+            u5 = m_dot / (rho5 A_out)   (exact continuity, same as the PINN)
+
+        Returns the same dict shape as run_turbine (rho, u, p, T,
+        work_specific, work_total, cp, R, gamma).
+        """
+        cp = flow_state_in['cp']
+        R = flow_state_in['R']
+        gamma = flow_state_in.get('gamma', cp / (cp - R))
+        T_in = flow_state_in['T']
+        p_in = flow_state_in['p']
+        eta_t = self.turbine_design['eta_polytropic']
+
+        T_out = T_in - target_work_total / (m_dot * cp)
+        if T_out <= 0:
+            raise ValueError(
+                f"Analytic turbine: target work {target_work_total/1e6:.1f} MW "
+                f"exceeds available enthalpy flux"
+            )
+        # Polytropic expansion: T5/T4 = (p5/p4)^(eta (gamma-1)/gamma)
+        p_out = p_in * (T_out / T_in) ** (gamma / (eta_t * (gamma - 1.0)))
+        A_outlet = self.design_point['A_combustor_exit'] * 1.82
+        rho_out = p_out / (R * T_out)
+        u_out = m_dot / (rho_out * A_outlet)
+
+        result = {
+            'rho': rho_out,
+            'u': u_out,
+            'p': p_out,
+            'T': T_out,
+            'work_specific': target_work_total / m_dot,
+            'work_total': target_work_total,
+            'cp': cp,
+            'R': R,
+            'gamma': gamma,
+        }
+        print(f"[Turbine - ANALYTIC (polytropic, eta={eta_t})]")
+        print(f"  Inlet:  T={T_in:.1f} K, P={p_in/1e5:.2f} bar")
+        print(f"  Outlet: T={T_out:.1f} K, P={p_out/1e5:.2f} bar")
+        print(f"  Work Extracted: {target_work_total/1e6:.2f} MW\n")
+        return result
 
     def run_turbine(
         self,
@@ -1234,7 +1292,9 @@ class IntegratedTurbofanEngine:
         phi: float = 0.5,
         combustor_efficiency: Optional[float] = None,
         lca_factor: float = 1.0,
-        lcef_gCO2e_per_MJ: Optional[float] = None
+        lcef_gCO2e_per_MJ: Optional[float] = None,
+        turbine_model: str = "pinn",
+        nozzle_model: str = "pinn"
     ) -> Dict[str, Any]:
         """
         Execute complete engine cycle and calculate performance metrics.
@@ -1324,14 +1384,31 @@ class IntegratedTurbofanEngine:
         )
 
         # 3. TURBINE — must supply compressor AND fan shaft work (Phase 2.2)
-        turb_result = self.run_turbine(
-            turb_inlet_state,
-            m_dot_total,
-            target_work_total=comp_work_total + fan_work_total
-        )
+        # turbine_model/nozzle_model: PINN-vs-analytic ablation flags (Phase 2.5);
+        # components are swapped at inference only, never retrained.
+        if turbine_model not in ("pinn", "analytic"):
+            raise ValueError(f"turbine_model must be 'pinn' or 'analytic', got {turbine_model!r}")
+        if nozzle_model not in ("pinn", "analytic"):
+            raise ValueError(f"nozzle_model must be 'pinn' or 'analytic', got {nozzle_model!r}")
+
+        if turbine_model == "analytic":
+            turb_result = self.run_turbine_analytic(
+                turb_inlet_state,
+                m_dot_total,
+                target_work_total=comp_work_total + fan_work_total
+            )
+        else:
+            turb_result = self.run_turbine(
+                turb_inlet_state,
+                m_dot_total,
+                target_work_total=comp_work_total + fan_work_total
+            )
 
         # 4. NOZZLE
-        nozz_result = self._run_nozzle_stage(turb_result, m_dot_total)
+        if nozzle_model == "analytic":
+            nozz_result = self.run_nozzle(turb_result, m_dot_total)
+        else:
+            nozz_result = self._run_nozzle_stage(turb_result, m_dot_total)
 
         # PERFORMANCE METRICS
         print("="*70)
