@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 try:
     from simulation.compressor.compressor import Compressor
     from simulation.combustor.combustor import Combustor
+    from simulation.fan import Fan
     from simulation.thermo_utils import extract_thermo_props
     from simulation.nozzle.nozzle import run_nozzle_pinn
     from simulation.turbine.turbine import run_turbine_pinn
@@ -296,49 +297,79 @@ class EmissionsEstimator:
 
         return co_rate
 
+    # Default carbon mass fraction (pure n-dodecane surrogate) used when a
+    # blend's composition is unavailable
+    DEFAULT_CARBON_FRACTION = 0.8461
+
     def estimate_co2(
         self,
         m_dot_fuel: float,
-        lca_factor: float = 1.0
+        lca_factor: float = 1.0,
+        carbon_fraction: Optional[float] = None
     ) -> float:
         """
-        Calculate lifecycle CO₂ emissions with LCA correction factor.
+        Calculate CO₂ emissions from combustion stoichiometry.
+
+        Phase 2.3 (V7): the emission index is computed from the blend's carbon
+        mass fraction instead of the former flat 3.16 kg/kg constant:
+
+            EI_CO2 = (M_CO2 / M_C) × w_C = 3.664 × w_C   [kg CO₂ / kg fuel]
+
+        For the n-dodecane Jet-A1 surrogate (w_C = 0.846) this gives
+        3.10 kg/kg — about 1.9% below the old 3.16 constant.
 
         Args:
             m_dot_fuel: Fuel mass flow rate [kg/s]
-            lca_factor: Lifecycle Carbon Assessment factor [0-1]
-                       1.0 = conventional Jet-A1 (baseline)
-                       <1.0 = reduced lifecycle emissions (e.g., SAF)
-
-                       Examples:
-                       - Jet-A1: 1.0 (baseline fossil fuel)
-                       - Bio-SPK: 0.2 (80% reduction from biomass feedstock)
-                       - HEFA-50: 0.6 (40% reduction from 50% blend)
+            lca_factor: LEGACY multiplier retained for backward compatibility
+                        (1.0 = combustion only). New code should report
+                        combustion CO₂ (this method, lca_factor=1) and
+                        lifecycle CO₂e (estimate_lifecycle_co2e) as separate
+                        quantities — never mixed on one axis.
+            carbon_fraction: Carbon mass fraction w_C of the fuel. If None,
+                             DEFAULT_CARBON_FRACTION (n-dodecane) is used.
 
         Returns:
-            Net CO₂ emission rate [g/s]
+            CO₂ emission rate [g/s]
         """
         if m_dot_fuel <= 0:
             return 0.0
 
-        # Stoichiometric CO₂ production from fuel combustion
-        # For typical jet fuel (approx. C₁₂H₂₆):
-        # C₁₂H₂₆ + 18.5 O₂ → 12 CO₂ + 13 H₂O
-        #
-        # Mass ratio: CO₂/fuel ≈ 3.16 kg CO₂ per kg fuel
-        # This is the direct combustion emission (scope 1)
-        co2_combustion = 3.16  # kg CO₂ / kg fuel
+        w_c = carbon_fraction if carbon_fraction is not None else self.DEFAULT_CARBON_FRACTION
+        ei_co2 = (44.01 / 12.011) * w_c  # kg CO₂ / kg fuel (stoichiometric)
 
-        # Apply lifecycle correction factor
-        # LCA accounts for upstream emissions (extraction, refining, transport)
-        # and potential carbon credits (biomass feedstock, carbon capture)
-        net_co2_factor = co2_combustion * lca_factor
+        return ei_co2 * lca_factor * m_dot_fuel * 1000.0  # g/s
 
-        # Calculate emission rate [g/s]
-        # Convert kg to g by multiplying by 1000
-        co2_rate = net_co2_factor * m_dot_fuel * 1000.0  # g/s
+    def estimate_lifecycle_co2e(
+        self,
+        m_dot_fuel: float,
+        lcef_gCO2e_per_MJ: float,
+        lhv_MJ_per_kg: float = 43.2
+    ) -> float:
+        """
+        Calculate lifecycle CO₂-equivalent emissions on the CORSIA basis.
 
-        return co2_rate
+        CORSIA life-cycle emissions values (L_CEF, ICAO Document 06) are
+        energy-specific [gCO₂e/MJ], so:
+
+            lifecycle CO₂e [g/s] = L_CEF × LHV × ṁ_fuel
+
+        This is a DIFFERENT quantity from combustion CO₂ (estimate_co2):
+        it includes upstream/feedstock/ILUC terms and uses the fossil
+        baseline 89 gCO₂e/MJ for conventional jet fuel. Report the two
+        separately; never mix them on one axis.
+
+        Args:
+            m_dot_fuel: Fuel mass flow rate [kg/s]
+            lcef_gCO2e_per_MJ: Blend life-cycle emissions value [gCO₂e/MJ]
+                               (energy-weighted over pathway components)
+            lhv_MJ_per_kg: Blend lower heating value [MJ/kg]
+
+        Returns:
+            Lifecycle CO₂e emission rate [g/s]
+        """
+        if m_dot_fuel <= 0:
+            return 0.0
+        return lcef_gCO2e_per_MJ * lhv_MJ_per_kg * m_dot_fuel
 
 
 # ============================================================================
@@ -479,6 +510,44 @@ def scale_turbine_exit_temp(
     return T_out
 
 
+def part_power_state(
+    power_fraction: float,
+    pi_rated: float,
+    m_dot_rated: float,
+    k_pi: float,
+    k_mdot: float,
+) -> Tuple[float, float]:
+    """
+    Low-fidelity throttle model mapping an ICAO LTO power setting to
+    compressor pressure ratio and core mass flow.
+
+        pi_c(x)  = 1 + (pi_rated - 1) * x^k_pi
+        m_dot(x) = m_dot_rated * x^k_mdot
+
+    where x = F/F00 (ICAO 'Power (%)' / 100, using thrust fraction as the
+    corrected-speed proxy). At x = 1 both quantities equal their rated values;
+    as x -> 0, pi_c -> 1 (no compression) and m_dot -> 0. The two exponents
+    are calibrated once against LTO fuel-flow data (see
+    scripts/optimization/calibrate_lto.py) and replace the four hand-set
+    per-mode scales that Phase 1 found to be partly inert.
+
+    Args:
+        power_fraction: LTO power setting as a fraction of rated thrust (0, 1]
+        pi_rated: Rated overall pressure ratio
+        m_dot_rated: Rated core mass flow [kg/s]
+        k_pi: Throttle exponent for the pressure ratio
+        k_mdot: Throttle exponent for the core mass flow
+
+    Returns:
+        Tuple (pi_c, m_dot_core) at the requested power setting
+    """
+    if not 0.0 < power_fraction <= 1.0:
+        raise ValueError(f"power_fraction must be in (0, 1], got {power_fraction}")
+    pi_c = 1.0 + (pi_rated - 1.0) * power_fraction ** k_pi
+    m_dot = m_dot_rated * power_fraction ** k_mdot
+    return pi_c, m_dot
+
+
 class IntegratedTurbofanEngine:
     """
     Integrated turbofan engine simulation using hybrid Cantera-PINN modeling.
@@ -509,6 +578,8 @@ class IntegratedTurbofanEngine:
         hychem_mechanism_path: str = "data/A1highT.yaml",
         turbine_pinn_path: str = "models/turbine_pinn.pt",
         nozzle_pinn_path: str = "models/nozzle_pinn.pt",
+        nozzle_variant: str = "pinn",
+        le_pinn_path: str = "models/le_pinn_unified.pt",
         icao_data_path: str = "data/icao_engine_data.csv",
     ):
         """
@@ -524,6 +595,8 @@ class IntegratedTurbofanEngine:
             hychem_mechanism_path: Path to HyChem Jet-A1 chemical mechanism YAML file
             turbine_pinn_path: Path to trained turbine PINN checkpoint (.pt file)
             nozzle_pinn_path: Path to trained nozzle PINN checkpoint (.pt file)
+            nozzle_variant: Nozzle model selection ("pinn" or "le_pinn")
+            le_pinn_path: Path to trained LE-PINN nozzle checkpoint (.pt file)
             icao_data_path: Path to ICAO engine emissions database CSV file
         """
         self.mechanism_profile = mechanism_profile
@@ -539,7 +612,15 @@ class IntegratedTurbofanEngine:
         # Engine design point parameters (based on typical high-bypass turbofan)
         self.design_point = {
             'mass_flow_core': 79.9,          # Core mass flow rate [kg/s]
-            'bypass_ratio': 9.1,              # Bypass ratio (fan flow / core flow)
+            'bypass_ratio': 9.1,              # Bypass ratio (fan flow / core flow);
+                                              # set to 0 to disable the bypass stream
+            'fpr': 1.45,                      # Fan pressure ratio (live value; part-power
+                                              # scripts may scale it per mode)
+            'pi_c': 43.2,                     # Overall pressure ratio (live value read
+                                              # by run_compressor at call time)
+            'combustor_pressure_loss': 0.0,   # Fractional total-pressure loss between
+                                              # compressor exit and combustor
+                                              # (p_comb = p3 * (1 - loss)); 0 = legacy
             'A_combustor_exit': 0.207,        # Combustor exit area [m^2]
             'A_nozzle_inlet': 0.375,          # Nozzle inlet area [m^2] (matches PINN training)
             'A_nozzle_exit': 0.340,           # Nozzle exit area [m^2]
@@ -575,6 +656,8 @@ class IntegratedTurbofanEngine:
         # Store PINN model paths (models accessed via API functions, not loaded directly)
         self.turbine_pinn_path = turbine_pinn_path
         self.nozzle_pinn_path = nozzle_pinn_path
+        self.nozzle_variant = nozzle_variant
+        self.le_pinn_path = le_pinn_path
 
         # Turbine design-point parameters for isentropic expansion calculation
         self.turbine_design = {
@@ -733,6 +816,19 @@ class IntegratedTurbofanEngine:
         Returns:
             Dict with T_out, p_out, work_specific [J/kg]
         """
+        # design_point['pi_c'] is the single live OPR source: part-power scripts
+        # (calibration/holdout) write it per mode and it must take effect here.
+        # (Phase 1 found the old write path was never read — all LTO modes ran
+        # at rated OPR.)
+        self.compressor.pi_c = self.design_point['pi_c']
+        # DEFECT FIX (Phase 2, 2026-07-14): the shared Cantera Solution
+        # initializes to the mechanism's first species (pure argon for CRECK),
+        # and no prior code ever set an air composition — the compressor was
+        # compressing monatomic argon (gamma 1.67), inflating T3 by ~500 K at
+        # rated OPR and propagating into every downstream temperature. Fuel
+        # flow was unaffected (FAR uses its own gas), so calibrations remain
+        # valid; temperatures/thrust/TSFC before this fix were not.
+        self.gas.TPX = T_in, p_in, "O2:0.21, N2:0.79"
         result = self.compressor.compute_outlet_state(T_in, p_in)
 
         print(f"[Compressor]")
@@ -987,6 +1083,56 @@ class IntegratedTurbofanEngine:
         if self.design_point['A_nozzle_exit'] <= 0 or self.design_point['A_nozzle_inlet'] <= 0:
             raise ValueError("Nozzle areas must be positive")
 
+        if self.nozzle_variant == "le_pinn":
+            from simulation.nozzle.le_pinn import run_le_pinn
+
+            le_path = self.le_pinn_path
+            if not Path(le_path).exists():
+                le_path = str(Path(le_path).parent / "le_pinn_engine_unified.pt")
+
+            try:
+                le_result = run_le_pinn(
+                    model_path=le_path,
+                    inlet_state=turb_result,
+                    ambient_p=self.design_point['P_ambient'],
+                    A_in=self.design_point['A_nozzle_inlet'],
+                    A_exit=self.design_point['A_nozzle_exit'],
+                    length=1.0,
+                    thermo_props={
+                        'cp': turb_result['cp'],
+                        'R': turb_result['R'],
+                        'gamma': turb_result['gamma'],
+                    },
+                    m_dot=m_dot_total,
+                    n_axial=50,
+                    n_radial=20,
+                    device="cpu",
+                    return_profile=False,
+                    thrust_model="static_test_stand",
+                )
+                le_values = [
+                    le_result['exit_state']['rho'],
+                    le_result['exit_state']['u'],
+                    le_result['exit_state']['p'],
+                    le_result['exit_state']['T'],
+                    le_result['thrust_total'],
+                    le_result['thrust_momentum'],
+                    le_result['thrust_pressure'],
+                ]
+                if not all(np.isfinite(value) for value in le_values):
+                    raise ValueError("LE-PINN returned non-finite nozzle outputs")
+                return {
+                    'rho': le_result['exit_state']['rho'],
+                    'u': le_result['exit_state']['u'],
+                    'p': le_result['exit_state']['p'],
+                    'T': le_result['exit_state']['T'],
+                    'thrust_total': le_result['thrust_total'],
+                    'thrust_momentum': le_result['thrust_momentum'],
+                    'thrust_pressure': le_result['thrust_pressure'],
+                }
+            except Exception as exc:
+                print(f"⚠️  LE-PINN nozzle failed ({exc}). Falling back to regular PINN.")
+
         version_ok, version_str, version_error = self._nozzle_pinn_version_ok(self.nozzle_pinn_path)
 
         if version_ok:
@@ -1087,7 +1233,8 @@ class IntegratedTurbofanEngine:
         fuel_blend: LocalFuelBlend,
         phi: float = 0.5,
         combustor_efficiency: Optional[float] = None,
-        lca_factor: float = 1.0
+        lca_factor: float = 1.0,
+        lcef_gCO2e_per_MJ: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Execute complete engine cycle and calculate performance metrics.
@@ -1098,13 +1245,14 @@ class IntegratedTurbofanEngine:
             combustor_efficiency: Combustion efficiency. If None (default), computed
                                   dynamically from phi and fuel_blend via
                                   ``Combustor.estimate_efficiency()``.
-            lca_factor: Lifecycle Carbon Assessment factor for CO₂ emissions
-                       1.0 = conventional Jet-A1 (baseline)
-                       <1.0 = reduced lifecycle emissions (e.g., SAF)
-                       Examples:
-                       - Jet-A1: 1.0 (baseline fossil fuel)
-                       - Bio-SPK: 0.2 (80% reduction from biomass feedstock)
-                       - HEFA-50: 0.6 (40% reduction from 50% blend)
+            lca_factor: LEGACY lifecycle multiplier (kept for backward
+                       compatibility; scales the combustion CO₂ into the
+                       'Net_CO2_g_s' field). New analyses should pass
+                       lcef_gCO2e_per_MJ instead and read the separate
+                       combustion / lifecycle fields.
+            lcef_gCO2e_per_MJ: Blend CORSIA life-cycle emissions value
+                       [gCO₂e/MJ] (see data/corsia_lca_values.yaml). When
+                       given, the result includes 'Lifecycle_CO2e_g_s'.
 
         Returns:
             Dict containing all stage results and performance metrics
@@ -1118,7 +1266,29 @@ class IntegratedTurbofanEngine:
         P_ambient = self.design_point['P_ambient']
         m_dot_core = self.design_point['mass_flow_core']
 
-        # 1. COMPRESSOR
+        # 1a. FAN / BYPASS STREAM (Phase 2.2)
+        # 0-D fan on the bypass stream only; core fan-root compression is part
+        # of pi_c (OPR) by definition, so it is not modeled separately.
+        # eta_fan = 0.90: standard modern civil-fan isentropic efficiency
+        # (see simulation/fan.py docstring for sourcing).
+        bpr = self.design_point.get('bypass_ratio', 0.0)
+        if bpr > 0:
+            fan = Fan(fpr=self.design_point.get('fpr', 1.45), eta_fan=0.90)
+            m_dot_bypass = bpr * m_dot_core
+            fan_result = fan.run(T_ambient, P_ambient, m_dot_bypass)
+            fan_work_total = fan_result['work_total']
+            print(f"[Fan]")
+            print(f"  FPR:    {fan.fpr:.3f} (BPR {bpr:.1f}, eta {fan.eta_fan:.2f})")
+            print(f"  Bypass: {m_dot_bypass:.1f} kg/s, dT={fan_result['dT']:.1f} K")
+            print(f"  Work:   {fan_work_total/1e6:.2f} MW")
+            print(f"  Bypass thrust: {fan_result['thrust_bypass']/1e3:.2f} kN "
+                  f"(u_exit={fan_result['u_bypass_exit']:.1f} m/s)\n")
+        else:
+            fan_result = None
+            m_dot_bypass = 0.0
+            fan_work_total = 0.0
+
+        # 1b. COMPRESSOR
         comp_result = self.run_compressor(T_ambient, P_ambient)
 
         # 2. COMBUSTOR
@@ -1126,9 +1296,16 @@ class IntegratedTurbofanEngine:
         if combustor_efficiency is None:
             combustor_efficiency = Combustor.estimate_efficiency(phi, fuel_blend)
 
+        # Combustor total-pressure loss between compressor exit and combustor
+        # (0.0 by default; calibration sets design_point['combustor_pressure_loss'])
+        p_loss = self.design_point.get('combustor_pressure_loss', 0.0)
+        if not 0.0 <= p_loss < 1.0:
+            raise ValueError(f"combustor_pressure_loss must be in [0, 1), got {p_loss}")
+        p_comb_in = comp_result['p_out'] * (1.0 - p_loss)
+
         comb_result, f = self.run_combustor(
             T_in=comp_result['T_out'],
-            p_in=comp_result['p_out'],
+            p_in=p_comb_in,
             fuel_blend=fuel_blend,
             phi=phi,
             efficiency=combustor_efficiency
@@ -1136,7 +1313,7 @@ class IntegratedTurbofanEngine:
 
         # Calculate actual mass flows including fuel
         m_dot_fuel = f * m_dot_core  # kg/s
-        m_dot_total = m_dot_core + m_dot_fuel  # kg/s
+        m_dot_total = m_dot_core + m_dot_fuel  # kg/s (core stream incl. fuel)
         comp_work_total = comp_result['work_specific'] * m_dot_core
 
         # Convert Cantera output to flow state for PINN input
@@ -1146,11 +1323,11 @@ class IntegratedTurbofanEngine:
             A_ref=self.design_point['A_combustor_exit']
         )
 
-        # 3. TURBINE
+        # 3. TURBINE — must supply compressor AND fan shaft work (Phase 2.2)
         turb_result = self.run_turbine(
             turb_inlet_state,
             m_dot_total,
-            target_work_total=comp_work_total
+            target_work_total=comp_work_total + fan_work_total
         )
 
         # 4. NOZZLE
@@ -1161,7 +1338,11 @@ class IntegratedTurbofanEngine:
         print("PERFORMANCE SUMMARY")
         print("="*70)
 
-        thrust = nozz_result['thrust_total']
+        # Two-stream thrust (Phase 2.2): core nozzle + bypass stream
+        thrust_core = nozz_result['thrust_total']
+        thrust_bypass = fan_result['thrust_bypass'] if fan_result else 0.0
+        thrust = thrust_core + thrust_bypass
+        m_dot_air_total = m_dot_core + m_dot_bypass
 
         # TSFC: ṁ_fuel / F_thrust [kg/(N·s)], reported in mg/(N·s)
         if thrust <= 0:
@@ -1192,7 +1373,9 @@ class IntegratedTurbofanEngine:
             eta_valid = False
         else:
             u_exit = nozz_result['u']
-            ke_flux = 0.5 * m_dot_total * u_exit**2  # W - kinetic energy flux
+            ke_flux = 0.5 * m_dot_total * u_exit**2  # W - core jet KE flux
+            if fan_result:
+                ke_flux += 0.5 * m_dot_bypass * fan_result['u_bypass_exit']**2
             eta_thermal = ke_flux / fuel_power  # Kinetic efficiency
             eta_valid = True
 
@@ -1200,10 +1383,15 @@ class IntegratedTurbofanEngine:
         print(f"  Equivalence Ratio:   {phi:.3f}")
         print(f"  Fuel-Air Ratio:      {f:.6f}")
         print(f"  Core Mass Flow:      {m_dot_core:.2f} kg/s")
+        print(f"  Bypass Mass Flow:    {m_dot_bypass:.2f} kg/s (BPR {bpr:.1f})")
         print(f"  Fuel Mass Flow:      {m_dot_fuel:.4f} kg/s")
-        print(f"  Total Mass Flow:     {m_dot_total:.2f} kg/s")
+        print(f"  Total Mass Flow:     {m_dot_total:.2f} kg/s (core stream)")
         print(f"  ---")
-        print(f"  Thrust:              {thrust/1e3:.2f} kN")
+        print(f"  Thrust:              {thrust/1e3:.2f} kN "
+              f"(core {thrust_core/1e3:.2f} + bypass {thrust_bypass/1e3:.2f})")
+        if m_dot_air_total > 0:
+            print(f"  Specific Thrust:     {thrust/m_dot_air_total:.1f} N·s/kg (total air)")
+        print(f"  Fan Work:            {fan_work_total/1e6:.2f} MW")
 
         if tsfc_valid:
             print(f"  TSFC:                {tsfc_mg:.2f} mg/(N·s)  [{tsfc_SI:.6f} kg/(N·s)]")
@@ -1226,15 +1414,40 @@ class IntegratedTurbofanEngine:
             combustor_efficiency=combustor_efficiency,
             m_dot_fuel=m_dot_fuel
         )
-        net_co2_g_s = self.emissions.estimate_co2(
+
+        # Combustion CO₂ from blend stoichiometry (Phase 2.3): w_C computed
+        # from the composition; falls back to the n-dodecane default if a
+        # species is unknown to the surrogate atom table.
+        try:
+            from simulation.fuels import carbon_fraction_of_composition
+            w_c = carbon_fraction_of_composition(fuel_blend.composition)
+        except (KeyError, AttributeError, ValueError):
+            w_c = self.emissions.DEFAULT_CARBON_FRACTION
+        co2_combustion_g_s = self.emissions.estimate_co2(
             m_dot_fuel=m_dot_fuel,
-            lca_factor=lca_factor
+            carbon_fraction=w_c
+        )
+        # Legacy mixed quantity (combustion × LCA multiplier), retained so
+        # existing consumers keep working; new analyses use the two separate
+        # axes (CO2_combustion_g_s + Lifecycle_CO2e_g_s).
+        net_co2_g_s = co2_combustion_g_s * lca_factor
+        lifecycle_co2e_g_s = (
+            self.emissions.estimate_lifecycle_co2e(
+                m_dot_fuel=m_dot_fuel,
+                lcef_gCO2e_per_MJ=lcef_gCO2e_per_MJ,
+            ) if lcef_gCO2e_per_MJ is not None else None
         )
 
         print(f"\n  Emissions Summary:")
         print(f"    NOx:     {nox_g_s:.3f} g/s  ({nox_g_s/m_dot_fuel:.2f} g/kg fuel)")
         print(f"    CO:      {co_g_s:.3f} g/s  ({co_g_s/m_dot_fuel:.2f} g/kg fuel)")
-        print(f"    CO₂:     {net_co2_g_s:.2f} g/s  (LCA factor: {lca_factor:.2f})")
+        print(f"    CO₂ (combustion): {co2_combustion_g_s:.2f} g/s "
+              f"(EI {co2_combustion_g_s/(m_dot_fuel*1000):.3f} kg/kg, w_C={w_c:.4f})")
+        if lifecycle_co2e_g_s is not None:
+            print(f"    CO₂e (lifecycle): {lifecycle_co2e_g_s:.2f} g/s "
+                  f"(L_CEF {lcef_gCO2e_per_MJ:.1f} gCO₂e/MJ)")
+        else:
+            print(f"    CO₂ (legacy net): {net_co2_g_s:.2f} g/s  (LCA factor: {lca_factor:.2f})")
 
         # ========================================================================
         # PHYSICS VALIDATION CHECKLIST
@@ -1244,7 +1457,7 @@ class IntegratedTurbofanEngine:
         print(f"    ✓ Mass conservation: {nozz_result.get('mass_conservation', {}).get('error_pct', 0):.2f}%")
         print(f"    ✓ Inlet BC preserved: {nozz_result.get('inlet_verification', {}).get('max_error', 0)*100:.3f}%")
         print(f"    ✓ Thrust model: {nozz_result.get('thrust_model', 'static').upper()}")
-        print(f"    ✓ Energy balance: Turbine work = Compressor work")
+        print(f"    ✓ Energy balance: Turbine work = Compressor work + Fan work")
 
         print("="*70 + "\n")
 
@@ -1253,20 +1466,32 @@ class IntegratedTurbofanEngine:
             'combustor': comb_result,
             'turbine': turb_result,
             'nozzle': nozz_result,
+            'fan': fan_result,
             'performance': {
                 'thrust_N': thrust,
                 'thrust_kN': thrust / 1e3,
+                'thrust_core_kN': thrust_core / 1e3,
+                'thrust_bypass_kN': thrust_bypass / 1e3,
                 'tsfc_SI': tsfc_SI if tsfc_valid else np.inf,  # kg/(N·s)
                 'tsfc_mg_per_Ns': tsfc_mg if tsfc_valid else np.inf,  # mg/(N·s)
                 'thermal_efficiency': eta_thermal,
                 'fuel_mass_flow': m_dot_fuel,
-                'total_mass_flow': m_dot_total,
+                'total_mass_flow': m_dot_total,       # core stream (air + fuel)
+                'bypass_mass_flow': m_dot_bypass,
+                'total_air_mass_flow': m_dot_air_total,  # core + bypass air
+                'specific_thrust_Ns_kg': (thrust / m_dot_air_total
+                                          if m_dot_air_total > 0 else np.inf),
+                'fan_work_W': fan_work_total,
                 'fuel_air_ratio': f
             },
             'emissions': {
                 'NOx_g_s': nox_g_s,
                 'CO_g_s': co_g_s,
-                'Net_CO2_g_s': net_co2_g_s,
+                'CO2_combustion_g_s': co2_combustion_g_s,
+                'carbon_fraction': w_c,
+                'Lifecycle_CO2e_g_s': lifecycle_co2e_g_s,
+                'lcef_gCO2e_per_MJ': lcef_gCO2e_per_MJ,
+                'Net_CO2_g_s': net_co2_g_s,      # legacy: combustion x lca_factor
                 'lca_factor': lca_factor
             }
         }
