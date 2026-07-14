@@ -54,6 +54,14 @@ parser.add_argument("--freeze-phi", action="store_true",
 parser.add_argument("--calibration",
                     default="outputs/calibration_trent1000_ae3_v3.json",
                     help="Frozen calibration JSON supplying eta_comb/p_loss/phi_to")
+parser.add_argument("--turbine-model", choices=["analytic", "pinn"],
+                    default="analytic",
+                    help="Turbine component (P3.1 adjudicated production "
+                         "default: analytic work-consistent polytropic)")
+parser.add_argument("--nozzle-model", choices=["analytic", "pinn"],
+                    default="analytic",
+                    help="Nozzle component (P3.1 adjudicated production "
+                         "default: analytic; LE-PINN failed Sajben)")
 args = parser.parse_args()
 
 N_TRIALS = args.n_trials
@@ -86,6 +94,8 @@ print("🚀 4-OBJECTIVE OPTIMIZATION: Performance + Environment (Phase 2.7)")
 print(f"Targeting: {N_TRIALS} Trials (seed={SEED}, "
       f"phi {'FROZEN at %.4f' % PHI_FROZEN if args.freeze_phi else 'free'})")
 print(f"Calibration: {args.calibration} (eta_comb={ETA_COMB:.4f}, p_loss={P_LOSS:.4f})")
+print(f"Components: turbine={args.turbine_model}, nozzle={args.nozzle_model} "
+      f"(P3.1 adjudicated)")
 print("Output Format: Single-line summary per trial")
 print("="*80 + "\n")
 
@@ -216,6 +226,8 @@ def objective(trial):
         with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
             result = engine.run_full_cycle(
                 fuel_blend=fuel, phi=phi, combustor_efficiency=ETA_COMB,
+                turbine_model=args.turbine_model,
+                nozzle_model=args.nozzle_model,
             )
 
         # --- C. Data Extraction (structured results only; KeyError = failed trial) ---

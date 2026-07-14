@@ -1293,8 +1293,8 @@ class IntegratedTurbofanEngine:
         combustor_efficiency: Optional[float] = None,
         lca_factor: float = 1.0,
         lcef_gCO2e_per_MJ: Optional[float] = None,
-        turbine_model: str = "pinn",
-        nozzle_model: str = "pinn"
+        turbine_model: str = "analytic",
+        nozzle_model: str = "analytic"
     ) -> Dict[str, Any]:
         """
         Execute complete engine cycle and calculate performance metrics.
@@ -1313,6 +1313,16 @@ class IntegratedTurbofanEngine:
             lcef_gCO2e_per_MJ: Blend CORSIA life-cycle emissions value
                        [gCO₂e/MJ] (see data/corsia_lca_values.yaml). When
                        given, the result includes 'Lifecycle_CO2e_g_s'.
+            turbine_model: "analytic" (default) or "pinn". Defaults were
+                       adjudicated in Phase 3.1: the analytic path is the
+                       hand-verified work-consistent polytropic expansion;
+                       the PINN's exit pressure is a raw NN output deviating
+                       −41.5% from work consistency
+                       (outputs/turbine_p5_adjudication.csv).
+            nozzle_model: "analytic" (default) or "pinn". The LE-PINN nozzle
+                       failed external (Sajben) validation, so analytic is
+                       the production configuration; the flags remain for
+                       ablation studies.
 
         Returns:
             Dict containing all stage results and performance metrics
