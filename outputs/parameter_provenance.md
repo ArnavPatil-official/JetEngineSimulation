@@ -1,11 +1,13 @@
 # Parameter Provenance — Integrated Turbofan Model
 
 Generated as part of the Phase 1 reviewer-response repair (2026-07-13; see
-`docs/plan.md`). Every model parameter that influences reported results is
-listed with its value, status (fixed / calibrated / fitted / removed / inert),
-code location, and sourcing status. "Unsourced" means no literature citation
-exists for the value; the manuscript must not describe such values as
-literature-based or learnable.
+`docs/plan.md`) and updated for Phase 2 (2026-07-14; see the "Phase 2
+updates" section at the end — it supersedes rows above where noted). Every
+model parameter that influences reported results is listed with its value,
+status (fixed / calibrated / fitted / removed / inert), code location, and
+sourcing status. "Unsourced" means no literature citation exists for the
+value; the manuscript must not describe such values as literature-based or
+learnable.
 
 Calibrated values below are the converged parameters of the seeded one-time
 Optuna calibration (`scripts/optimization/calibrate_lto.py`, seed 42,
@@ -88,3 +90,68 @@ Notes:
 | CO | NOT validated (single-anchor calibration). |
 | Lifecycle CO₂ | NOT validated (unsourced point factors). |
 | Blend-discriminating outputs (TSFC/thrust deltas between fuels) | NOT validated; historically inflated by the removed SAF penalties (see ablation above). |
+
+---
+
+# Phase 2 updates (2026-07-14)
+
+## Discovered defect: argon compression (fixed)
+
+The shared Cantera `Solution` initialized to the CRECK mechanism's first
+species — **pure argon** — and no code ever set an air composition before the
+compressor state calculations. Every previously reported temperature was
+computed for monatomic argon (γ = 1.67): T3 at rated OPR was 1464 K instead
+of 901 K, inflating T4 and all downstream temperatures by hundreds of kelvin.
+`run_compressor` now sets air (O2:0.21, N2:0.79). Fuel flow was unaffected
+(FAR is computed on a separate, correctly initialized gas), so all fuel-flow
+calibrations and holdout MAPEs remain valid; every pre-fix temperature,
+thrust, and TSFC number was not. Fixed in commit 9588d31.
+
+## Cycle parameters (new / superseding)
+
+| Parameter | Value | Status | Code location | Source / notes |
+|---|---|---|---|---|
+| Part-power throttle law | pi_c = 1+(pi_rated−1)x^k_pi; m_dot = m_rated·x^k_mdot; x = ICAO power setting | Functional form, hand-chosen | `integrated_engine.part_power_state` | Low-fidelity throttle model; replaces the 4 hand-set scales (2 of which were inert). |
+| k_pi | 1.342 (v3 converged) | Calibrated, **unidentifiable from fuel flow**: FAR depends on phi only, so pi_c does not enter the calibration objective except via crashes; v2 converged to 0.61, v3 to 1.34 on the same data. It DOES affect NOx (OPR) and T3. Report as an assumption, not a fitted constant. | `outputs/calibration_trent1000_ae3_v3.json` | — |
+| k_mdot | 0.697 (v3) | Calibrated (identifiable; fuel flow ∝ m_dot) | same | — |
+| p_loss (combustor pressure loss) | 0.0340 (v3) | Calibrated, **now consumed**: p_comb = p3(1−p_loss). Phase 1 "inert" row superseded. | `run_full_cycle` | — |
+| Per-mode pi-scales | — | **DELETED** (replaced by part-power law) | — | — |
+| Climb calibration target (2.050 kg/s) | — | **DELETED** (untraceable; CSV has no CLIMB rows) | — | — |
+| FPR (fan pressure ratio) | 1.45 rated; part power 1+(0.45)x^k_pi | Fixed, design-class value | `simulation/fan.py`, `design_point['fpr']` | Standard civil high-BPR fan magnitude (Mattingly-class textbook value); not measured Trent 1000 data. |
+| eta_fan | 0.90 | Fixed | `simulation/fan.py` | Standard fan isentropic efficiency magnitude; not engine-specific. |
+| BPR | 9.1 | Fixed, **now consumed** (bypass stream + fan work + two-stream thrust) | `run_full_cycle` | Trent 1000-AE3, ICAO CSV. |
+| Heat-loss fraction xi | 0.0 (production default) | Optional hook; sweep in `outputs/heat_loss_sensitivity.csv` | `Combustor.run(heat_loss_fraction=...)` | xi=4% shifts TSFC by 0.059 mg/(N·s) — MORE than the full blend-to-blend spread (0.052) — and T4 by 45 K: heat-loss treatment bounds the resolvable blend effect size (decision rule AB6). eta_comb is a **lumped heat-delivery efficiency**. |
+
+## Calibration / validation status (supersedes Phase 1 numbers)
+
+| Version | Model | In-sample error | Held-out MAPE (excl. AE3) | Take-off mode |
+|---|---|---|---|---|
+| v1 (Phase 1) | free per-mode scales, rated OPR everywhere, no fan, argon-T3 | 5.46% | 7.27% | 16.5% (systematic over) |
+| v2 | part-power law + p_loss, no fan | 12.98% | 14.64% | 18.8% |
+| v3 (production) | + fan/bypass | 10.11% | **12.71%** | 19.7% |
+
+The Phase 1 hypothesis that the take-off bias stemmed from the missing
+part-power OPR is **falsified**: constraining the throttle physics made
+fuel-flow generalization worse, not better (a single exponent cannot match
+both the idle and approach airflow ratios that the free scales fit). All
+versions remain within the ≤20% genuine-validation rule. Fuel-flow results
+are insensitive to the argon fix and to the fan (FAR is phi-only).
+
+## Emissions (supersedes Phase 1 rows)
+
+| Parameter | Value | Status | Source / notes |
+|---|---|---|---|
+| EI-CO2 (combustion) | 3.664 × w_C kg/kg (3.100 for Jet-A1 surrogate) | Computed from composition | Replaces flat 3.16 (−1.9%); Cantera equilibrium cross-check 3.098 kg/kg. |
+| Lifecycle CO2e | L_CEF × LHV_i × m_dot_f, per component | CORSIA basis | Every L_CEF cited to an ICAO Doc 06 (8th ed., Nov 2025) table row in `data/corsia_lca_values.yaml`; fossil baseline 89 gCO2e/MJ. Old point factors {0.2, 0.1, 0.3} sat near best-case and are retired. Triangular ranges: HEFA 13.9/28.6/74.0, FT −3.4/7.7/21.1, ATJ 18.2/29.3/81.4 gCO2e/MJ. |
+| NOx | ICAO-derived correlation (labeled proxy) + Zeldovich post-processor (`simulation/nox_chemistry.py`, Turns rate constants) + HyChem-A2 kinetic anchor (`data/A2NOx.yaml`) | Three-path comparison | Path spread: orders of magnitude at idle/approach, ~7x at take-off (`outputs/nox_dual_path.csv`). **Blend NOx ranking is not supportable.** Combustor volume for residence time: A_exit(0.207 m²)×0.5 m assumed length → tau 5–9 ms. |
+
+## PINN components (Phase 2.5)
+
+Ablation at the calibrated take-off point (`outputs/ablation_pinn_components.csv`):
+turbine-PINN −10% total thrust, nozzle-PINN +10% (core-stream deviations to
+37%), partial cancellation in the production pinn/pinn combo (−1.6% vs
+all-analytic). T5 and fuel flow identical by construction (work-matched).
+Sajben external validation FAILS for both checkpoints (wall-Cp shape-L2
+0.71–1.09 vs <0.10 threshold; `outputs/sajben_validation_errors.csv`) — the
+PINNs are physics-consistency surrogate layers, not validated accuracy
+contributors; the ±10% model-choice sensitivity must be disclosed.
