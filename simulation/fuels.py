@@ -42,7 +42,7 @@ class FuelSurrogate:
     name: str
     species: Dict[str, float]
     LHV_MJ_per_kg: float = 43.2  # Default: typical jet fuel LHV
-    carbon_fraction: float = 0.857  # Default: C12H26 has 12*12/(12*12 + 26*1) = 0.857
+    carbon_fraction: float = 0.847  # Default: C12H26 has 12*12/(12*12 + 26*1) = 0.847
 
     def normalized_species(self) -> Dict[str, float]:
         """
@@ -84,6 +84,37 @@ class FuelSurrogate:
         norm = self.normalized_species()
         return {sp: factor * mf for sp, mf in norm.items()}
 
+    def h_over_c_ratio(self) -> float:
+        """
+        Compute the molar H/C ratio of the surrogate from its composition.
+
+        Mole-fraction-weighted atom counts over the (normalized) species:
+            H/C = Σ x_i · n_H,i / Σ x_i · n_C,i
+
+        Returns:
+            Molar hydrogen-to-carbon ratio (e.g., 26/12 ≈ 2.167 for pure C12H26)
+        """
+        norm = self.normalized_species()
+        n_c = sum(x * SPECIES_ATOMS[sp][0] for sp, x in norm.items())
+        n_h = sum(x * SPECIES_ATOMS[sp][1] for sp, x in norm.items())
+        return n_h / n_c
+
+    def computed_carbon_fraction(self) -> float:
+        """
+        Compute the carbon mass fraction w_C = m_C / m_fuel from composition.
+
+        Uses atomic masses M_C = 12.011, M_H = 1.008 and mole-fraction-weighted
+        atom counts. For pure C12H26 this gives 144.132/170.34 ≈ 0.846.
+
+        Returns:
+            Carbon mass fraction of the surrogate mixture
+        """
+        M_C, M_H = 12.011, 1.008
+        norm = self.normalized_species()
+        m_c = sum(x * SPECIES_ATOMS[sp][0] * M_C for sp, x in norm.items())
+        m_h = sum(x * SPECIES_ATOMS[sp][1] * M_H for sp, x in norm.items())
+        return m_c / (m_c + m_h)
+
 
 # ---------------------------------------------------------------------------
 # Chemical Species Identifiers
@@ -93,6 +124,14 @@ class FuelSurrogate:
 SP_N_DODECANE = "NC12H26"   # n-dodecane: C12H26 linear alkane (kerosene-range)
 SP_ISO_OCTANE = "IC8H18"    # iso-octane: C8H18 branched alkane (gasoline-range)
 SP_N_DECANE   = "NC10H22"   # n-decane: C10H22 linear alkane (short kerosene)
+
+# (carbon, hydrogen) atom counts per surrogate species, for H/C and
+# carbon-mass-fraction calculations
+SPECIES_ATOMS: Dict[str, Tuple[int, int]] = {
+    SP_N_DODECANE: (12, 26),
+    SP_ISO_OCTANE: (8, 18),
+    SP_N_DECANE:   (10, 22),
+}
 
 
 # ---------------------------------------------------------------------------
