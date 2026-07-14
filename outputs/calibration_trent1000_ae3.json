@@ -1,0 +1,52 @@
+{
+  "description": "One-time Optuna calibration of LTO fuel flow against ICAO certification data for the Trent 1000-AE3 (in-sample fit, not validation).",
+  "calibration_engine": "Trent 1000-AE3",
+  "icao_uid": "02P23RR126",
+  "date": "2026-07-13",
+  "seed": 42,
+  "n_trials": 50,
+  "fuel": "Jet-A1",
+  "icao_targets_fuel_flow_kg_s": {
+    "Idle": 0.244,
+    "Approach": 0.643,
+    "Climb": 2.05,
+    "Takeoff": 2.327
+  },
+  "best_mean_abs_pct_error": 0.05458538889702672,
+  "best_params": {
+    "eta_combustor": 0.9764586414077453,
+    "pressure_loss": 0.049671625624986684,
+    "phi_idle": 0.2950109382547065,
+    "phi_app": 0.3401099816856204,
+    "phi_climb": 0.4572539330497267,
+    "phi_to": 0.5064805605034309
+  },
+  "fixed_parameters": {
+    "base_pi_c": 43.2,
+    "base_airflow_kg_s": 79.9,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9,
+    "mode_scales": {
+      "Idle": {
+        "airflow_scale": 0.15,
+        "pi_scale": 0.15
+      },
+      "Approach": {
+        "airflow_scale": 0.35,
+        "pi_scale": 0.4
+      },
+      "Climb": {
+        "airflow_scale": 0.85,
+        "pi_scale": 0.9
+      },
+      "Takeoff": {
+        "airflow_scale": 1.0,
+        "pi_scale": 1.0
+      }
+    }
+  },
+  "notes": [
+    "pi_scale values are inert: run_compressor() uses Compressor.pi_c (fixed 43.2) and never reads design_point['pi_c'], so all LTO modes ran at the Trent 1000-AE3 rated OPR.",
+    "'pressure_loss' is sampled by Optuna but never used in the cycle \u2014 it has no effect on the objective."
+  ]
+}
