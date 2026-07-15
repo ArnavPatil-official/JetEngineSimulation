@@ -1,5 +1,12 @@
 # Manuscript Edits — Phase 2 Checklist
 
+> **SUPERSEDED FOR FINAL NUMBERS (2026-07-14, Phase 3).** The editing
+> *instructions* below remain valid, but several numbers changed in Phase 3
+> (component adjudication -> analytic config; airflow split -> v4
+> calibration, holdout MAPE 2.50%). Take every final number from
+> `docs/number_crosswalk.md` and `outputs/ARTIFACT_MANIFEST.md`, never from
+> this file.
+
 Line-by-line edit checklist consuming the Phase 2 outputs (see `docs/plan.md`,
 executed 2026-07-13/14). Supporting artifacts referenced inline; every number
 here is traceable to a CSV/JSON in `outputs/`.

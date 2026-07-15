@@ -155,3 +155,40 @@ Sajben external validation FAILS for both checkpoints (wall-Cp shape-L2
 0.71–1.09 vs <0.10 threshold; `outputs/sajben_validation_errors.csv`) — the
 PINNs are physics-consistency surrogate layers, not validated accuracy
 contributors; the ±10% model-choice sensitivity must be disclosed.
+
+---
+
+# Phase 3 updates (2026-07-14) — production freeze
+
+## Component configuration (adjudicated, P3.1)
+
+Production: **turbine = analytic, nozzle = analytic** (now the code
+defaults). Evidence: the analytic turbine p5 reproduces the hand-verified
+work-consistent polytropic value exactly (4.728 bar at the take-off point);
+the turbine PINN's p5 is a raw network output at −41.5% from work
+consistency; the LE-PINN nozzle failed Sajben. The ±10% thrust spread
+between configurations is disclosed as model-choice sensitivity
+(`outputs/turbine_p5_adjudication.csv`, `outputs/ablation_pinn_components.csv`).
+
+## New parameter (P3.4)
+
+| Parameter | Value | Status | Source |
+|---|---|---|---|
+| Combustor air fraction β | **0.8** | Fixed, sourced | Lefebvre & Ballal, *Gas Turbine Combustion*: ~20–30% of combustor air is liner cooling + dilution. Only β·ṁ_core burns at φ; the rest remixes before the turbine (enthalpy balance). Resolves the take-off fuel-flow bias (+19.7% → +1.8%) and drops take-off T4 to 1895 K (realistic TIT). |
+
+## Calibration/validation table (final)
+
+| Version | Model | In-sample | Held-out MAPE (excl. AE3) | Take-off |
+|---|---|---|---|---|
+| v1 | free scales, inert params, no fan | 5.46% | 7.27% | +16.5% |
+| v2 | part-power + p_loss | 12.98% | 14.64% | +18.8% |
+| v3 | + fan/bypass | 10.11% | 12.71% | +19.7% |
+| **v4 (adopted)** | + airflow split β=0.8 | **1.62%** | **2.50%** | **1.81%** |
+
+v4 converged: η_comb 0.9963, p_loss 0.0442, k_π 0.5618 (unidentifiable-from-
+fuel-flow caveat stands), k_ṁ 0.6218, φ = {0.2953, 0.3053, 0.5409} — φ_app
+off its bound (the β headroom resolved the bound-pinning). Bias-hypothesis
+history: part-power OPR falsified (P2.1); airflow split confirmed (P3.4).
+
+Canonical number sources: `outputs/ARTIFACT_MANIFEST.md`. Old→new mapping:
+`docs/number_crosswalk.md`.
