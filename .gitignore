@@ -1,4 +1,4 @@
 AGENTS.md
 CLAUDE.md
 .env
-scripts/dispatch_claude.py
+scripts/dispatch_claude.py__pycache__/

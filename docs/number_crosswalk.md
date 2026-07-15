@@ -6,10 +6,14 @@ submitted PDF as inventoried in `MANUSCRIPT_REPAIR_PLAN.md` and from the
 archived artifacts (`outputs/archive/pre_phase2/results/pareto_optimal_solutions.csv`,
 whose first row is the old representative solution).
 
-**Cross-check status:** no `manuscript.txt` extraction exists in this repo;
-this crosswalk covers every number inventoried by the audit documents. Final
-step for the Google-Docs edit: grep the manuscript export against column 1
-of this table and confirm zero orphans (user-side step; flagged, not done).
+**Cross-check status: DONE (2026-07-14).** A numeric-token sweep of the full
+text extracted from the submitted PDF (`Patil_Manuscript.pdf`, 30 pp) was run
+against this table plus `MANUSCRIPT_REPAIR_PLAN.md`. Result: one orphaned
+results-claim found and added below (row A8, Fig. 3 design-space ranges).
+All other unmatched tokens verified benign: the affiliation address/ZIP, the
+Zenodo DOI, and the "336 data points / 70-30 split" sentence — the latter is
+a literature-review description of a cited ANN study, not a claim about this
+work (no fate required). Zero orphans remain.
 
 ## A. Performance numbers
 
@@ -22,6 +26,7 @@ of this table and confirm zero orphans (user-side step; flagged, not done).
 | "0.762 blend LCA factor" | representative solution | **Removed concept.** Point LCA factors retired; lifecycle is a CORSIA scenario quantity | Representative lifecycle CO₂e 4177 g/s under recorded draw; P5–P95 bands (S5, S6) |
 | NOx 87.65 g/kg (old representative) | Results | **Replaced + relabeled.** NOx is the ICAO-derived correlation (proxy, not chemistry); blend NOx ranking withdrawn | Representative NOx(corr) 65.9 g/s (S6); path-spread evidence E3 |
 | SAF 29.6% (11.3 H / 9.5 F / 8.8 A) representative blend | Results | **Replaced** | SAF 49.4% (HEFA 8.6 / FT 36.3 / ATJ 4.5), Trial 900, seed 42, draw recorded (S6) |
+| LCA factors "0.58 to 1.00"; net CO₂ "~4,000 to above 13,000 g/s" (Fig. 3 design-space ranges) | §3, Fig. 3 caption + text | **Replaced.** Old ranges derive from the retired point LCA factors and the argon cycle; "net CO₂" mixed combustion and lifecycle in one axis | Regenerated Fig. 3 equivalent with CORSIA scenario bands; combustion CO₂ and lifecycle CO₂e reported as separate quantities — quote ranges only from the regenerated figure's CSV (S5/S6; plots per manifest) |
 
 ## B. Validation numbers
 
