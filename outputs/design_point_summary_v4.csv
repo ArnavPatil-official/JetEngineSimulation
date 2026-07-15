@@ -1,0 +1,2 @@
+calibration,component_config,phi_to,eta_comb,combustor_air_fraction,T3_K,T4_K,T5_K,p5_bar,fuel_flow_kg_s,icao_takeoff_fuel_flow_kg_s,thrust_kN,thrust_core_kN,thrust_bypass_kN,TSFC_mg_per_Ns,specific_thrust_Ns_kg,total_air_mass_flow_kg_s
+calibration_trent1000_ae3_v4.json,"turbine=analytic, nozzle=analytic (P3.1 adjudicated)",0.5409261230079053,0.9963347754418137,0.8,901.5451512272988,1894.8836005359406,1174.3793059470293,3.691807343580888,2.318206889591116,2.327,241.60999464425643,55.391454506992275,186.21854013726414,9.594830267698217,299.39651624463306,806.99

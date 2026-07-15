@@ -217,6 +217,24 @@ def main():
     print(f"  DECISION RULE (AB7): blend-selection statements "
           f"{'may be stated with scenario bands' if stable_frac >= 0.5 else 'must be scenario-conditional'}")
 
+    # Representative balanced solution: free-phi Pareto member closest to
+    # the normalized ideal point (selection rule recorded here so the
+    # manuscript's representative solution is script-generated, not ad hoc).
+    p = df[df["ParetoOptimal"]].copy()
+    obj = p[OBJECTIVES].copy()
+    obj["SpecThrust"] = -obj["SpecThrust"]  # orient all-minimize
+    z = (obj - obj.min()) / (obj.max() - obj.min())
+    p["ideal_distance"] = np.sqrt((z ** 2).sum(axis=1))
+    rep = p.nsmallest(1, "ideal_distance")
+    rep.to_csv(RESULTS / "representative_solution.csv", index=False)
+    r0 = rep.iloc[0]
+    print(f"\nRepresentative balanced solution (min normalized distance to ideal):")
+    print(f"  Trial {int(r0['Trial'])}: TSFC {r0['TSFC']:.2f} mg/(N·s), "
+          f"spec thrust {r0['SpecThrust']:.1f} N·s/kg, "
+          f"lifecycle CO2e {r0['Lifecycle_CO2e']:.0f} g/s, "
+          f"NOx(corr) {r0['NOx_correlation']:.1f} g/s, "
+          f"SAF {r0['SAF_Total']*100:.1f}%, phi {r0['Phi']:.4f}")
+
     # Figure: TSFC vs lifecycle with P5-P95 bands for Pareto members
     fig, ax = plt.subplots(figsize=(8, 5.5))
     non = df_out[~baseline_pareto]
