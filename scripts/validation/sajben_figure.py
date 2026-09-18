@@ -52,7 +52,9 @@ def _normalise_01(v):
 
 def wall_curves(preds_phys, inputs_raw, x_vec, upper_y, exp_data):
     """Replicates compute_wall_cp_errors' extraction, returning the curves."""
-    H_m = float((inputs_raw[0, 2].item() / np.pi) ** 0.5)
+    # Throat HEIGHT = 2 * sqrt(A5/pi); sqrt(A5/pi) alone is the throat radius
+    # (P4.2 fix, mirrors compute_wall_cp_errors in sajben_validation.py).
+    H_m = 2.0 * float((inputs_raw[0, 2].item() / np.pi) ** 0.5)
     P_pred = preds_phys[:, 3].numpy()
     n_axial = len(x_vec)
     n_normal = N_NORMAL

@@ -88,6 +88,10 @@ R_SAJ:     float = 287.0       # J/(kg·K)
 H_FT: float = 0.14435          # throat height in feet
 H_M:  float = H_FT * 0.3048   # ≈ 0.044014 m
 
+# A predicted wall P/P_in span below this over the experimental taps means the
+# prediction is flat; its shape-L2 is then the score of noise (experiment: 0.47).
+DEGENERATE_CP_SPAN: float = 0.01
+
 # LE-PINN default geometry (for mismatch reporting)
 _LEPINN_THROAT_R  = 0.05      # m
 _LEPINN_AR        = 1.53
@@ -404,7 +408,12 @@ def compute_wall_cp_errors(
     dict with keys ``l2_upper``, ``l2_bot``, ``x_throat_m``, ``H_m``,
     ``n_top_pts``, ``n_bot_pts``.
     """
-    H_m = float((inputs_raw[0, 2].item() / np.pi) ** 0.5)  # r_t = sqrt(A5/π)
+    # Throat HEIGHT. build_sajben_grid sets A5 = π r_t² with r_t = H/2, so
+    # sqrt(A5/π) is the throat radius; the experiment normalises x by the
+    # throat height H = 2 r_t (data.Mach46.txt header). Using r_t here placed
+    # every experimental tap at half its true distance from the throat
+    # (found in P4.1; every pre-P4.2 Sajben number was scored that way).
+    H_m = 2.0 * float((inputs_raw[0, 2].item() / np.pi) ** 0.5)
     P_pred = preds_phys[:, 3].numpy()          # (N,) — predicted P in Pa
     n_axial = len(x_vec)
 
@@ -444,6 +453,14 @@ def compute_wall_cp_errors(
         "H_m": H_m,
         "n_top_pts": int(mask_top.sum()),
         "n_bot_pts": int(mask_bot.sum()),
+        # Span of the predicted P/P_in over the experimental taps. The shape
+        # metric rescales both curves to [0,1], so a flat prediction (span
+        # ≪ the experiment's 0.47) yields a finite-looking L2 that is the
+        # score of noise. Such a result is flagged degenerate (P4.2).
+        "span_upper": None,
+        "span_bot": None,
+        "degenerate_upper": None,
+        "degenerate_bot": None,
     }
 
     if mask_top.sum() > 1:
@@ -454,6 +471,9 @@ def compute_wall_cp_errors(
         Cp_model_norm = _normalise_01(Cp_model_at_exp_top)
         Cp_exp_norm   = _normalise_01(Cp_exp_top)
         result["l2_upper"] = _l2_relative(Cp_model_norm, Cp_exp_norm)
+        span = float(np.ptp(Cp_model_at_exp_top))
+        result["span_upper"] = span
+        result["degenerate_upper"] = bool(span < DEGENERATE_CP_SPAN)
 
     if mask_bot.sum() > 1:
         Cp_model_at_exp_bot = np.interp(x_exp_bot_m[mask_bot], x_vec, Cp_lower_pred)
@@ -461,6 +481,9 @@ def compute_wall_cp_errors(
         Cp_model_norm = _normalise_01(Cp_model_at_exp_bot)
         Cp_exp_norm   = _normalise_01(Cp_exp_bot)
         result["l2_bot"] = _l2_relative(Cp_model_norm, Cp_exp_norm)
+        span = float(np.ptp(Cp_model_at_exp_bot))
+        result["span_bot"] = span
+        result["degenerate_bot"] = bool(span < DEGENERATE_CP_SPAN)
 
     return result
 
@@ -482,7 +505,7 @@ def compute_velocity_profile_errors(
     dict keyed by station label; each value is a dict with
     ``l2_error``, ``x_station_m``, ``x_nearest_m``, ``n_exp_pts``.
     """
-    H_m   = float((inputs_raw[0, 2].item() / np.pi) ** 0.5)
+    H_m   = 2.0 * float((inputs_raw[0, 2].item() / np.pi) ** 0.5)  # throat height, see compute_wall_cp_errors
     i_thr = int(np.argmin(upper_y))
     x_thr = float(x_vec[i_thr])
 
@@ -732,12 +755,18 @@ def main(model_file: Path | None = None) -> dict:
     print("  ─" * 36)
     if cp_result["l2_upper"] is not None:
         print(f"    Upper wall L2 error : {cp_result['l2_upper']:.4f}  "
-              f"({cp_result['n_top_pts']} exp points in model x-range)")
+              f"({cp_result['n_top_pts']} exp points in model x-range; "
+              f"predicted P/P_in span {cp_result['span_upper']:.4f}"
+              + (" — DEGENERATE: flat prediction, L2 is the score of noise)"
+                 if cp_result["degenerate_upper"] else ")"))
     else:
         print("    Upper wall          : insufficient overlap with model domain")
     if cp_result["l2_bot"] is not None:
         print(f"    Lower wall L2 error : {cp_result['l2_bot']:.4f}  "
-              f"({cp_result['n_bot_pts']} exp points in model x-range)")
+              f"({cp_result['n_bot_pts']} exp points in model x-range; "
+              f"predicted P/P_in span {cp_result['span_bot']:.4f}"
+              + (" — DEGENERATE: flat prediction, L2 is the score of noise)"
+                 if cp_result["degenerate_bot"] else ")"))
     else:
         print("    Lower wall          : insufficient overlap with model domain")
 
@@ -770,9 +799,14 @@ def main(model_file: Path | None = None) -> dict:
     return {
         "l2_cp_upper":        cp_result["l2_upper"],
         "l2_cp_lower":        cp_result["l2_bot"],
+        "cp_span_upper":      cp_result["span_upper"],
+        "cp_span_lower":      cp_result["span_bot"],
+        "degenerate_upper":   cp_result["degenerate_upper"],
+        "degenerate_lower":   cp_result["degenerate_bot"],
         "vel_profile_errors": vel_result,
         "continuity_error":   cont_err,
         "mismatch_flags":     mismatch_flags,
+        "model_file":         str(model_file),
     }
 
 

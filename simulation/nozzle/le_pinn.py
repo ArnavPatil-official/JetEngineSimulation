@@ -47,6 +47,9 @@ Training data is synthetic, generated from isentropic + ideal-gas relations.
 
 from __future__ import annotations
 
+import copy
+import hashlib
+import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -88,6 +91,71 @@ def _safe_torch_load(path: str, **kwargs) -> dict:
         return torch.load(path, weights_only=True, **kwargs)
     except TypeError:
         return torch.load(path, **kwargs)  # type: ignore[call-overload]
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint provenance and network-health helpers (P4.2)
+# ---------------------------------------------------------------------------
+
+COLLAPSE_SPREAD_TOL: float = 1e-3   # max normalised output spread below which a net is "collapsed"
+
+
+def _sha256_of_file(path: Optional[str]) -> Optional[str]:
+    if path is None or not Path(path).exists():
+        return None
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _git_sha() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=_REPO_ROOT, text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+def _subnet_health(net: nn.Sequential, inputs_n: torch.Tensor, n_out: int) -> Tuple[list, list]:
+    h = inputs_n
+    alive = []
+    for layer in list(net)[:-1]:
+        h = layer(h)
+        if isinstance(layer, nn.ReLU):
+            alive.append(int((h > 0).any(dim=0).sum().item()))
+    out = list(net)[-1](h)[:, :n_out]
+    spread = (out.max(dim=0).values - out.min(dim=0).values).tolist()
+    return alive, spread
+
+
+def network_health(model: "LE_PINN", inputs_n: torch.Tensor) -> Dict[str, Any]:
+    """
+    Alive-ReLU count per hidden layer and the spread of each normalised
+    output over ``inputs_n``, for the global net (all interior points) and
+    the boundary net (P, T within ``FUSION_DELTA`` of a wall) separately.
+
+    A ReLU unit is *alive* if it is positive for at least one input.  The
+    model is *collapsed* when the global net's five primary outputs are all
+    constant over the domain (spread below ``COLLAPSE_SPREAD_TOL``): it has
+    converged to the trivial zero-residual solution, and because dead units
+    pass no gradient, gradient descent cannot recover it.  The two sub-nets
+    are judged separately because the fused forward pass would let a live
+    boundary net mask a dead global net near the walls.
+    """
+    was_training = model.training
+    model.eval()
+    with torch.no_grad():
+        alive_g, spread_g = _subnet_health(model.global_net.net, inputs_n, 5)
+        alive_b, spread_b = _subnet_health(model.boundary_net.net, inputs_n, 2)
+    if was_training:
+        model.train()
+    return {
+        "alive_units": alive_g,
+        "output_spread": spread_g,
+        "boundary_alive_units": alive_b,
+        "boundary_output_spread": spread_b,
+        "collapsed": bool(max(spread_g) < COLLAPSE_SPREAD_TOL),
+    }
 
 
 def _trapezoid_integral(
@@ -1517,6 +1585,8 @@ def finetune_on_cfd_data(
     verbose: bool = True,
     geometry: str = "planar",
     physics_debug: bool = False,
+    refit_normalizers: bool = False,
+    allow_collapsed_init: bool = False,
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1547,6 +1617,24 @@ def finetune_on_cfd_data(
             a default cap is applied to reduce Apple GPU memory pressure.
         device: ``"cpu"``, ``"cuda"``, or ``"mps"``.
         verbose: Print epoch progress every 50 steps.
+        refit_normalizers: When fine-tuning from a checkpoint that carries
+            input/output normalisers, those are reused so the initialisation's
+            coordinate system is preserved (P4.2). Set ``True`` to discard
+            them and re-fit on this dataset; that is a domain change, not a
+            fine-tune, and is logged as such.
+        allow_collapsed_init: A pretrained net whose outputs are constant over
+            the training inputs (see :func:`network_health`) is refused,
+            because gradient descent cannot recover it and any downstream
+            score is the score of noise. Set ``True`` to override.
+
+    Guarantees (P4.2):
+        * the validation loss is measured **before the first update** and the
+          weights with the best validation loss are restored at the end, so
+          a saved checkpoint never scores worse than its initialisation on
+          the held-out split of the fine-tuning data;
+        * the checkpoint payload records ``val_loss_init``, ``val_loss_best``,
+          ``best_epoch``, seed, device, dataset hash, epochs, lr, loss
+          weights, git SHA and the pretrained checkpoint's hash.
 
     Returns:
         ``(fine_tuned_model, history_dict)``
@@ -1617,10 +1705,73 @@ def finetune_on_cfd_data(
     targets_val = targets_raw[val_idx]
     weights_train = weights_raw[train_idx] if weights_raw is not None else None
 
-    # ---- Normalizers fitted on training split only ----
-    input_norm = MinMaxNormalizer().fit(inputs_train)
-    # Fit output normalizer on first 5 columns only; skip cols with zero range
-    output_norm_5 = MinMaxNormalizer().fit(targets_train[:, :5])
+    # ---- Load pretrained payload first: its normalisers define the
+    #      coordinate system the weights were trained in (P4.2) ----
+    ckpt: Optional[dict] = None
+    if pretrained_path is not None:
+        if not Path(pretrained_path).exists():
+            warnings.warn(
+                f"Pretrained checkpoint not found: {pretrained_path}. "
+                "Starting fine-tuning from random init.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+        else:
+            try:
+                ckpt = _safe_torch_load(pretrained_path, map_location=dev)
+            except Exception as exc:
+                warnings.warn(
+                    f"Failed to load pretrained checkpoint ({exc}). "
+                    "Starting fine-tuning from random init.",
+                    RuntimeWarning,
+                    stacklevel=1,
+                )
+                ckpt = None
+
+    # ---- Normalisers ----
+    has_norms = ckpt is not None and all(
+        k in ckpt for k in ("input_norm_min", "input_norm_max",
+                            "output_norm_min", "output_norm_max")
+    )
+    normalizer_source = "fitted on training split"
+    if has_norms and not refit_normalizers:
+        input_norm = MinMaxNormalizer()
+        input_norm.data_min = ckpt["input_norm_min"].to(inputs_train.dtype).cpu()
+        input_norm.data_max = ckpt["input_norm_max"].to(inputs_train.dtype).cpu()
+        output_norm_5 = MinMaxNormalizer()
+        output_norm_5.data_min = ckpt["output_norm_min"][:5].to(targets_train.dtype).cpu()
+        output_norm_5.data_max = ckpt["output_norm_max"][:5].to(targets_train.dtype).cpu()
+        normalizer_source = f"reused from {pretrained_path}"
+        # Coverage check: the dataset must lie in the initialisation's domain,
+        # otherwise this is a domain change and the weights carry no prior.
+        for label, norm, data in (
+            ("input", input_norm, inputs_train),
+            ("output", output_norm_5, targets_train[:, :5]),
+        ):
+            delta = norm.data_max - norm.data_min
+            varying = delta.abs() >= norm.epsilon
+            z = norm.transform(data)[:, varying]
+            frac_out = float(((z < -0.05) | (z > 1.05)).any(dim=1).float().mean())
+            if frac_out > 0.01:
+                raise ValueError(
+                    f"{100*frac_out:.1f} % of the {label} rows lie outside the pretrained "
+                    f"checkpoint's {label} normalisation domain. Fine-tuning across domains "
+                    "is not a fine-tune; pass refit_normalizers=True to discard the "
+                    "initialisation's coordinates explicitly."
+                )
+    else:
+        if has_norms and refit_normalizers:
+            warnings.warn(
+                "refit_normalizers=True: the pretrained checkpoint's normalisers are "
+                "discarded and re-fitted on this dataset. The initial weights are being "
+                "evaluated in a different coordinate system than they were trained in.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+        # Fitted on training split only
+        input_norm = MinMaxNormalizer().fit(inputs_train)
+        # Fit output normalizer on first 5 columns only; skip cols with zero range
+        output_norm_5 = MinMaxNormalizer().fit(targets_train[:, :5])
 
     inputs_train_n = input_norm.transform(inputs_train).to(dev)
     targets_train_5n = output_norm_5.transform(targets_train[:, :5]).to(dev)
@@ -1635,27 +1786,44 @@ def finetune_on_cfd_data(
 
     # ---- Load or init model ----
     model = LE_PINN().to(dev)
-    if pretrained_path is not None:
-        if not Path(pretrained_path).exists():
+    if ckpt is not None:
+        try:
+            model.load_state_dict(ckpt["model_state_dict"])
+            if verbose:
+                print(f"Loaded pretrained weights from {pretrained_path}")
+        except Exception as exc:
             warnings.warn(
-                f"Pretrained checkpoint not found: {pretrained_path}. "
+                f"Failed to load pretrained weights ({exc}). "
                 "Starting fine-tuning from random init.",
                 RuntimeWarning,
                 stacklevel=1,
             )
-        else:
-            try:
-                ckpt = _safe_torch_load(pretrained_path, map_location=dev)
-                model.load_state_dict(ckpt["model_state_dict"])
-                if verbose:
-                    print(f"Loaded pretrained weights from {pretrained_path}")
-            except Exception as exc:
-                warnings.warn(
-                    f"Failed to load pretrained checkpoint ({exc}). "
-                    "Starting fine-tuning from random init.",
-                    RuntimeWarning,
-                    stacklevel=1,
-                )
+            ckpt = None
+
+    # ---- Collapse guard on the initialisation (P4.2) ----
+    health_init = network_health(model, inputs_train_n)
+    if ckpt is not None and health_init["collapsed"] and not allow_collapsed_init:
+        raise ValueError(
+            "Pretrained checkpoint is collapsed: its normalised outputs are constant over the "
+            f"training inputs (spread {['%.1e' % v for v in health_init['output_spread']]}, "
+            f"alive ReLU units per layer {health_init['alive_units']}). Gradient descent cannot "
+            "recover a dead network and any score of its output is the score of noise. "
+            "Retrain from scratch, or pass allow_collapsed_init=True to override."
+        )
+
+    # ---- Validation loss BEFORE the first update (P4.2 guarantee) ----
+    def _val_loss() -> float:
+        model.eval()
+        with torch.no_grad():
+            vp = model(inputs_val_n, wall_dists_val)
+            v = nn.functional.mse_loss(vp[:, :5], targets_val_5n).item()
+        model.train()
+        return v
+
+    val_loss_init = _val_loss()
+    best_val = val_loss_init
+    best_epoch = -1
+    best_state = copy.deepcopy(model.state_dict())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -1667,7 +1835,8 @@ def finetune_on_cfd_data(
         "loss_total": [],
         "loss_data": [],
         "loss_physics": [],
-        "val_loss": [],
+        "val_loss": [val_loss_init],
+        "val_epoch": [-1],
         "lr": [],
     }
 
@@ -1678,6 +1847,11 @@ def finetune_on_cfd_data(
         print(f"  Dataset : {dataset_path}")
         print(f"  Train/Val: {n_train} / {n_val}   Epochs: {n_epochs}   LR: {lr}")
         print(f"  Physics weight: {physics_loss_weight}")
+        print(f"  Normalisers: {normalizer_source}")
+        print(f"  Init: val loss {val_loss_init:.3e}; alive ReLU units/layer "
+              f"{health_init['alive_units']}; output spread "
+              f"{['%.2e' % v for v in health_init['output_spread']]}"
+              + ("  ** COLLAPSED **" if health_init["collapsed"] else ""))
         if physics_max_points is not None and physics_max_points > 0:
             print(f"  Physics points/epoch cap: {physics_max_points}")
         print("=" * 70)
@@ -1738,15 +1912,14 @@ def finetune_on_cfd_data(
         history["loss_physics"].append(float(loss_physics.item()))
         history["lr"].append(optimizer.param_groups[0]["lr"])
 
-        if epoch % 50 == 0:
-            model.eval()
-            with torch.no_grad():
-                val_preds = model(inputs_val_n, wall_dists_val)
-                val_loss = nn.functional.mse_loss(
-                    val_preds[:, :5], targets_val_5n
-                ).item()
+        if epoch % 50 == 0 or epoch == n_epochs - 1:
+            val_loss = _val_loss()
             history["val_loss"].append(val_loss)
-            model.train()
+            history["val_epoch"].append(epoch)
+            if val_loss < best_val:
+                best_val = val_loss
+                best_epoch = epoch
+                best_state = copy.deepcopy(model.state_dict())
             if verbose:
                 print(
                     f"Ep {epoch:4d} | Total {loss_total.item():.3e} | "
@@ -1763,6 +1936,17 @@ def finetune_on_cfd_data(
                         )
                     )
 
+    # ---- Restore the best-validation weights (never worse than init) ----
+    model.load_state_dict(best_state)
+    val_loss_final = _val_loss()
+    health_final = network_health(model, inputs_train_n)
+    if verbose:
+        print(f"  Restored best weights: epoch {best_epoch} "
+              f"(val {best_val:.3e}; init {val_loss_init:.3e}); alive units/layer "
+              f"{health_final['alive_units']}")
+        if best_epoch < 0:
+            print("  No epoch improved on the initialisation; checkpoint == init weights.")
+
     # ---- Save checkpoint ----
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -1776,9 +1960,24 @@ def finetune_on_cfd_data(
                 "n_epochs": n_epochs,
                 "lr": lr,
                 "physics_loss_weight": physics_loss_weight,
+                "physics_max_points": physics_max_points,
+                "val_fraction": val_fraction,
+                "geometry": geometry,
                 "dataset": dataset_path,
+                "normalizers": normalizer_source,
             },
             "seed": RANDOM_SEED,
+            "device": str(dev),
+            "dataset_sha256": _sha256_of_file(dataset_path),
+            "pretrained_path": pretrained_path if ckpt is not None else None,
+            "pretrained_sha256": _sha256_of_file(pretrained_path) if ckpt is not None else None,
+            "git_sha": _git_sha(),
+            "val_loss_init": val_loss_init,
+            "val_loss_best": best_val,
+            "val_loss_final": val_loss_final,
+            "best_epoch": best_epoch,
+            "health_init": health_init,
+            "health_final": health_final,
         },
         save_path,
     )
