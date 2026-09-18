@@ -10,6 +10,9 @@ scikit-learn>=1.3.0
 # Chemical Kinetics & Thermodynamics
 cantera>=3.0.0
 
+# Configuration / data files (CORSIA LCA values, mechanism profiles)
+PyYAML>=6.0
+
 # Optimization
 optuna>=3.0.0
 

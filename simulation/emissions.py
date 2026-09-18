@@ -1,10 +1,24 @@
 """
 Emissions Estimation for Jet Engine Simulation.
 
+    *** NOT PART OF THE PRODUCTION PIPELINE -- DO NOT CITE ITS OUTPUT ***
+
+    Nothing in the production pipeline imports this module. Production emissions
+    come from `EmissionsEstimator` in `integrated_engine.py` (ICAO-derived NOx
+    correlation, CO from combustion inefficiency, EI-CO2 = 3.664 * w_C), with the
+    Zeldovich post-processor in `simulation/nox_chemistry.py` used as the
+    chemistry comparison path (outputs/nox_dual_path.csv).
+
+    The `estimate_emissions_correlation` function below carries INVENTED tuning
+    constants -- the 5.0 prefactor, the exp((T - 1700)/400) form, the 0.3/1.5 mode
+    multipliers and the [0.1, 50] clip have no source and were never calibrated
+    against data. They are retained only so that older exploratory scripts keep
+    importing cleanly. Any number produced by this module is illustrative.
+
 This module provides emissions indices (EI) calculation for CO and NOx.
 Two modes are supported:
 1. Cantera-based: Extract species from chemical equilibrium (if mechanism supports it)
-2. Correlation-based: Use empirical correlations from literature (for blends without detailed chemistry)
+2. Correlation-based: unsourced empirical form -- see the warning above
 
 All emissions are reported as Emissions Indices: g pollutant / kg fuel
 """

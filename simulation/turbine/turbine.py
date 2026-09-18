@@ -17,10 +17,18 @@ The PINN learns to satisfy:
 3. Energy equation: Shaft work extraction matches compressor work requirement
 4. Boundary conditions: Match inlet/outlet states from engine cycle
 
-Key Innovation:
-Unlike traditional PINNs that assume constant gamma, this model uses fuel-specific
-thermodynamic properties, making it necessary (not just convenient) for modeling
-real engine behavior where fuel chemistry affects expansion physics.
+Status (Phase 3.1 adjudication -- read before citing this module):
+This PINN is an ARCHITECTURE DEMONSTRATION and is NOT the production turbine
+model. At the calibrated design point its exit pressure disagrees with the
+work-consistent analytic value by -41.5% (outputs/turbine_p5_adjudication.csv),
+and the component ablation puts total thrust +/-10% and TSFC +/-10.7% between the
+two paths (outputs/ablation_pinn_components.csv). `run_full_cycle` therefore
+defaults to turbine_model="analytic", and every manuscript-bound number comes
+from the analytic path. Retraining against corrected-cycle data is future work.
+
+The fuel-dependent thermodynamics below (actual cp, R, gamma from combustion
+products rather than fixed air constants) remain the modelling point of interest;
+they are not, on this evidence, an accuracy claim.
 """
 
 import torch

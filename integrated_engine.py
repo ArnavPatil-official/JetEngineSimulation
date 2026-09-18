@@ -120,19 +120,34 @@ class EmissionsEstimator:
     environmental impact of different fuel blends and operating conditions.
     """
 
-    def __init__(self, icao_data_path: str = "data/icao_engine_data.csv"):
+    def __init__(self,
+                 icao_data_path: str = "data/icao_engine_data.csv",
+                 nox_fit_exclude_models=None):
         """
         Initialize emissions estimator with ICAO engine database.
 
         Args:
             icao_data_path: Path to ICAO engine emissions database CSV file
+            nox_fit_exclude_models: Optional iterable of engine MODEL names
+                (e.g. {"Trent 1000-AE3"}) to hold out of the NOx correlation
+                fit. Default None reproduces the production fit over the whole
+                databank. Used by scripts/validation/nox_holdout_validation.py
+                to run leave-one-engine-out cross-validation; the fit is
+                otherwise in-sample and must not be reported as validated.
         """
         self.icao_data_path = icao_data_path
+        self.nox_fit_exclude_models = (
+            set(nox_fit_exclude_models) if nox_fit_exclude_models else set()
+        )
 
         # NOx model coefficients (fitted from ICAO data)
         self.nox_A = None
         self.nox_B = None
         self.nox_C = None
+        # Fit diagnostics -- IN-SAMPLE, never a validation statistic
+        self.nox_fit_n = None
+        self.nox_fit_n_models = None
+        self.nox_fit_r2_in_sample = None
 
         # CO model parameters
         self.co_k = None  # Calibration constant for CO vs inefficiency
@@ -155,11 +170,16 @@ class EmissionsEstimator:
         except Exception as e:
             raise RuntimeError(f"Failed to load ICAO data: {e}")
 
+    @staticmethod
+    def engine_model_name(engine_id: str) -> str:
+        """Strip the ' BYPASS RATIO: x.x' suffix from an ICAO 'Engine ID' cell."""
+        return str(engine_id).split(' BYPASS')[0].strip()
+
     def _fit_nox_model(self):
         """
-        Fit multivariable regression model for NOx emissions.
+        Fit the ICAO-derived NOx correlation.
 
-        Model equation: NOx = A × OPR^B × ṁ_fuel^C
+        Model equation: EI_NOx = A × OPR^B × ṁ_fuel^C
 
         Where:
         - OPR: Overall Pressure Ratio (P_3/P_2)
@@ -167,7 +187,21 @@ class EmissionsEstimator:
         - A, B, C: Regression coefficients
 
         This is linearized by taking logarithms:
-        log(NOx) = log(A) + B×log(OPR) + C×log(ṁ_fuel)
+        log(EI_NOx) = log(A) + B×log(OPR) + C×log(ṁ_fuel)
+
+        SCOPE AND LIMITS (read before quoting any NOx number):
+        - This is a CORRELATION over certificated engines, not chemistry. It has
+          no fuel-composition dependence whatsoever, so it cannot rank fuel
+          blends on NOx; any blend-to-blend NOx difference it produces comes
+          from the blend's effect on ṁ_fuel alone.
+        - The R² reported below is IN-SAMPLE. It is a training diagnostic, not
+          evidence of predictive skill. (An in-sample R² of this fit, printed at
+          startup, was the origin of the withdrawn "R² = 0.9969" Highlight.)
+          Held-out skill is measured by leave-one-engine-out cross-validation in
+          scripts/validation/nox_holdout_validation.py.
+        - A chemistry comparison path (Zeldovich thermal NO) lives in
+          simulation/nox_chemistry.py; the three-path divergence is recorded in
+          outputs/nox_dual_path.csv.
         """
         # Extract relevant columns from ICAO data
         # NOx is in g/kg fuel, we need to convert to emission index
@@ -177,6 +211,17 @@ class EmissionsEstimator:
         df = df[(df['Fuel Flow (kg/s)'] > 0) &
                 (df['NOx (g/kg)'] > 0) &
                 (df['Pressure Ratio'] > 1)]
+
+        # Optional held-out split for cross-validation (default: fit on all)
+        df['_model'] = df['Engine ID'].map(self.engine_model_name)
+        if self.nox_fit_exclude_models:
+            df = df[~df['_model'].isin(self.nox_fit_exclude_models)]
+        if len(df) < 3:
+            raise ValueError(
+                "NOx fit needs at least 3 usable ICAO records after filtering; "
+                f"got {len(df)} (excluded models: "
+                f"{sorted(self.nox_fit_exclude_models)})"
+            )
 
         # Prepare features: log(OPR) and log(ṁ_fuel)
         X = np.column_stack([
@@ -196,12 +241,19 @@ class EmissionsEstimator:
         self.nox_C = reg.coef_[1]  # Coefficient for log(ṁ_fuel)
         self.nox_A = np.exp(reg.intercept_)  # Base coefficient (antilog of intercept)
 
-        # Calculate R² score for model quality
+        # In-sample R² -- a training diagnostic ONLY (see docstring)
         r2_score = reg.score(X, y)
+        self.nox_fit_n = int(len(df))
+        self.nox_fit_n_models = int(df['_model'].nunique())
+        self.nox_fit_r2_in_sample = float(r2_score)
 
-        print(f"✓ NOx Model Fitted:")
-        print(f"  Equation: NOx = {self.nox_A:.4f} × OPR^{self.nox_B:.4f} × ṁ_fuel^{self.nox_C:.4f}")
-        print(f"  R² = {r2_score:.4f}")
+        print(f"[OK] NOx correlation fitted (ICAO databank):")
+        print(f"  EI_NOx = {self.nox_A:.4f} × OPR^{self.nox_B:.4f} × ṁ_fuel^{self.nox_C:.4f}")
+        print(f"  fit set: {self.nox_fit_n} records / {self.nox_fit_n_models} engine models"
+              + (f" (excluded: {sorted(self.nox_fit_exclude_models)})"
+                 if self.nox_fit_exclude_models else ""))
+        print(f"  in-sample R² = {r2_score:.4f}  <- TRAINING DIAGNOSTIC, NOT VALIDATION")
+        print(f"  no fuel-composition dependence: cannot rank blends on NOx")
 
     def _calibrate_co_model(self):
         """
@@ -1582,14 +1634,27 @@ class IntegratedTurbofanEngine:
             print(f"    CO₂ (legacy net): {net_co2_g_s:.2f} g/s  (LCA factor: {lca_factor:.2f})")
 
         # ========================================================================
-        # PHYSICS VALIDATION CHECKLIST
+        # INTERNAL CONSISTENCY CHECKS
+        #
+        # These are SELF-CONSISTENCY checks on the solver, NOT validation
+        # against data. Each holds by construction:
+        #   - continuity: velocity is set as u = mdot / (rho * A), so the mass
+        #     residual is a floating-point artefact and can only ever read ~0%;
+        #   - the inlet state is imposed as a hard boundary condition;
+        #   - turbine work is solved to equal compressor + fan work.
+        # A near-zero number here says the code solved the equations it was
+        # given. It says nothing about whether those equations describe a real
+        # engine. (The withdrawn "mass continuity error = 0.00%" Highlight came
+        # from this printout.) Validation against data lives in
+        # scripts/validation/holdout_icao_validation.py (fuel flow) and
+        # scripts/validation/nox_holdout_validation.py (NOx correlation).
         # ========================================================================
-        print(f"\n  Physics Validation Checklist:")
-        print(f"    ✓ Turbine-Nozzle handoff exact")
-        print(f"    ✓ Mass conservation: {nozz_result.get('mass_conservation', {}).get('error_pct', 0):.2f}%")
-        print(f"    ✓ Inlet BC preserved: {nozz_result.get('inlet_verification', {}).get('max_error', 0)*100:.3f}%")
-        print(f"    ✓ Thrust model: {nozz_result.get('thrust_model', 'static').upper()}")
-        print(f"    ✓ Energy balance: Turbine work = Compressor work + Fan work")
+        print(f"\n  Internal consistency (by construction -- NOT validation):")
+        print(f"    - Turbine-Nozzle handoff exact (states passed directly)")
+        print(f"    - Continuity residual: {nozz_result.get('mass_conservation', {}).get('error_pct', 0):.2f}%  (u = mdot/rho*A: zero by construction)")
+        print(f"    - Inlet BC residual: {nozz_result.get('inlet_verification', {}).get('max_error', 0)*100:.3f}%  (hard boundary condition)")
+        print(f"    - Thrust model: {nozz_result.get('thrust_model', 'static').upper()}")
+        print(f"    - Energy balance: turbine work = compressor + fan work (solved, not checked)")
 
         print("="*70 + "\n")
 

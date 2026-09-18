@@ -20,6 +20,7 @@ corrected air cycle. All stochastic artifacts record their seed internally.
 | M4 | Take-off design point: thrust 241.6 kN (core 55.4 + bypass 186.2), TSFC 9.59 mg/(N·s), specific thrust 299 N·s/kg, T3 901.5 K, T4 1894.9 K, T5 1174.4 K, fuel flow 2.318 vs ICAO 2.327 kg/s | `scripts/validation/design_point_summary.py` | `outputs/design_point_summary_v4.csv` | deterministic |
 | M5 | Airflow-split diagnostic (β sweep; bias resolution evidence) | `scripts/validation/airflow_split_sensitivity.py` | `outputs/airflow_split_sensitivity.csv` + plot | deterministic |
 | M6 | Turbine p5 adjudication (analytic = work-consistent 4.728 bar; PINN −41.5%) | `scripts/validation/adjudicate_turbine_p5.py` | `outputs/turbine_p5_adjudication.csv` | deterministic |
+| M7 | Held-out NOx-correlation validation: leave-one-engine-out MAPE **4.17%** (take-off 3.17 / approach 5.67 / idle 3.69), 180 records / 28 engine models; in-sample reference 4.15%. **Within-family only** — all 28 models are Trent 1000 variants — and the correlation has no fuel-composition term, so this is NOT evidence for blend NOx ranking | `scripts/validation/nox_holdout_validation.py` | `outputs/nox_holdout_validation.csv`, `outputs/nox_holdout_validation_summary.csv`, `plots/nox_holdout_pred_vs_icao.png`, `plots/nox_holdout_error_boxplot.png` | deterministic |
 
 ## Optimization studies + analysis (Phase 3.2 re-runs, adjudicated config)
 
@@ -49,6 +50,15 @@ corrected air cycle. All stochastic artifacts record their seed internally.
 Note on E3–E5: these were generated at the v3/PINN-default state as the
 *evidence that drove the Phase 3 decisions*; they are cited as such
 (decision evidence), never as production-configuration results.
+
+## Provenance note on the retracted R² = 0.9969 Highlight
+
+Confirmed by `scripts/validation/nox_holdout_validation.py`: the withdrawn
+Highlight figure is the **in-sample** R² of the three-parameter log-log NOx fit
+(`EI_NOx = 9.8214 · OPR^0.2070 · ṁ_f^0.9506`), which `EmissionsEstimator`
+printed at construction. It was never a validation statistic. The startup print
+now labels it a training diagnostic, and M7 supplies the held-out figure that
+the Highlight implied but never had.
 
 ## Not manuscript sources
 

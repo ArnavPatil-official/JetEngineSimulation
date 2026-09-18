@@ -1,12 +1,38 @@
 """
 Pareto Front Visualization for Multi-Objective Fuel Blend Optimization
 
+    *** SUPERSEDED -- NOT A SOURCE OF MANUSCRIPT NUMBERS OR FIGURES ***
+
+    Per outputs/ARTIFACT_MANIFEST.md, every manuscript-bound figure and number
+    comes from scripts/optimization/optimize_blend.py and
+    scripts/analysis/variance_decomposition.py. This script predates Phase 1,
+    was not re-run on the adjudicated (v4 / analytic-turbine / analytic-nozzle)
+    configuration, and recomputes its OWN Pareto front rather than reading the
+    `ParetoOptimal` column the production study writes -- so it is a second,
+    divergent source of truth.
+
+    Its historical output `outputs/results/pareto_optimal_solutions.csv` held
+    the retired representative solution (TSFC 29.464 mg/(N.s), specific thrust
+    800.58 N.s/kg, LCA factor 0.7616) and is archived under
+    outputs/archive/pre_phase2/. Those numbers are dead. If this script is run
+    again it will rewrite that path from whatever optimization_results.csv
+    happens to be on disk; treat anything it produces as exploratory only.
+
 This script visualizes the optimization results showing trade-offs between:
 - Thrust Specific Fuel Consumption (TSFC) - minimize
 - CO2 emissions - minimize
 - NOx emissions - minimize
 - Specific Thrust - maximize
 """
+
+import warnings as _warnings
+
+_warnings.warn(
+    "pareto_visual.py is superseded (see module docstring and "
+    "outputs/ARTIFACT_MANIFEST.md); its outputs are exploratory and must not "
+    "be cited in the manuscript.",
+    stacklevel=2,
+)
 
 import sys
 from pathlib import Path

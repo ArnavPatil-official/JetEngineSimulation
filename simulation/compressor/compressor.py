@@ -1,9 +1,11 @@
 """
 Compressor Model for Jet Engine Simulation.
 
-This module implements a thermodynamic model of an axial compressor using Cantera
-for accurate thermodynamic property evaluation. The model uses isentropic relations
-with an efficiency correction to account for real-world losses.
+This module implements a thermodynamic model of an axial compressor. Cantera is
+used ONLY as a thermodynamic property library (h, s, cp of the working fluid) --
+no chemical kinetics are solved here, and no reaction mechanism is integrated.
+The model uses isentropic relations with a fixed isentropic-efficiency correction
+that lumps all aerodynamic loss mechanisms into a single factor.
 
 Model Approach:
 1. Calculate ideal isentropic compression (constant entropy)
@@ -21,8 +23,15 @@ class Compressor:
     Axial compressor model using isentropic compression with efficiency losses.
 
     The compressor raises air pressure through a series of rotating and stationary
-    blades. Real compressors have losses due to friction, turbulence, and blade
-    inefficiencies, captured here through the efficiency parameter eta_c.
+    blades. The dominant real loss mechanisms, in rough order of magnitude, are
+    tip-clearance leakage (flow spilling over the blade tips from a higher-pressure
+    stage to a lower-pressure one), secondary/endwall flows, and profile (blade
+    surface friction) losses; profile friction is small except in worn hardware.
+    Rotating stall and surge are instabilities avoided by design and by schedule,
+    not steady-state loss mechanisms, and are not represented here.
+
+    None of these are resolved individually: all are lumped into the single fixed
+    isentropic-efficiency parameter eta_c (see outputs/parameter_provenance.md).
 
     Attributes:
         eta_c: Compressor isentropic efficiency (0 < eta_c ≤ 1)
