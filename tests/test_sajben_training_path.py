@@ -93,7 +93,7 @@ def test_finetune_sajben_script_uses_planar_geometry(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["finetune_sajben.py", "--epochs", "1", "--device", "cpu"],
+        ["finetune_sajben.py", "--epochs", "1", "--device", "cpu", "--physics-debug"],
     )
 
     finetune_sajben_script.main()
@@ -101,4 +101,4 @@ def test_finetune_sajben_script_uses_planar_geometry(
     kwargs = captured["kwargs"]
     assert isinstance(kwargs, dict)
     assert kwargs["geometry"] == "planar"
-
+    assert kwargs["physics_debug"] is True

@@ -356,7 +356,13 @@ def run_forward_pass(
     with torch.no_grad():
         preds_n = model(inputs_n, wall_dists)
 
-    preds_phys = norm_out.inverse_transform(preds_n)[:, :5]
+    n_norm_cols = int(norm_out.data_min.shape[0]) if norm_out.data_min is not None else 0
+    if n_norm_cols < 5:
+        raise ValueError(
+            "Sajben validation requires an output normalizer covering at least "
+            f"the first 5 physical outputs, got {n_norm_cols} columns."
+        )
+    preds_phys = norm_out.inverse_transform(preds_n[:, :n_norm_cols])[:, :5]
     return preds_phys
 
 
@@ -683,8 +689,8 @@ def main(model_file: Path | None = None) -> dict:
 
     if ckpt is not None and "output_norm_min" in ckpt:
         norm_out = MinMaxNormalizer()
-        norm_out.data_min = ckpt["output_norm_min"]
-        norm_out.data_max = ckpt["output_norm_max"]
+        norm_out.data_min = ckpt["output_norm_min"][:5]
+        norm_out.data_max = ckpt["output_norm_max"][:5]
         print(f"  Input normalizer: fitted on Sajben domain.")
         print(f"  Output normalizer: loaded from checkpoint.")
     else:

@@ -50,6 +50,11 @@ def main() -> None:
                         dest="physics_max_points",
                         help="Max training points used for physics loss per epoch "
                              "(default: auto cap on mps)")
+    parser.add_argument(
+        "--physics-debug",
+        action="store_true",
+        help="Print per-term normalized physics residual losses during fine-tuning",
+    )
     args = parser.parse_args()
 
     dataset_path   = str(REPO_ROOT / "data"   / "processed" / "master_shock_dataset.pt")
@@ -121,6 +126,7 @@ def main() -> None:
         device=args.device,
         verbose=True,
         geometry="planar",  # Sajben is a 2D planar diffuser (not axisymmetric)
+        physics_debug=args.physics_debug,
     )
 
     # Summary

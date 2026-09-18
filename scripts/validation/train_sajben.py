@@ -41,6 +41,7 @@ def train_sajben_le_pinn(
     device: str = "mps",
     verbose: bool = True,
     physics_loss_weight: float = 0.05,
+    physics_debug: bool = False,
 ) -> tuple:
     """
     Train LE-PINN on Sajben dataset using dataset-backed fine-tuning path.
@@ -100,6 +101,7 @@ def train_sajben_le_pinn(
         device=device,
         verbose=verbose,
         geometry="planar",  # Sajben is 2D planar, not axisymmetric
+        physics_debug=physics_debug,
     )
 
     return model, history
@@ -127,6 +129,11 @@ def main() -> None:
         dest="physics_weight",
         help="Physics loss weight (default: 0.05)",
     )
+    parser.add_argument(
+        "--physics-debug",
+        action="store_true",
+        help="Print per-term normalized physics residual losses during training",
+    )
     args = parser.parse_args()
 
     model, history = train_sajben_le_pinn(
@@ -135,6 +142,7 @@ def main() -> None:
         save_path=SAVE_PATH,
         device=args.device,
         physics_loss_weight=args.physics_weight,
+        physics_debug=args.physics_debug,
         verbose=True,
     )
 

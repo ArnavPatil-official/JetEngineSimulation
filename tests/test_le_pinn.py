@@ -284,6 +284,18 @@ class TestRANSResiduals:
                 break
         assert different, "Planar and axisymmetric residuals should differ"
 
+    def test_axisymmetric_mass_flux_integral_matches_analytic_profile(self) -> None:
+        """Axisymmetric profile integral should recover the analytic mass flux."""
+        r = np.linspace(0.0, 1.0, 1001, dtype=np.float64)
+        rho = np.ones((1, r.size), dtype=np.float64)
+        u = (2.0 * (1.0 - r ** 2)).reshape(1, -1)
+        r_grid = r.reshape(1, -1)
+
+        mdot = le_pinn_module._integrate_axisymmetric_mass_flux(rho, u, r_grid)
+
+        assert mdot.shape == (1,)
+        assert mdot[0] == pytest.approx(np.pi, rel=1e-3)
+
 
 # ============================================================================
 # 8. Existing PINN non-regression
@@ -378,6 +390,23 @@ class TestCFDFinetune:
         assert any("not found" in str(w.message).lower() for w in caught), (
             "Expected a RuntimeWarning about missing pretrained path"
         )
+
+    def test_finetune_with_physics_loss_without_cap(self, tmp_path: Path) -> None:
+        """Physics loss path should work even when no subsampling cap is set."""
+        subset_path = _write_cfd_subset(tmp_path / "physics_subset.pt", max_rows=64)
+
+        _model, history = finetune_on_cfd_data(
+            dataset_path=subset_path,
+            n_epochs=1,
+            save_path=str(tmp_path / "physics_subset_model.pt"),
+            physics_loss_weight=0.05,
+            physics_max_points=None,
+            device="cpu",
+            verbose=False,
+        )
+
+        assert len(history["loss_physics"]) == 1
+        assert np.isfinite(history["loss_physics"][0])
 
     def test_validate_returns_metrics(self) -> None:
         """validate_le_pinn returns a dict with rmse_* and r2_* keys."""

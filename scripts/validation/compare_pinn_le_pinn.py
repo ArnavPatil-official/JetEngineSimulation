@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 """
-Compare the regular nozzle PINN and LE-PINN across a nozzle condition sweep.
+Research-paper comparison: Regular Nozzle PINN vs isentropic reference.
+
+Produces a single 4-panel figure (2×2) containing only publication-essential
+panels:
+  A (top-left)  — Axial flow profiles at NPR 6.5, Jet-A1 (2×2 sub-grid)
+  B (top-right) — Thrust vs NPR across all fuels
+  C (bottom-left)  — Exit temperature parity scatter vs isentropic reference
+  D (bottom-right) — Quantitative metrics table (RMSE / MAE / R²)
+
+Usage
+-----
+    python3 scripts/validation/compare_pinn_le_pinn.py
+
+Outputs
+-------
+  outputs/results/pinn_comparison_results.csv
+  outputs/plots/pinn_comparison.png
 """
 
 from __future__ import annotations
@@ -14,29 +30,31 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import numpy as np
 import pandas as pd
 from matplotlib.gridspec import GridSpecFromSubplotSpec
-from scipy.stats import gaussian_kde, probplot
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from simulation.nozzle.le_pinn import run_le_pinn
-from simulation.nozzle.nozzle import analytical_isentropic_nozzle, run_nozzle_pinn
+from simulation.nozzle.nozzle import run_nozzle_pinn
 
 
+# ---------------------------------------------------------------------------
+# Model paths
+# ---------------------------------------------------------------------------
 NOZZLE_MODEL_PATH = REPO_ROOT / "models" / "nozzle_pinn.pt"
-LE_MODEL_REQUEST_PATH = REPO_ROOT / "models" / "le_pinn_unified.pt"
-LE_MODEL_FALLBACK_PATH = REPO_ROOT / "models" / "le_pinn_engine_unified.pt"
-
+# ---------------------------------------------------------------------------
+# Sweep configuration
+# ---------------------------------------------------------------------------
 NPR_VALUES = [4.0, 5.0, 6.0, 6.5, 7.0, 8.0]
 THERMO_CONFIGS = {
-    "JetA1": {"cp": 1150.0, "R": 287.0, "gamma": 1.33},
-    "HEFA50": {"cp": 1200.0, "R": 287.0, "gamma": 1.30},
-    "BioSPK": {"cp": 1250.0, "R": 287.0, "gamma": 1.28},
+    "Jet-A1":  {"cp": 1150.0, "R": 287.0, "gamma": 1.33},
+    "HEFA-50": {"cp": 1200.0, "R": 287.0, "gamma": 1.30},
+    "Bio-SPK": {"cp": 1250.0, "R": 287.0, "gamma": 1.28},
 }
 A_IN = 0.25
 LENGTH = 1.0
@@ -45,15 +63,19 @@ AMBIENT_P = 101325.0
 T_IN = 1700.0
 U_IN = 500.0
 
+# Visual style
+_COLOR_PINN = "tab:blue"
+_COLOR_ISEN = "#555555"
+_MARKER_MAP = {"Jet-A1": "o", "HEFA-50": "s", "Bio-SPK": "^"}
+
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
 
 def _ensure_checkpoints() -> None:
     if not NOZZLE_MODEL_PATH.exists():
         raise FileNotFoundError(f"Regular PINN checkpoint missing: {NOZZLE_MODEL_PATH}")
-    if not LE_MODEL_REQUEST_PATH.exists() and not LE_MODEL_FALLBACK_PATH.exists():
-        raise FileNotFoundError(
-            "LE-PINN checkpoint missing: neither "
-            f"{LE_MODEL_REQUEST_PATH} nor {LE_MODEL_FALLBACK_PATH} exists"
-        )
 
 
 def _make_inlet(T_in: float, P_in: float, u_in: float, gas_constant: float) -> dict[str, float]:
@@ -103,33 +125,6 @@ def _profile_to_exit_state(
     }
 
 
-def _build_scalar_consistent_analytical_profile(
-    inlet_state: dict[str, float],
-    ambient_p: float,
-    A_in: float,
-    A_exit: float,
-    length: float,
-    thermo_props: dict[str, float],
-    n_points: int = 50,
-) -> dict[str, np.ndarray]:
-    exit_state = analytical_isentropic_nozzle(
-        inlet_state=inlet_state,
-        ambient_p=ambient_p,
-        A_exit=A_exit,
-        thermo_props=thermo_props,
-        m_dot=M_DOT,
-    )
-    return _profile_to_exit_state(
-        inlet_state=inlet_state,
-        exit_state=exit_state,
-        A_in=A_in,
-        A_exit=A_exit,
-        length=length,
-        thermo_props=thermo_props,
-        n_points=n_points,
-    )
-
-
 def _compute_isentropic_reference(
     npr: float,
     thermo_props: dict[str, float],
@@ -145,13 +140,7 @@ def _compute_isentropic_reference(
     u_exit = M_exit * math.sqrt(gamma * gas_constant * T_exit)
     rho_exit = P_exit / (gas_constant * T_exit)
     thrust = M_DOT * u_exit + (P_exit - AMBIENT_P) * A_exit
-    return {
-        "rho": rho_exit,
-        "u": u_exit,
-        "p": P_exit,
-        "T": T_exit,
-        "thrust": thrust,
-    }
+    return {"rho": rho_exit, "u": u_exit, "p": P_exit, "T": T_exit, "thrust": thrust}
 
 
 def _normalize_profile(profile: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -167,6 +156,7 @@ def _select_profile(
     thermo_props: dict[str, float],
     n_points: int = 50,
 ) -> dict[str, np.ndarray]:
+    """Return axial profile array; synthesise analytical profile when fallback used."""
     if result.get("used_fallback") or "profiles" not in result:
         profile = _profile_to_exit_state(
             inlet_state=inlet_state,
@@ -182,36 +172,132 @@ def _select_profile(
     return _normalize_profile(profile)
 
 
-def _eos_error(profile: dict[str, np.ndarray], gas_constant: float) -> float:
-    p = np.asarray(profile["p"], dtype=float)
-    rho = np.asarray(profile["rho"], dtype=float)
-    T = np.asarray(profile["T"], dtype=float)
-    residual = np.abs(p - rho * gas_constant * T) / np.maximum(np.abs(p), 1e-12)
-    return float(np.mean(residual))
-
-
 def _r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     ss_res = float(np.sum((y_true - y_pred) ** 2))
     ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
     return 1.0 - ss_res / (ss_tot + 1e-12)
 
 
-def _plot_hist_with_kde(ax, values: np.ndarray, color: str, label: str) -> None:
-    ax.hist(values, bins=8, density=True, alpha=0.5, color=color, label=label)
-    if values.size >= 2 and float(np.std(values)) > 1e-12:
-        grid = np.linspace(float(values.min()), float(values.max()), 200)
-        kde = gaussian_kde(values)
-        ax.plot(grid, kde(grid), color=color, linewidth=2)
+def _panel_b_thrust_vs_npr(ax, df: pd.DataFrame) -> None:
+    """Thrust vs NPR for all fuels, regular PINN against isentropic reference."""
+    for fuel_name, marker in _MARKER_MAP.items():
+        fuel_df = df[df["fuel"] == fuel_name].sort_values("NPR")
+        ax.plot(fuel_df["NPR"], fuel_df["thrust_reg"],
+                color=_COLOR_PINN, marker=marker, linewidth=1.5, markersize=5, zorder=3)
+        ax.plot(fuel_df["NPR"], fuel_df["thrust_isen"],
+                color=_COLOR_ISEN, linestyle="--", marker=marker,
+                linewidth=1.2, markersize=4, zorder=2)
+        # ±10 % isentropic band (shared across fuels, draw once)
+    # Shade ±10% band using JetA1 as representative
+    ja_df = df[df["fuel"] == "Jet-A1"].sort_values("NPR")
+    if len(ja_df) > 0:
+        ax.fill_between(
+            ja_df["NPR"],
+            ja_df["thrust_isen"] * 0.90,
+            ja_df["thrust_isen"] * 1.10,
+            color="lightgray", alpha=0.20, label="_nolegend_",
+        )
 
+    # Build a clean 5-entry legend: 2 model entries + 3 fuel-marker entries
+    model_handles = [
+        mlines.Line2D([], [], color=_COLOR_PINN, linewidth=1.5, label="Regular PINN"),
+        mlines.Line2D([], [], color=_COLOR_ISEN, linewidth=1.2, linestyle="--", label="Isentropic"),
+    ]
+    fuel_handles = [
+        mlines.Line2D([], [], color="black", marker=m, linestyle="None", markersize=5, label=f)
+        for f, m in _MARKER_MAP.items()
+    ]
+    ax.legend(handles=model_handles + fuel_handles, fontsize=8, ncol=2, loc="upper left")
+
+    ax.set_xlabel("Nozzle Pressure Ratio (NPR)", fontsize=9)
+    ax.set_ylabel("Thrust [N]", fontsize=9)
+    ax.set_title("(b) Thrust vs NPR — regular PINN vs isentropic", fontsize=9, loc="left")
+
+
+def _panel_c_parity_scatter(ax, df: pd.DataFrame) -> None:
+    """Exit temperature parity scatter for the regular PINN only."""
+    ax.scatter(df["T_exit_isen"], df["T_exit_reg"],
+               color=_COLOR_PINN, s=30, alpha=0.85, label="Regular PINN", zorder=3)
+
+    all_T = np.concatenate([
+        df["T_exit_isen"].to_numpy(),
+        df["T_exit_reg"].to_numpy(),
+    ])
+    t_min, t_max = float(np.min(all_T)), float(np.max(all_T))
+    margin = (t_max - t_min) * 0.05
+    ref = np.linspace(t_min - margin, t_max + margin, 200)
+    ax.plot(ref, ref,        color="black",      linewidth=1.2, label="Perfect agreement")
+    ax.plot(ref, ref * 1.05, color="black",      linewidth=0.8, linestyle="--")
+    ax.plot(ref, ref * 0.95, color="black",      linewidth=0.8, linestyle="--",
+            label="±5 % band")
+
+    ax.set_xlabel("T_exit isentropic [K]", fontsize=9)
+    ax.set_ylabel("T_exit predicted [K]", fontsize=9)
+    ax.set_title("(c) Exit temperature parity", fontsize=9, loc="left")
+    ax.legend(fontsize=8)
+    ax.set_aspect("equal", adjustable="box")
+
+
+def _panel_d_metrics_table(ax, df: pd.DataFrame) -> None:
+    """Quantitative regular-PINN accuracy table against the isentropic reference."""
+    ax.axis("off")
+
+    metric_rows = []
+    row_labels = []
+
+    for var, reg_col, ref_col in [
+        ("Thrust",  "thrust_reg",  "thrust_isen"),
+        ("T_exit",  "T_exit_reg",  "T_exit_isen"),
+        ("P_exit",  "P_exit_reg",  "P_exit_isen"),
+        ("u_exit",  "u_exit_reg",  "u_exit_isen"),
+    ]:
+        ref = df[ref_col].to_numpy(dtype=float)
+        reg = df[reg_col].to_numpy(dtype=float)
+
+        reg_rmse = float(np.sqrt(np.mean((reg - ref) ** 2)))
+        reg_mae  = float(np.mean(np.abs(reg - ref)))
+        reg_r2   = _r2_score(ref, reg)
+
+        metric_rows.append([reg_rmse, reg_mae, reg_r2])
+        row_labels.append(var)
+
+    # Format: RMSE/MAE in scientific notation; R² to 4 decimal places
+    formatted = []
+    for row in metric_rows:
+        formatted.append([
+            f"{row[0]:.3e}",
+            f"{row[1]:.3e}",
+            f"{row[2]:.4f}",
+        ])
+
+    table = ax.table(
+        cellText=formatted,
+        rowLabels=row_labels,
+        colLabels=["PINN\nRMSE", "PINN\nMAE", "PINN\nR²"],
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(7.5)
+    table.scale(1.0, 1.7)
+    ax.set_title("(d) Regular PINN accuracy vs isentropic reference", fontsize=8, loc="left")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
     _ensure_checkpoints()
+
     output_results = REPO_ROOT / "outputs" / "results"
-    output_plots = REPO_ROOT / "outputs" / "plots"
+    output_plots   = REPO_ROOT / "outputs" / "plots"
     output_results.mkdir(parents=True, exist_ok=True)
     output_plots.mkdir(parents=True, exist_ok=True)
 
-    rows = []
+    # -----------------------------------------------------------------------
+    # Data collection sweep
+    # -----------------------------------------------------------------------
+    rows: list[dict] = []
     selected_profiles: dict[str, dict[str, np.ndarray]] = {}
 
     for npr in NPR_VALUES:
@@ -233,21 +319,6 @@ def main() -> None:
                 return_profile=True,
                 thrust_model="static_test_stand",
             )
-            le_result = run_le_pinn(
-                model_path=str(LE_MODEL_REQUEST_PATH),
-                inlet_state=inlet_state,
-                ambient_p=AMBIENT_P,
-                A_in=A_IN,
-                A_exit=A_exit,
-                length=LENGTH,
-                thermo_props=thermo,
-                m_dot=M_DOT,
-                n_axial=50,
-                n_radial=20,
-                device="cpu",
-                return_profile=True,
-                thrust_model="static_test_stand",
-            )
             isen_exit = _compute_isentropic_reference(npr, thermo, A_exit)
             isen_profile = _profile_to_exit_state(
                 inlet_state=inlet_state,
@@ -259,239 +330,159 @@ def main() -> None:
                 n_points=50,
             )
 
-            reg_profile = _select_profile(reg_result, inlet_state, A_IN, A_exit, LENGTH, thermo, n_points=50)
-            le_profile = _select_profile(le_result, inlet_state, A_IN, A_exit, LENGTH, thermo, n_points=50)
+            reg_profile = _select_profile(
+                reg_result, inlet_state, A_IN, A_exit, LENGTH, thermo, n_points=50)
 
             mass_err_reg = float(reg_result["mass_conservation"]["error_pct"]) / 100.0
-            mass_err_le = float(le_result["mass_conservation"]["max_error"])
-            eos_err_reg = _eos_error(reg_profile, thermo["R"])
-            eos_err_le = _eos_error(le_profile, thermo["R"])
 
-            rows.append(
-                {
-                    "NPR": npr,
-                    "fuel": fuel_name,
-                    "T_exit_reg": float(reg_result["exit_state"]["T"]),
-                    "T_exit_le": float(le_result["exit_state"]["T"]),
-                    "T_exit_isen": float(isen_exit["T"]),
-                    "P_exit_reg": float(reg_result["exit_state"]["p"]),
-                    "P_exit_le": float(le_result["exit_state"]["p"]),
-                    "P_exit_isen": float(isen_exit["p"]),
-                    "u_exit_reg": float(reg_result["exit_state"]["u"]),
-                    "u_exit_le": float(le_result["exit_state"]["u"]),
-                    "u_exit_isen": float(isen_exit["u"]),
-                    "thrust_reg": float(reg_result["thrust_total"]),
-                    "thrust_le": float(le_result["thrust_total"]),
-                    "thrust_isen": float(isen_exit["thrust"]),
-                    "mass_err_reg": mass_err_reg,
-                    "mass_err_le": mass_err_le,
-                    "fallback_reg": bool(reg_result["used_fallback"]),
-                    "fallback_le": bool(le_result["used_fallback"]),
-                    "eos_err_reg": eos_err_reg,
-                    "eos_err_le": eos_err_le,
-                }
-            )
+            rows.append({
+                "NPR":        npr,
+                "fuel":       fuel_name,
+                # Exit states
+                "T_exit_reg":   float(reg_result["exit_state"]["T"]),
+                "T_exit_isen":  float(isen_exit["T"]),
+                "P_exit_reg":   float(reg_result["exit_state"]["p"]),
+                "P_exit_isen":  float(isen_exit["p"]),
+                "u_exit_reg":   float(reg_result["exit_state"]["u"]),
+                "u_exit_isen":  float(isen_exit["u"]),
+                # Thrust
+                "thrust_reg":   float(reg_result["thrust_total"]),
+                "thrust_isen":  float(isen_exit["thrust"]),
+                # Diagnostics
+                "mass_err_reg": mass_err_reg,
+                "fallback_reg": bool(reg_result["used_fallback"]),
+            })
 
-            if math.isclose(npr, 6.5) and fuel_name == "JetA1":
+            # Capture NPR 6.5, Jet-A1 profiles for axial profile panel
+            if math.isclose(npr, 6.5) and fuel_name == "Jet-A1":
                 selected_profiles = {
                     "regular": reg_profile,
-                    "le": le_profile,
-                    "isen": _normalize_profile(isen_profile),
+                    "isen":    _normalize_profile(isen_profile),
                 }
 
     df = pd.DataFrame(rows)
     csv_path = output_results / "pinn_comparison_results.csv"
     df.to_csv(csv_path, index=False)
+    if not selected_profiles:
+        raise RuntimeError("Failed to collect panel-A profiles for NPR 6.5, Jet-A1")
 
-    fig = plt.figure(figsize=(16, 20))
-    outer = fig.add_gridspec(4, 2)
-    marker_map = {"JetA1": "o", "HEFA50": "s", "BioSPK": "^"}
+    # -----------------------------------------------------------------------
+    # Figure: 2×2 research-paper layout
+    # -----------------------------------------------------------------------
+    fig = plt.figure(figsize=(14, 11))
+    outer = fig.add_gridspec(2, 2, wspace=0.30, hspace=0.38)
 
-    ax_a = fig.add_subplot(outer[0, 0])
-    for fuel_name, marker in marker_map.items():
-        fuel_df = df[df["fuel"] == fuel_name].sort_values("NPR")
-        ax_a.plot(fuel_df["NPR"], fuel_df["thrust_reg"], color="tab:blue", marker=marker, label=f"{fuel_name} PINN")
-        ax_a.plot(fuel_df["NPR"], fuel_df["thrust_le"], color="tab:orange", marker=marker, label=f"{fuel_name} LE-PINN")
-        ax_a.plot(fuel_df["NPR"], fuel_df["thrust_isen"], color="gray", linestyle="--", marker=marker, label=f"{fuel_name} Isentropic")
-        ax_a.fill_between(
-            fuel_df["NPR"],
-            fuel_df["thrust_isen"] * 0.90,
-            fuel_df["thrust_isen"] * 1.10,
-            color="lightgray",
-            alpha=0.15,
-        )
-    ax_a.set_title("Thrust vs NPR — all fuels")
-    ax_a.set_xlabel("NPR")
-    ax_a.set_ylabel("Thrust [N]")
-    handles, labels = ax_a.get_legend_handles_labels()
-    dedup = dict(zip(labels, handles))
-    ax_a.legend(dedup.values(), dedup.keys(), fontsize=8, ncol=2)
+    # ------------------------------------------------------------------
+    # Panel A — Axial profiles 2×2 sub-grid (top-left)
+    # ------------------------------------------------------------------
+    # We create the sub-grid inside outer[0, 0] using GridSpecFromSubplotSpec.
+    # The individual sub-axes are added directly to fig; we use a placeholder
+    # invisible axis to carry the panel title.
+    ax_a_holder = fig.add_subplot(outer[0, 0])
+    ax_a_holder.set_visible(False)
 
-    ax_b = fig.add_subplot(outer[0, 1])
-    ax_b.scatter(df["T_exit_isen"], df["T_exit_reg"], color="tab:blue", label="Regular PINN")
-    ax_b.scatter(df["T_exit_isen"], df["T_exit_le"], color="tab:orange", label="LE-PINN")
-    t_min = float(min(df["T_exit_isen"].min(), df["T_exit_reg"].min(), df["T_exit_le"].min()))
-    t_max = float(max(df["T_exit_isen"].max(), df["T_exit_reg"].max(), df["T_exit_le"].max()))
-    ref_line = np.linspace(t_min, t_max, 200)
-    ax_b.plot(ref_line, ref_line, color="black")
-    ax_b.plot(ref_line, ref_line * 1.05, color="black", linestyle="--")
-    ax_b.plot(ref_line, ref_line * 0.95, color="black", linestyle="--")
-    ax_b.set_title("Exit temperature vs isentropic reference")
-    ax_b.set_xlabel("T_exit_isen [K]")
-    ax_b.set_ylabel("T_exit [K]")
-    ax_b.legend()
+    inner_a = GridSpecFromSubplotSpec(2, 2, subplot_spec=outer[0, 0],
+                                      wspace=0.40, hspace=0.45)
+    variables = [
+        ("T",   "Temperature [K]"),
+        ("p",   "Pressure [Pa]"),
+        ("u",   "Velocity [m/s]"),
+        ("rho", "Density [kg/m³]"),
+    ]
+    model_styles = [
+        ("Regular PINN", "regular", _COLOR_PINN, "-",  1.8),
+        ("Isentropic",   "isen",    _COLOR_ISEN, "--", 1.2),
+    ]
+    for k, (var, ylabel) in enumerate(variables):
+        ax = fig.add_subplot(inner_a[k // 2, k % 2])
+        for label, key, color, style, lw in model_styles:
+            prof = selected_profiles[key]
+            x_arr  = np.asarray(prof["x"], dtype=float)
+            x_norm = x_arr / max(float(np.max(x_arr)), 1e-12)
+            ax.plot(x_norm, np.asarray(prof[var], dtype=float),
+                    color=color, linestyle=style, linewidth=lw,
+                    label=label if k == 0 else "_nolegend_")
+        ax.set_xlabel("x / L", fontsize=8)
+        ax.set_ylabel(ylabel, fontsize=8)
+        ax.tick_params(labelsize=7)
+        if k == 0:
+            ax.legend(fontsize=7, loc="best")
 
-    ax_c = fig.add_subplot(outer[1, 0])
-    thrust_err_reg = (df["thrust_reg"].to_numpy() - df["thrust_isen"].to_numpy()) / df["thrust_isen"].to_numpy() * 100.0
-    thrust_err_le = (df["thrust_le"].to_numpy() - df["thrust_isen"].to_numpy()) / df["thrust_isen"].to_numpy() * 100.0
-    _plot_hist_with_kde(ax_c, thrust_err_reg, "tab:blue", "Regular PINN")
-    _plot_hist_with_kde(ax_c, thrust_err_le, "tab:orange", "LE-PINN")
-    ax_c.axvline(0.0, color="black", linestyle="--")
-    ax_c.set_title("Thrust error distribution vs isentropic (%)")
-    ax_c.set_xlabel("Percent error [%]")
-    ax_c.set_ylabel("Density")
-    ax_c.legend()
-
-    ax_d = fig.add_subplot(outer[1, 1])
-    thrust_mean = (df["thrust_reg"].to_numpy() + df["thrust_le"].to_numpy()) / 2.0
-    thrust_diff = df["thrust_reg"].to_numpy() - df["thrust_le"].to_numpy()
-    mean_diff = float(np.mean(thrust_diff))
-    std_diff = float(np.std(thrust_diff, ddof=0))
-    upper = mean_diff + 1.96 * std_diff
-    lower = mean_diff - 1.96 * std_diff
-    ax_d.scatter(thrust_mean, thrust_diff, color="tab:purple")
-    ax_d.axhline(0.0, color="black", linestyle=":")
-    ax_d.axhline(mean_diff, color="tab:blue")
-    ax_d.axhline(upper, color="tab:blue", linestyle="--")
-    ax_d.axhline(lower, color="tab:blue", linestyle="--")
-    ax_d.text(0.98, 0.90, f"Mean={mean_diff:.1f}", transform=ax_d.transAxes, ha="right")
-    ax_d.text(0.98, 0.84, f"+1.96σ={upper:.1f}", transform=ax_d.transAxes, ha="right")
-    ax_d.text(0.98, 0.78, f"-1.96σ={lower:.1f}", transform=ax_d.transAxes, ha="right")
-    ax_d.set_title("Bland-Altman: PINN vs LE-PINN thrust")
-    ax_d.set_xlabel("Mean thrust [N]")
-    ax_d.set_ylabel("PINN - LE-PINN [N]")
-
-    inner_e = GridSpecFromSubplotSpec(2, 2, subplot_spec=outer[2, 0], wspace=0.25, hspace=0.30)
-    panel_e_axes = [fig.add_subplot(inner_e[i, j]) for i in range(2) for j in range(2)]
-    variables = [("T", "T [K]"), ("p", "P [Pa]"), ("u", "u [m/s]"), ("rho", "rho [kg/m³]")]
-    for ax, (var, ylabel) in zip(panel_e_axes, variables):
-        for label, profile, color, style in [
-            ("PINN", selected_profiles["regular"], "tab:blue", "-"),
-            ("LE-PINN", selected_profiles["le"], "tab:orange", "-"),
-            ("Isentropic", selected_profiles["isen"], "gray", "--"),
-        ]:
-            x_profile = np.asarray(profile["x"], dtype=float)
-            x_norm = x_profile / max(float(np.max(x_profile)), 1e-12)
-            ax.plot(x_norm, np.asarray(profile[var], dtype=float), color=color, linestyle=style, label=label)
-        ax.set_xlabel("x/L")
-        ax.set_ylabel(ylabel)
-    panel_e_axes[0].legend(fontsize=8)
-    panel_e_axes[0].set_title("Axial profiles — NPR 6.5, Jet-A1")
-
-    ax_f = fig.add_subplot(outer[2, 1])
-    grouped = df.groupby("NPR")[["mass_err_reg", "mass_err_le"]].max().reset_index()
-    x_idx = np.arange(len(grouped))
-    width = 0.35
-    ax_f.bar(x_idx - width / 2, grouped["mass_err_reg"] * 100.0, width=width, color="tab:blue", label="PINN")
-    ax_f.bar(x_idx + width / 2, grouped["mass_err_le"] * 100.0, width=width, color="tab:orange", label="LE-PINN")
-    ax_f.axhline(2.0, color="red", linestyle="--")
-    ax_f.set_xticks(x_idx)
-    ax_f.set_xticklabels([f"{value:.1f}" for value in grouped["NPR"]])
-    ax_f.set_xlabel("NPR")
-    ax_f.set_ylabel("Max mass conservation error [%]")
-    ax_f.set_title("Mass conservation error (%)")
-    ax_f.legend()
-
-    inner_g = GridSpecFromSubplotSpec(1, 2, subplot_spec=outer[3, 0], wspace=0.30)
-    ax_g1 = fig.add_subplot(inner_g[0, 0])
-    ax_g2 = fig.add_subplot(inner_g[0, 1])
-    probplot(thrust_err_reg, dist="norm", plot=ax_g1)
-    probplot(thrust_err_le, dist="norm", plot=ax_g2)
-    ax_g1.set_title("Regular PINN")
-    ax_g2.set_title("LE-PINN")
-    ax_g1.set_ylabel("Residual quantiles")
-    ax_g2.set_ylabel("Residual quantiles")
-    ax_g1.set_xlabel("Theoretical quantiles")
-    ax_g2.set_xlabel("Theoretical quantiles")
-    ax_g1.text(0.5, 1.08, "Q-Q: thrust residuals", transform=ax_g1.transAxes, ha="center")
-
-    ax_h = fig.add_subplot(outer[3, 1])
-    ax_h.axis("off")
-    metric_rows = []
-    row_labels = []
-    cell_colours = []
-    for var, reg_col, le_col, ref_col in [
-        ("Thrust", "thrust_reg", "thrust_le", "thrust_isen"),
-        ("T_exit", "T_exit_reg", "T_exit_le", "T_exit_isen"),
-        ("P_exit", "P_exit_reg", "P_exit_le", "P_exit_isen"),
-        ("u_exit", "u_exit_reg", "u_exit_le", "u_exit_isen"),
-    ]:
-        ref = df[ref_col].to_numpy(dtype=float)
-        reg = df[reg_col].to_numpy(dtype=float)
-        le = df[le_col].to_numpy(dtype=float)
-        reg_rmse = float(np.sqrt(np.mean((reg - ref) ** 2)))
-        le_rmse = float(np.sqrt(np.mean((le - ref) ** 2)))
-        reg_mae = float(np.mean(np.abs(reg - ref)))
-        le_mae = float(np.mean(np.abs(le - ref)))
-        reg_r2 = _r2_score(ref, reg)
-        le_r2 = _r2_score(ref, le)
-        metric_rows.append([reg_rmse, le_rmse, reg_mae, le_mae, reg_r2, le_r2])
-        row_labels.append(var)
-        winner_is_pinn = reg_rmse <= le_rmse
-        row_colors = []
-        for col_idx in range(6):
-            if winner_is_pinn and col_idx in (0, 2, 4):
-                row_colors.append("#dbeafe")
-            elif (not winner_is_pinn) and col_idx in (1, 3, 5):
-                row_colors.append("#ffedd5")
-            else:
-                row_colors.append("white")
-        cell_colours.append(row_colors)
-
-    table = ax_h.table(
-        cellText=[[f"{value:.3e}" if idx < 4 else f"{value:.4f}" for idx, value in enumerate(row)] for row in metric_rows],
-        rowLabels=row_labels,
-        colLabels=["PINN_RMSE", "LE_RMSE", "PINN_MAE", "LE_MAE", "PINN_R²", "LE_R²"],
-        cellColours=cell_colours,
-        loc="center",
+    # Super-title for the sub-grid
+    fig.text(
+        ax_a_holder.get_position().x0 + ax_a_holder.get_position().width / 2,
+        ax_a_holder.get_position().y1 + 0.005,
+        "(a) Axial flow profiles — NPR 6.5, Jet-A1",
+        ha="center", va="bottom", fontsize=9, fontweight="semibold",
     )
-    table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.0, 1.6)
-    ax_h.set_title("Metrics vs isentropic reference")
 
-    fig.suptitle("LE-PINN vs Regular PINN — Nozzle Benchmark", fontsize=16)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
-    plot_path = output_plots / "pinn_le_pinn_comparison.png"
-    fig.savefig(plot_path, dpi=150)
+    # ------------------------------------------------------------------
+    # Panel B — Thrust vs NPR (top-right)
+    # ------------------------------------------------------------------
+    ax_b = fig.add_subplot(outer[0, 1])
+    _panel_b_thrust_vs_npr(ax_b, df)
+
+    # ------------------------------------------------------------------
+    # Panel C — Exit temperature parity scatter (bottom-left)
+    # ------------------------------------------------------------------
+    ax_c = fig.add_subplot(outer[1, 0])
+    _panel_c_parity_scatter(ax_c, df)
+
+    # ------------------------------------------------------------------
+    # Panel D — Metrics table (bottom-right)
+    # ------------------------------------------------------------------
+    ax_d = fig.add_subplot(outer[1, 1])
+    _panel_d_metrics_table(ax_d, df)
+
+    # ------------------------------------------------------------------
+    # Final layout & save
+    # ------------------------------------------------------------------
+    fig.suptitle(
+        "Regular PINN — Nozzle Flow Benchmark\n"
+        "NPR sweep 4–8, three SAF blends",
+        fontsize=12, y=0.99,
+    )
+    fallback_reg = int(df["fallback_reg"].sum())
+    if fallback_reg > 0:
+        fig.text(
+            0.5,
+            0.015,
+            (
+                f"Note: analytical fallback was used in {fallback_reg}/{len(df)} sweep cases "
+                "after the wrapper physics checks failed."
+            ),
+            ha="center",
+            fontsize=8,
+        )
+    fig.savefig(output_plots / "pinn_comparison.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
 
-    thrust_rmse_reg_pct = float(np.sqrt(np.mean(((df["thrust_reg"] - df["thrust_isen"]) / df["thrust_isen"]) ** 2)) * 100.0)
-    thrust_rmse_le_pct = float(np.sqrt(np.mean(((df["thrust_le"] - df["thrust_isen"]) / df["thrust_isen"]) ** 2)) * 100.0)
-    temp_rmse_reg_pct = float(np.sqrt(np.mean(((df["T_exit_reg"] - df["T_exit_isen"]) / df["T_exit_isen"]) ** 2)) * 100.0)
-    temp_rmse_le_pct = float(np.sqrt(np.mean(((df["T_exit_le"] - df["T_exit_isen"]) / df["T_exit_isen"]) ** 2)) * 100.0)
-    press_rmse_reg_pct = float(np.sqrt(np.mean(((df["P_exit_reg"] - df["P_exit_isen"]) / df["P_exit_isen"]) ** 2)) * 100.0)
-    press_rmse_le_pct = float(np.sqrt(np.mean(((df["P_exit_le"] - df["P_exit_isen"]) / df["P_exit_isen"]) ** 2)) * 100.0)
-    mass_err_reg_pct = float(np.mean(df["mass_err_reg"]) * 100.0)
-    mass_err_le_pct = float(np.mean(df["mass_err_le"]) * 100.0)
+    # -----------------------------------------------------------------------
+    # Console summary
+    # -----------------------------------------------------------------------
+    thrust_rmse_reg = float(np.sqrt(np.mean(((df["thrust_reg"] - df["thrust_isen"]) / df["thrust_isen"]) ** 2)) * 100.0)
+    temp_rmse_reg   = float(np.sqrt(np.mean(((df["T_exit_reg"] - df["T_exit_isen"]) / df["T_exit_isen"]) ** 2)) * 100.0)
+    mass_reg        = float(np.mean(df["mass_err_reg"]) * 100.0)
 
-    summary_rows = [
-        ("Thrust RMSE%", thrust_rmse_reg_pct, thrust_rmse_le_pct),
-        ("T_exit RMSE%", temp_rmse_reg_pct, temp_rmse_le_pct),
-        ("P_exit RMSE%", press_rmse_reg_pct, press_rmse_le_pct),
-        ("Mass err%", mass_err_reg_pct, mass_err_le_pct),
+    summary = [
+        ("Thrust RMSE %", thrust_rmse_reg),
+        ("T_exit RMSE %", temp_rmse_reg),
+        ("Mass error %",  mass_reg),
     ]
-
-    wins = 0
-    print("=== BENCHMARK SUMMARY ===")
-    print(f"{'Metric':<18} {'Regular PINN':>14} {'LE-PINN':>12} {'Winner':>10}")
-    for metric, reg_value, le_value in summary_rows:
-        winner = "Regular PINN" if reg_value <= le_value else "LE-PINN"
-        wins += int(winner == "LE-PINN")
-        print(f"  {metric:<16} {reg_value:>12.3f} {le_value:>12.3f} {winner:>12}")
-    print(f"LE-PINN vs Regular PINN: {wins}/{len(summary_rows)} metrics won")
-    print(f"Saved CSV: {csv_path}")
-    print(f"Saved plot: {plot_path}")
+    print()
+    print("=" * 60)
+    print("BENCHMARK SUMMARY")
+    print("=" * 60)
+    print(f"{'Metric':<20} {'Regular PINN':>14}")
+    print("-" * 60)
+    for metric, reg_v in summary:
+        print(f"  {metric:<18} {reg_v:>12.3f}")
+    print("-" * 60)
+    print(f"  Fallback triggered     {fallback_reg:>12d}")
+    print()
+    print(f"Saved CSV  : {csv_path}")
+    print(f"Saved plot : {output_plots / 'pinn_comparison.png'}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

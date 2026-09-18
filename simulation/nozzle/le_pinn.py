@@ -90,6 +90,104 @@ def _safe_torch_load(path: str, **kwargs) -> dict:
         return torch.load(path, **kwargs)  # type: ignore[call-overload]
 
 
+def _trapezoid_integral(
+    y_values: np.ndarray,
+    x_values: np.ndarray,
+    axis: int = -1,
+) -> np.ndarray:
+    """NumPy 1.x/2.x compatible trapezoidal integration helper."""
+    if hasattr(np, "trapezoid"):
+        return np.trapezoid(y_values, x=x_values, axis=axis)
+    return np.trapz(y_values, x=x_values, axis=axis)
+
+
+def _integrate_axisymmetric_mass_flux(
+    rho_grid: np.ndarray,
+    u_grid: np.ndarray,
+    r_grid: np.ndarray,
+) -> np.ndarray:
+    """Axisymmetric mass flux: ``2π ∫ ρ(r) u(r) r dr`` at each axial station."""
+    integrand = rho_grid * u_grid * r_grid
+    return 2.0 * np.pi * _trapezoid_integral(integrand, x_values=r_grid, axis=1)
+
+
+@dataclass
+class PhysicsLossBreakdown:
+    """Aggregated physics loss plus per-residual MSE terms."""
+
+    total: torch.Tensor
+    terms: Dict[str, torch.Tensor]
+
+    def detached_terms(self) -> Dict[str, float]:
+        return {
+            name: float(value.detach().item())
+            for name, value in self.terms.items()
+        }
+
+
+def _zero_physics_loss_breakdown(device: torch.device) -> PhysicsLossBreakdown:
+    """Convenience zero-valued physics loss payload."""
+    zero = torch.tensor(0.0, device=device)
+    return PhysicsLossBreakdown(
+        total=zero,
+        terms={
+            "mass": zero.clone(),
+            "xmom": zero.clone(),
+            "ymom": zero.clone(),
+            "energy": zero.clone(),
+            "eos": zero.clone(),
+        },
+    )
+
+
+def _coerce_physics_loss_breakdown(
+    payload: Any,
+    device: torch.device,
+) -> PhysicsLossBreakdown:
+    """Accept either the new breakdown object or legacy scalar loss tensors."""
+    if isinstance(payload, PhysicsLossBreakdown):
+        return payload
+    if torch.is_tensor(payload):
+        breakdown = _zero_physics_loss_breakdown(device)
+        breakdown.total = payload
+        return breakdown
+    raise TypeError(
+        "physics loss helper must return PhysicsLossBreakdown or torch.Tensor, "
+        f"got {type(payload).__name__}"
+    )
+
+
+def _aggregate_rans_residual_loss(
+    res_mass: torch.Tensor,
+    res_xmom: torch.Tensor,
+    res_ymom: torch.Tensor,
+    res_energy: torch.Tensor,
+    res_eos: torch.Tensor,
+) -> PhysicsLossBreakdown:
+    """Aggregate normalized residuals into a total physics loss and term MSEs."""
+    terms = {
+        "mass": (res_mass ** 2).mean(),
+        "xmom": (res_xmom ** 2).mean(),
+        "ymom": (res_ymom ** 2).mean(),
+        "energy": (res_energy ** 2).mean(),
+        "eos": (res_eos ** 2).mean(),
+    }
+    total = (
+        terms["mass"]
+        + terms["xmom"]
+        + terms["ymom"]
+        + terms["energy"]
+        + terms["eos"]
+    )
+    return PhysicsLossBreakdown(total=total, terms=terms)
+
+
+def _format_physics_term_losses(term_losses: Dict[str, float]) -> str:
+    """Stable formatting for verbose physics residual telemetry."""
+    order = ("mass", "xmom", "ymom", "energy", "eos")
+    return " | ".join(f"{name}={term_losses[name]:.3e}" for name in order)
+
+
 # ============================================================================
 # 1. WEIGHT INITIALIZATION
 # ============================================================================
@@ -1107,6 +1205,7 @@ def train_le_pinn(
     device: str = "cpu",
     verbose: bool = True,
     geometry: str = "axisymmetric",
+    physics_debug: bool = False,
 ) -> Tuple[LE_PINN, Dict[str, list]]:
     """
     Full training loop for the LE-PINN.
@@ -1203,13 +1302,10 @@ def train_le_pinn(
         res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
             inputs_phys_raw, preds_phys_denorm, geometry=geometry, normalize=True,
         )
-        loss_physics = (
-            (res_mass ** 2).mean()
-            + (res_xmom ** 2).mean()
-            + (res_ymom ** 2).mean()
-            + (res_energy ** 2).mean()
-            + (res_eos ** 2).mean()
+        physics_breakdown = _aggregate_rans_residual_loss(
+            res_mass, res_xmom, res_ymom, res_energy, res_eos
         )
+        loss_physics = physics_breakdown.total
 
         # ---- 3. BC loss ----
         loss_bc = compute_wall_bc_loss(model, wall_inputs_t, wall_normals_t)
@@ -1240,6 +1336,13 @@ def train_le_pinn(
                 f"BC {loss_bc.item():.3e} | λ=({lam_d:.2f},{lam_p:.2f},{lam_bc:.2f}) | "
                 f"lr={optimizer.param_groups[0]['lr']:.1e}"
             )
+            if physics_debug:
+                print(
+                    "           Physics terms | "
+                    + _format_physics_term_losses(
+                        physics_breakdown.detached_terms()
+                    )
+                )
 
     # ---- Save ----
     if save_path is not None:
@@ -1324,7 +1427,7 @@ def _safe_physics_loss(
     output_norm: Optional["MinMaxNormalizer"] = None,
     geometry: str = "axisymmetric",
     max_failures: int = 10,
-) -> torch.Tensor:
+) -> PhysicsLossBreakdown:
     """
     Compute the RANS physics loss in physical (de-normalized) space.
 
@@ -1376,15 +1479,11 @@ def _safe_physics_loss(
             res_mass, res_xmom, res_ymom, res_energy, res_eos = compute_rans_residuals(
                 inputs_phys, preds_phys, geometry=geometry, normalize=True,
             )
-        loss = (
-            (res_mass ** 2).mean()
-            + (res_xmom ** 2).mean()
-            + (res_ymom ** 2).mean()
-            + (res_energy ** 2).mean()
-            + (res_eos ** 2).mean()
+        breakdown = _aggregate_rans_residual_loss(
+            res_mass, res_xmom, res_ymom, res_energy, res_eos
         )
         _PHYSICS_FAIL_COUNTER["count"] = 0
-        return loss
+        return breakdown
     except Exception as exc:
         _PHYSICS_FAIL_COUNTER["count"] += 1
         count = _PHYSICS_FAIL_COUNTER["count"]
@@ -1398,7 +1497,7 @@ def _safe_physics_loss(
                 f"Physics loss failed {max_failures} consecutive times. "
                 "Aborting training to prevent silent drift."
             ) from exc
-        return torch.tensor(0.0, device=inputs_n.device)
+        return _zero_physics_loss_breakdown(inputs_n.device)
 
 
 # ============================================================================
@@ -1417,6 +1516,7 @@ def finetune_on_cfd_data(
     device: str = "cpu",
     verbose: bool = True,
     geometry: str = "planar",
+    physics_debug: bool = False,
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1610,14 +1710,19 @@ def finetune_on_cfd_data(
                 )[:physics_max_points]
                 phys_inputs = inputs_train_n[phys_idx]
                 phys_walls = wall_dists_train[phys_idx]
-            loss_physics = _safe_physics_loss(
-                model, phys_inputs, phys_walls,
-                input_norm=input_norm,
-                output_norm=output_norm_5,
-                geometry=geometry,
+            physics_breakdown = _coerce_physics_loss_breakdown(
+                _safe_physics_loss(
+                    model, phys_inputs, phys_walls,
+                    input_norm=input_norm,
+                    output_norm=output_norm_5,
+                    geometry=geometry,
+                ),
+                dev,
             )
+            loss_physics = physics_breakdown.total
         else:
-            loss_physics = torch.tensor(0.0, device=dev)
+            physics_breakdown = _zero_physics_loss_breakdown(dev)
+            loss_physics = physics_breakdown.total
 
         lam_d, lam_p, _ = weighting.compute_weights(epoch)
         loss_total = lam_d * loss_data + physics_loss_weight * lam_p * loss_physics
@@ -1650,6 +1755,13 @@ def finetune_on_cfd_data(
                     f"Val {val_loss:.3e} | "
                     f"lr={optimizer.param_groups[0]['lr']:.1e}"
                 )
+                if physics_debug:
+                    print(
+                        "           Physics terms | "
+                        + _format_physics_term_losses(
+                            physics_breakdown.detached_terms()
+                        )
+                    )
 
     # ---- Save checkpoint ----
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
@@ -2171,11 +2283,24 @@ def run_le_pinn(
 
     if raw_centerline_finite and rho_positive:
         u_corrected = m_dot / np.maximum(rho_1d * A_x.astype(np.float64), 1e-12)
-        raw_mdot_profile = rho_1d * u_raw_1d * A_x.astype(np.float64)
-        max_raw_mdot_error = float(
-            np.max(np.abs(raw_mdot_profile - m_dot) / max(abs(m_dot), 1e-12))
+        # Physically correct mass-conservation check for the 2D LE-PINN:
+        # integrate the full radial profile rather than using the centerline value.
+        # For axisymmetric flow: ṁ = 2π ∫₀ᴿ ρ(r)·u(r)·r dr at every axial station.
+        # The old check (ρ_cl · u_cl · A) is a 1-point approximation that
+        # systematically over-estimates ṁ by the velocity-profile factor (~1.2–2×)
+        # and therefore always triggered a false fallback.
+        rho_grid_np = preds_grid[:, :, 0].numpy().astype(np.float64)
+        u_grid_np   = preds_grid[:, :, 1].numpy().astype(np.float64)
+        r_2d        = y_matrix.astype(np.float64)          # (n_axial, n_radial)
+        mdot_2d = _integrate_axisymmetric_mass_flux(
+            rho_grid_np, u_grid_np, r_2d
         )
-        exit_mdot_raw = float(raw_mdot_profile[-1])
+        max_raw_mdot_error = float(
+            np.max(np.abs(mdot_2d - m_dot) / max(abs(m_dot), 1e-12))
+        )
+        exit_mdot_raw = float(mdot_2d[-1])
+        # Keep the 1-D centerline profile for backward-compat reporting fields below.
+        raw_mdot_profile = rho_1d * u_raw_1d * A_x.astype(np.float64)
         rho_match = _safe_rel_error(float(rho_1d[0]), float(inlet_state["rho"]))
         u_match = _safe_rel_error(float(u_raw_1d[0]), float(inlet_state["u"]), floor=1.0)
         p_match = _safe_rel_error(float(p_1d[0]), float(inlet_state["p"]))
