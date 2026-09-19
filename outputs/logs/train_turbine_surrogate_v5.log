@@ -1,0 +1,70 @@
+========================================================================
+P4.4  TURBINE SURROGATE — claim: surrogate of the analytic work-consistent expansion
+========================================================================
+[1/4] Building the calibrated LTO envelope (v4 calibration x ICAO Trent 1000 records x 4 fuels) ...
+✓ Loaded Cantera mechanism: data/creck_c1c16_full.yaml
+  Species count: 492
+✓ Loaded CRECK mechanism for blend comparisons
+[OK] Loaded ICAO emissions data: 180 records
+[OK] NOx correlation fitted (ICAO databank):
+  EI_NOx = 9.8214 × OPR^0.2070 × ṁ_fuel^0.9506
+  fit set: 180 records / 28 engine models
+  in-sample R² = 0.9969  <- TRAINING DIAGNOSTIC, NOT VALIDATION
+  no fuel-composition dependence: cannot rank blends on NOx
+✓ CO Model Calibrated:
+  k = 2844.33 [g/kg per unit inefficiency²]
+  Reference: 7.11 g/kg at η=95.0% (IDLE)
+✓ IntegratedTurbofanEngine initialized successfully
+
+  envelope: 1/60 records (Trent 1000-AE3)  envelope: 2/60 records (Trent 1000-CE3)  envelope: 3/60 records (Trent 1000-D3)  envelope: 4/60 records (Trent 1000-G3)  envelope: 5/60 records (Trent 1000-H3)  envelope: 6/60 records (Trent 1000-J3)  envelope: 7/60 records (Trent 1000-K3)  envelope: 8/60 records (Trent 1000-L3)  envelope: 9/60 records (Trent 1000-M3)  envelope: 10/60 records (Trent 1000-N3)  envelope: 11/60 records (Trent 1000-P3)  envelope: 12/60 records (Trent 1000-Q3)  envelope: 13/60 records (Trent 1000-R3)  envelope: 14/60 records (Trent 1000-AE3)  envelope: 15/60 records (Trent 1000-CE3)  envelope: 16/60 records (Trent 1000-D3)  envelope: 17/60 records (Trent 1000-G3)  envelope: 18/60 records (Trent 1000-H3)  envelope: 19/60 records (Trent 1000-J3)  envelope: 20/60 records (Trent 1000-K3)  envelope: 21/60 records (Trent 1000-L3)  envelope: 22/60 records (Trent 1000-M3)  envelope: 23/60 records (Trent 1000-N3)  envelope: 24/60 records (Trent 1000-P3)  envelope: 25/60 records (Trent 1000-Q3)  envelope: 26/60 records (Trent 1000-R3)  envelope: 27/60 records (Trent 1000-A)  envelope: 28/60 records (Trent 1000-C)  envelope: 29/60 records (Trent 1000-D)  envelope: 30/60 records (Trent 1000-E)  envelope: 31/60 records (Trent 1000-G)  envelope: 32/60 records (Trent 1000-H)  envelope: 33/60 records (Trent 1000-A)  envelope: 34/60 records (Trent 1000-C)  envelope: 35/60 records (Trent 1000-D)  envelope: 36/60 records (Trent 1000-E)  envelope: 37/60 records (Trent 1000-G)  envelope: 38/60 records (Trent 1000-H)  envelope: 39/60 records (Trent 1000-A2)  envelope: 40/60 records (Trent 1000-C2)  envelope: 41/60 records (Trent 1000-D2)  envelope: 42/60 records (Trent 1000-E2)  envelope: 43/60 records (Trent 1000-G2)  envelope: 44/60 records (Trent 1000-H2)  envelope: 45/60 records (Trent 1000-J2)  envelope: 46/60 records (Trent 1000-K2)  envelope: 47/60 records (Trent 1000-L2)  envelope: 48/60 records (Trent 1000-AE3)  envelope: 49/60 records (Trent 1000-CE3)  envelope: 50/60 records (Trent 1000-D3)  envelope: 51/60 records (Trent 1000-G3)  envelope: 52/60 records (Trent 1000-H3)  envelope: 53/60 records (Trent 1000-J3)  envelope: 54/60 records (Trent 1000-K3)  envelope: 55/60 records (Trent 1000-L3)  envelope: 56/60 records (Trent 1000-M3)  envelope: 57/60 records (Trent 1000-N3)  envelope: 58/60 records (Trent 1000-P3)  envelope: 59/60 records (Trent 1000-Q3)  envelope: 60/60 records (Trent 1000-R3)
+      720 conditions, 28 engine models, tau in [0.259, 0.398], p5/p4 in [0.082, 0.249]
+[2/4] Split: 22 training models / 6 held-out models ['Trent 1000-A', 'Trent 1000-D3', 'Trent 1000-E', 'Trent 1000-G2', 'Trent 1000-L2', 'Trent 1000-P3']
+[3/4] Training (3000 epochs, lr 0.001, seed 42, cpu) ...
+  Ep    0 | total 1.758e+00 | path 5.045e-01 | eos 2.305e-01 | mono 1.433e-01 | work 2.018e+00 | lr 1.0e-03
+  Ep  250 | total 3.388e-03 | path 2.694e-03 | eos 1.538e-04 | mono 0.000e+00 | work 1.081e-03 | lr 1.0e-03
+  Ep  500 | total 1.342e-03 | path 1.093e-03 | eos 1.068e-04 | mono 0.000e+00 | work 2.845e-04 | lr 1.0e-03
+  Ep  750 | total 9.279e-04 | path 8.289e-04 | eos 7.681e-05 | mono 0.000e+00 | work 4.437e-05 | lr 1.0e-03
+  Ep 1000 | total 8.483e-04 | path 7.762e-04 | eos 7.027e-05 | mono 0.000e+00 | work 3.725e-06 | lr 1.0e-03
+  Ep 1250 | total 7.943e-04 | path 7.297e-04 | eos 6.442e-05 | mono 0.000e+00 | work 3.670e-07 | lr 1.0e-03
+  Ep 1500 | total 7.312e-04 | path 6.734e-04 | eos 5.775e-05 | mono 0.000e+00 | work 2.346e-07 | lr 1.0e-03
+  Ep 1750 | total 6.496e-04 | path 6.000e-04 | eos 4.948e-05 | mono 0.000e+00 | work 2.809e-07 | lr 1.0e-03
+  Ep 2000 | total 5.594e-04 | path 5.137e-04 | eos 4.032e-05 | mono 0.000e+00 | work 1.081e-05 | lr 1.0e-03
+  Ep 2250 | total 4.652e-04 | path 4.329e-04 | eos 3.184e-05 | mono 0.000e+00 | work 9.650e-07 | lr 1.0e-03
+  Ep 2500 | total 3.945e-04 | path 3.675e-04 | eos 2.630e-05 | mono 0.000e+00 | work 1.347e-06 | lr 1.0e-03
+  Ep 2750 | total 3.558e-04 | path 3.126e-04 | eos 2.197e-05 | mono 0.000e+00 | work 4.247e-05 | lr 1.0e-03
+  Ep 2999 | total 2.707e-04 | path 2.527e-04 | eos 1.781e-05 | mono 0.000e+00 | work 3.523e-07 | lr 1.0e-03
+      saved models/turbine_pinn_v5.pt
+[4/4] Scoring the pre-registered gate ...
+✓ Loaded Cantera mechanism: data/creck_c1c16_full.yaml
+  Species count: 492
+✓ Loaded CRECK mechanism for blend comparisons
+[OK] Loaded ICAO emissions data: 180 records
+[OK] NOx correlation fitted (ICAO databank):
+  EI_NOx = 9.8214 × OPR^0.2070 × ṁ_fuel^0.9506
+  fit set: 180 records / 28 engine models
+  in-sample R² = 0.9969  <- TRAINING DIAGNOSTIC, NOT VALIDATION
+  no fuel-composition dependence: cannot rank blends on NOx
+✓ CO Model Calibrated:
+  k = 2844.33 [g/kg per unit inefficiency²]
+  Reference: 7.11 g/kg at η=95.0% (IDLE)
+✓ IntegratedTurbofanEngine initialized successfully
+
+✓ Loaded Cantera mechanism: data/creck_c1c16_full.yaml
+  Species count: 492
+✓ Loaded CRECK mechanism for blend comparisons
+[OK] Loaded ICAO emissions data: 180 records
+[OK] NOx correlation fitted (ICAO databank):
+  EI_NOx = 9.8214 × OPR^0.2070 × ṁ_fuel^0.9506
+  fit set: 180 records / 28 engine models
+  in-sample R² = 0.9969  <- TRAINING DIAGNOSTIC, NOT VALIDATION
+  no fuel-composition dependence: cannot rank blends on NOx
+✓ CO Model Calibrated:
+  k = 2844.33 [g/kg per unit inefficiency²]
+  Reference: 7.11 g/kg at η=95.0% (IDLE)
+✓ IntegratedTurbofanEngine initialized successfully
+
+  held-out p5 max |err| 28.250 %, raw T5 max |err| 0.066 %  (gate 1 %)
+  cycle thrust max |err| 5.183 %, TSFC max |err| 5.466 %  (gate 1 %)
+  VERDICT: GATE MISSED — retire the turbine PINN to an appendix; production stays analytic
+  outputs/turbine_surrogate_v5.md
+exit=0

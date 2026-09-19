@@ -1,0 +1,6 @@
+candidate,p5_bar,deviation_from_work_consistent_pct
+(a) analytic work-consistent (production path),3.691807343580888,0.0
+(a') hand-formula recomputation,3.691807343580888,0.0
+(b) turbine PINN raw output,2.689891815185547,-27.13888822836229
+(b') turbine surrogate turbine_pinn_v5.pt raw output,2.8130359649658203,-23.803284524281786
+(c) fixed turbine_design P_out (unused in production),1.93,-47.722082427844505
