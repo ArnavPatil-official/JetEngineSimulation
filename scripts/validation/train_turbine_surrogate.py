@@ -96,20 +96,58 @@ CYCLE_CSV = REPO_ROOT / "outputs" / "turbine_surrogate_cycle_check_v5.csv"
 SUMMARY_MD = REPO_ROOT / "outputs" / "turbine_surrogate_v5.md"
 SAVE_PATH = REPO_ROOT / "models" / "turbine_pinn_v5.pt"
 
+
+def _bind_attempt(n: int) -> None:
+    """Select the registered attempt and its artifact paths."""
+    global ATTEMPT, FIDELITY_CSV, CYCLE_CSV, SUMMARY_MD, SAVE_PATH
+    ATTEMPT = ATTEMPTS[n]
+    sfx = ATTEMPT["suffix"]
+    FIDELITY_CSV = REPO_ROOT / "outputs" / f"turbine_surrogate_fidelity_v5{sfx}.csv"
+    CYCLE_CSV = REPO_ROOT / "outputs" / f"turbine_surrogate_cycle_check_v5{sfx}.csv"
+    SUMMARY_MD = REPO_ROOT / "outputs" / f"turbine_surrogate_v5{sfx}.md"
+    SAVE_PATH = REPO_ROOT / ATTEMPT["out"]
+
 MODE_MAP = {"TAKE-OFF": "phi_to", "APPROACH": "phi_app", "IDLE": "phi_idle"}
 
-ATTEMPT = {
-    "id": "P4.4-attempt-1",
-    "registered": "2026-09-18",
-    "claim": "surrogate of run_turbine_analytic (eta_poly 0.9); no independent accuracy",
-    "n_epochs": 3000,
-    "lr": 1e-3,
-    "n_collocation": 33,
-    "loss_weights": {"path": 1.0, "eos": 1.0, "monotonic": 0.1, "work": 0.5},
-    "holdout_fraction_models": 0.2,
-    "seed": 42,
-    "gate": {"p5_T5_max_rel_err": 0.01, "cycle_thrust_tsfc_max_rel_err": 0.01},
+ATTEMPTS = {
+    1: {
+        "id": "P4.4-attempt-1",
+        "registered": "2026-09-18",
+        "claim": "surrogate of run_turbine_analytic (eta_poly 0.9); no independent accuracy",
+        "n_epochs": 3000,
+        "lr": 1e-3,
+        "n_collocation": 33,
+        "path_error": "absolute",       # MSE in inlet-anchored normalised units
+        "loss_weights": {"path": 1.0, "eos": 1.0, "monotonic": 0.1, "work": 0.5},
+        "holdout_fraction_models": 0.2,
+        "seed": 42,
+        "gate": {"p5_T5_max_rel_err": 0.01, "cycle_thrust_tsfc_max_rel_err": 0.01},
+        "out": "models/turbine_pinn_v5.pt",
+        "suffix": "",
+    },
+    # Registered 2026-09-18 AFTER attempt 1 missed the gate, with exactly one
+    # diagnosed defect fixed: the absolute path MSE does not resolve the exit
+    # pressure ratio (0.08-0.25 in normalised units) to 1 %; attempt 2 uses
+    # a RELATIVE path error so every point of the path is weighted by its own
+    # magnitude. Epochs doubled because the attempt-1 loss was still falling
+    # at 3000. Everything else identical. Reported next to attempt 1.
+    2: {
+        "id": "P4.4-attempt-2",
+        "registered": "2026-09-18",
+        "claim": "surrogate of run_turbine_analytic (eta_poly 0.9); no independent accuracy",
+        "n_epochs": 6000,
+        "lr": 1e-3,
+        "n_collocation": 33,
+        "path_error": "relative",
+        "loss_weights": {"path": 1.0, "eos": 1.0, "monotonic": 0.1, "work": 0.5},
+        "holdout_fraction_models": 0.2,
+        "seed": 42,
+        "gate": {"p5_T5_max_rel_err": 0.01, "cycle_thrust_tsfc_max_rel_err": 0.01},
+        "out": "models/turbine_pinn_v5_a2.pt",
+        "suffix": "_a2",
+    },
 }
+ATTEMPT = ATTEMPTS[1]   # rebound by main() from --attempt
 
 
 def sha256(path: Path) -> str:
@@ -231,7 +269,11 @@ def losses(model, b: dict, eta_poly: float) -> dict:
     T_a = 1.0 - x * b["tau"]
     p_a = T_a ** (b["gamma"] / (eta_poly * (b["gamma"] - 1.0)))
     rho_a = p_a / T_a
-    loss_path = ((rho_n - rho_a) ** 2 + (p_n - p_a) ** 2 + (T_n - T_a) ** 2).mean()
+    if ATTEMPT["path_error"] == "relative":
+        loss_path = (((rho_n - rho_a) / rho_a) ** 2 + ((p_n - p_a) / p_a) ** 2
+                     + ((T_n - T_a) / T_a) ** 2).mean()
+    else:
+        loss_path = ((rho_n - rho_a) ** 2 + (p_n - p_a) ** 2 + (T_n - T_a) ** 2).mean()
     loss_eos = ((p_n - rho_n * T_n) ** 2).mean()
     T_x = torch.autograd.grad(T_n, x, torch.ones_like(T_n), create_graph=True)[0]
     loss_mono = torch.relu(T_x).mean()
@@ -405,17 +447,26 @@ def evaluate(model_path: Path, calib: dict, env: pd.DataFrame, verbose: bool = T
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="P4.4 turbine surrogate: train, then score the pre-registered gate")
-    ap.add_argument("--seed", type=int, default=ATTEMPT["seed"])
+    ap.add_argument("--attempt", type=int, default=1, choices=sorted(ATTEMPTS),
+                    help="registered attempt to run (see ATTEMPTS)")
+    ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda", "mps"])
-    ap.add_argument("--epochs", type=int, default=ATTEMPT["n_epochs"])
-    ap.add_argument("--lr", type=float, default=ATTEMPT["lr"])
-    ap.add_argument("--out", default=str(SAVE_PATH))
-    ap.add_argument("--attempt-id", default=ATTEMPT["id"])
+    ap.add_argument("--epochs", type=int, default=None)
+    ap.add_argument("--lr", type=float, default=None)
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--attempt-id", default=None)
     ap.add_argument("--evaluate-only", action="store_true", help="score an existing checkpoint against the gate")
     ap.add_argument("--rebuild-envelope", action="store_true")
     args = ap.parse_args()
+    _bind_attempt(args.attempt)
+    args.seed = ATTEMPT["seed"] if args.seed is None else args.seed
+    args.epochs = ATTEMPT["n_epochs"] if args.epochs is None else args.epochs
+    args.lr = ATTEMPT["lr"] if args.lr is None else args.lr
+    args.attempt_id = ATTEMPT["id"] if args.attempt_id is None else args.attempt_id
     device = "cpu" if args.device == "auto" else args.device
-    out = Path(args.out)
+    out = Path(args.out) if args.out else SAVE_PATH
+    print(f"Registered attempt: {ATTEMPT['id']} (path error: {ATTEMPT['path_error']}, "
+          f"{args.epochs} epochs, lr {args.lr}, seed {args.seed}) -> {out.relative_to(REPO_ROOT) if out.is_relative_to(REPO_ROOT) else out}")
 
     calib = json.load(open(CALIBRATION))
     eta_poly = calib["fixed_parameters"]["eta_turbine_polytropic"]

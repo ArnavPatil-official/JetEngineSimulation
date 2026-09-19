@@ -1613,6 +1613,7 @@ def finetune_on_cfd_data(
     abort_on_collapse: bool = True,
     overwrite: bool = False,
     extra_payload: Optional[Dict[str, Any]] = None,
+    lr_schedule: str = "plateau",
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1666,6 +1667,12 @@ def finetune_on_cfd_data(
             (``models/*.pt`` are never overwritten in place).
         extra_payload: Extra keys merged into the saved checkpoint, e.g. a
             declared train/eval split record.
+        lr_schedule: ``"plateau"`` (historical: ReduceLROnPlateau on the data
+            loss, factor 0.5, patience 20) or ``"cosine"`` (CosineAnnealingLR
+            from ``lr`` to ``lr/100`` over ``n_epochs``, no dependence on the
+            loss trajectory). P4.3 attempt 1 showed the plateau scheduler
+            driving the rate to 1e-8 within 1000 epochs once the physics
+            warm-up made the data loss non-monotonic.
 
     Guarantees (P4.2):
         * the validation loss is measured **before the first update** and the
@@ -1871,9 +1878,16 @@ def finetune_on_cfd_data(
     best_state = copy.deepcopy(model.state_dict())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-9
-    )
+    if lr_schedule == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-9
+        )
+    elif lr_schedule == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=max(n_epochs, 1), eta_min=lr * 1e-2
+        )
+    else:
+        raise ValueError(f"lr_schedule must be 'plateau' or 'cosine', got {lr_schedule!r}")
     weighting = loss_weighting if loss_weighting is not None else AdaptiveLossWeighting(max_epochs=n_epochs)
     collapsed_at_epoch: Optional[int] = None
 
@@ -1952,7 +1966,10 @@ def finetune_on_cfd_data(
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         # Phase 3: Step scheduler on stable monitor metric (data loss)
-        scheduler.step(loss_data.item())
+        if lr_schedule == "plateau":
+            scheduler.step(loss_data.item())
+        else:
+            scheduler.step()
 
         history["loss_total"].append(loss_total.item())
         history["loss_data"].append(loss_data.item())
@@ -2017,6 +2034,7 @@ def finetune_on_cfd_data(
             "config": {
                 "n_epochs": n_epochs,
                 "lr": lr,
+                "lr_schedule": lr_schedule,
                 "physics_loss_weight": physics_loss_weight,
                 "physics_max_points": physics_max_points,
                 "val_fraction": val_fraction,

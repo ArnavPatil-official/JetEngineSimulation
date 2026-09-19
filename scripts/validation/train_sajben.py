@@ -69,19 +69,47 @@ from simulation.nozzle.le_pinn import PhysicsWarmupWeighting, finetune_on_cfd_da
 DATASET_PATH = str(_ROOT / "data" / "processed" / "sajben_wind_dataset.pt")
 SAVE_PATH = str(_ROOT / "models" / "le_pinn_sajben_v5.pt")
 
-ATTEMPT = {
-    "id": "P4.3-attempt-1",
-    "registered": "2026-09-18",
-    "n_epochs": 5000,
-    "lr": 1e-3,
-    "physics_loss_weight": 0.05,
-    "loss_weighting": {"schedule": "PhysicsWarmupWeighting", "data": 1.0, "warmup_fraction": 0.5},
-    "physics_max_points": None,
-    "val_fraction": 0.2,
-    "seed": 42,
-    "geometry": "planar",
-    "pretrained": None,
+ATTEMPTS = {
+    1: {
+        "id": "P4.3-attempt-1",
+        "registered": "2026-09-18",
+        "n_epochs": 5000,
+        "lr": 1e-3,
+        "lr_schedule": "plateau",
+        "physics_loss_weight": 0.05,
+        "loss_weighting": {"schedule": "PhysicsWarmupWeighting", "data": 1.0, "warmup_fraction": 0.5},
+        "physics_max_points": None,
+        "val_fraction": 0.2,
+        "seed": 42,
+        "geometry": "planar",
+        "pretrained": None,
+        "out": "models/le_pinn_sajben_v5.pt",
+    },
+    # Registered 2026-09-18 AFTER attempt 1 scored 0.258 (fail band), with
+    # exactly one diagnosed defect fixed: the ReduceLROnPlateau scheduler,
+    # stepped on the per-epoch data loss, halved the learning rate every
+    # 21 epochs once the physics warm-up made that loss non-monotonic and
+    # reached 1.5e-8 by epoch ~1000 (best validation at epoch 350 of 5000).
+    # Attempt 2 uses a cosine schedule (1e-3 -> 1e-5 over the run) that
+    # does not depend on the loss trajectory. Everything else identical.
+    # Reported next to attempt 1; no other parameter was touched.
+    2: {
+        "id": "P4.3-attempt-2",
+        "registered": "2026-09-18",
+        "n_epochs": 5000,
+        "lr": 1e-3,
+        "lr_schedule": "cosine",
+        "physics_loss_weight": 0.05,
+        "loss_weighting": {"schedule": "PhysicsWarmupWeighting", "data": 1.0, "warmup_fraction": 0.5},
+        "physics_max_points": None,
+        "val_fraction": 0.2,
+        "seed": 42,
+        "geometry": "planar",
+        "pretrained": None,
+        "out": "models/le_pinn_sajben_v5_a2.pt",
+    },
 }
+ATTEMPT = ATTEMPTS[1]   # rebound by main() from --attempt
 
 
 def resolve_device(name: str) -> str:
@@ -177,6 +205,7 @@ def train_sajben_le_pinn(
         physics_debug=physics_debug,
         seed=seed,
         loss_weighting=weighting,
+        lr_schedule=ATTEMPT.get("lr_schedule", "plateau"),
         extra_payload={"split": split, "attempt": {**ATTEMPT, "id": attempt_id,
                                                    "n_epochs": n_epochs, "lr": lr,
                                                    "physics_loss_weight": physics_loss_weight,
@@ -187,9 +216,12 @@ def train_sajben_le_pinn(
 
 
 def main() -> None:
+    global ATTEMPT, SAVE_PATH
     parser = argparse.ArgumentParser(
         description="Train LE-PINN on the Sajben WIND dataset (pre-registered attempt)"
     )
+    parser.add_argument("--attempt", type=int, default=1, choices=sorted(ATTEMPTS),
+                        help="registered attempt to run (see ATTEMPTS)")
     parser.add_argument("--epochs", type=int, default=ATTEMPT["n_epochs"],
                         help=f"Number of training epochs (default: {ATTEMPT['n_epochs']})")
     parser.add_argument("--lr", type=float, default=ATTEMPT["lr"],
@@ -209,6 +241,14 @@ def main() -> None:
     parser.add_argument("--attempt-id", type=str, default=ATTEMPT["id"],
                         help="Attempt label recorded in the checkpoint")
     args = parser.parse_args()
+    ATTEMPT = ATTEMPTS[args.attempt]
+    SAVE_PATH = str(_ROOT / ATTEMPT["out"])
+    if args.attempt != 1:
+        # defaults above were bound to attempt 1; rebind the registered values
+        if args.attempt_id == ATTEMPTS[1]["id"]:
+            args.attempt_id = ATTEMPT["id"]
+        if args.out == str(_ROOT / ATTEMPTS[1]["out"]):
+            args.out = SAVE_PATH
 
     registered = (args.epochs == ATTEMPT["n_epochs"] and args.lr == ATTEMPT["lr"]
                   and args.physics_weight == ATTEMPT["physics_loss_weight"]
