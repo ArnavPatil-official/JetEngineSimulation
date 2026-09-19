@@ -595,6 +595,55 @@ def compute_continuity_error(
 # 5.  MAIN
 # ===========================================================================
 
+def _file_sha256(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def check_split_record(ckpt: dict | None, eval_file: Path) -> dict | None:
+    """
+    Refuse to score a checkpoint whose recorded training split overlaps the
+    evaluation set (P4.3: leakage impossible by construction, verified).
+
+    Returns the split record (or ``None`` for legacy checkpoints, which are
+    scored with a warning because their provenance cannot be verified).
+    """
+    if ckpt is None:
+        return None
+    split = ckpt.get("split")
+    eval_sha = _file_sha256(eval_file)
+    if split is None:
+        warnings.warn(
+            "Checkpoint carries no declared train/eval split record (pre-P4.3 "
+            "checkpoint); leakage against the evaluation set cannot be verified.",
+            RuntimeWarning, stacklevel=1,
+        )
+        cfg_ds = str((ckpt.get("config") or {}).get("dataset", ""))
+        if eval_file.name in cfg_ds:
+            raise ValueError(
+                f"Checkpoint config names the evaluation file ({eval_file.name}) as its "
+                "training dataset; refusing to score a leaked model."
+            )
+        return None
+    train_hashes = {split.get("train_sha256"), split.get("train_grid_sha256")}
+    train_names = {str(split.get("train_source", "")), str(split.get("train_grid", ""))}
+    if (eval_sha in train_hashes or any(eval_file.name in n for n in train_names)
+            or int(split.get("eval_rows_in_train", 0)) != 0):
+        raise ValueError(
+            "Checkpoint's declared training split overlaps the evaluation set "
+            f"({eval_file.name}); refusing to score a leaked model. Split record: {split}"
+        )
+    if split.get("eval_sha256") not in (None, eval_sha):
+        warnings.warn(
+            "The evaluation file has changed since the split was declared "
+            f"(recorded {split.get('eval_sha256', '')[:12]}…, now {eval_sha[:12]}…).",
+            RuntimeWarning, stacklevel=1,
+        )
+    print(f"  Split record: attempt {split.get('attempt')}, train={split.get('train_source')} "
+          f"({split.get('train_rows')} rows), eval rows in train = {split.get('eval_rows_in_train')}  -> OK")
+    return split
+
+
 def main(model_file: Path | None = None) -> dict:
     print("=" * 72)
     print("LE-PINN  ×  SAJBEN TRANSONIC DIFFUSER  —  VALIDATION REPORT")
@@ -699,26 +748,47 @@ def main(model_file: Path | None = None) -> dict:
             RuntimeWarning, stacklevel=1,
         )
 
+    # --- Split / leakage guard (P4.3) ---
+    # A checkpoint trained on a declared split carries the record; the
+    # evaluation file must not appear among its training sources.
+    split = check_split_record(ckpt, DATA_FILE)
+
     # --- Normalizers ---
-    # Input normalizer: always fit on the Sajben grid so spatial inputs map to
-    # [0,1] exactly as the model expects during training (regardless of the
-    # physical coordinate range).
-    # Output normalizer: use the checkpoint's if available so denormalized
+    # Input normalizer: the checkpoint's own when it carries one (the
+    # coordinate system the weights were trained in; P4.2), provided the
+    # validation grid lies inside that domain. Otherwise fit on the Sajben
+    # grid, as before, for legacy checkpoints.
+    # Output normalizer: the checkpoint's if available so denormalized
     # outputs reflect the physical scale the model was trained on.
     norm_in_fresh, norm_out_fresh = _build_sajben_normalizers(
         geom, N_AXIAL, N_NORMAL
     )
-    norm_in = norm_in_fresh  # always use Sajben-domain input normalizer
+    norm_in = norm_in_fresh
+    if ckpt is not None and "input_norm_min" in ckpt:
+        cand = MinMaxNormalizer()
+        cand.data_min = ckpt["input_norm_min"].float()
+        cand.data_max = ckpt["input_norm_max"].float()
+        z = cand.transform(inputs_raw)[:, :2]          # x, y are the varying inputs
+        frac_out = float(((z < -0.05) | (z > 1.05)).any(dim=1).float().mean())
+        if frac_out <= 0.01:
+            norm_in = cand
+            print(f"  Input normalizer: loaded from checkpoint "
+                  f"({100*(1-frac_out):.1f} % of grid inside its domain).")
+        else:
+            print(f"  Input normalizer: checkpoint domain covers only "
+                  f"{100*(1-frac_out):.0f} % of the Sajben grid -> fitted on Sajben domain "
+                  f"(legacy behaviour; the model is out of its training domain).")
+    else:
+        print(f"  Input normalizer: fitted on Sajben domain (no normaliser in checkpoint).")
 
     if ckpt is not None and "output_norm_min" in ckpt:
         norm_out = MinMaxNormalizer()
         norm_out.data_min = ckpt["output_norm_min"][:5]
         norm_out.data_max = ckpt["output_norm_max"][:5]
-        print(f"  Input normalizer: fitted on Sajben domain.")
         print(f"  Output normalizer: loaded from checkpoint.")
     else:
         norm_out = norm_out_fresh
-        print(f"  Normalizers fitted on Sajben-calibrated isentropic data.")
+        print(f"  Output normalizer: fitted on Sajben-calibrated isentropic data.")
 
     preds_phys = run_forward_pass(model, inputs_raw, norm_in, norm_out)
     print(f"  Forward pass complete. "
@@ -807,6 +877,8 @@ def main(model_file: Path | None = None) -> dict:
         "continuity_error":   cont_err,
         "mismatch_flags":     mismatch_flags,
         "model_file":         str(model_file),
+        "split":              split,
+        "attempt":            (ckpt or {}).get("attempt"),
     }
 
 

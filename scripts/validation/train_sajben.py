@@ -1,18 +1,54 @@
 """
-Train LE-PINN on Sajben transonic diffuser conditions.
+Train the nozzle LE-PINN on the Sajben weak-shock case (P4.3).
 
-This script now serves as a wrapper around the Sajben fine-tuning workflow
-that uses the actual processed Sajben CFD dataset (master_shock_dataset.pt).
+Training data: ``data/processed/sajben_wind_dataset.pt`` — the NASA/WIND
+Spalart-Allmaras RANS solution decoded from the NPARC archive, with the
+train / evaluation split declared in the dataset by
+``scripts/validation/sajben_split.py`` (route (a) of the P4.1 audit).  The
+experiment (``data/raw/data.Mach46.txt``) is the evaluation set and never
+enters training; the split record is copied into the checkpoint so
+``sajben_validation.py`` can verify that.
 
-For synthetic pre-training, the dataset-backed fine-tune function can be
-run with a fresh init (no pretrained checkpoint). This ensures Sajben
-training always uses the correct processed dataset with planar geometry.
+PRE-REGISTERED ATTEMPT 1 (committed before the run; ``ATTEMPT`` below)
+-----------------------------------------------------------------------
+Changing any of these values makes a new attempt with its own record; every
+attempt is reported (docs/plan.md, P4.3).
 
-Saves checkpoint to  models/le_pinn_sajben.pt
+* fresh initialisation (no pretrained checkpoint), seed 42, CPU
+* 5000 full-batch epochs, AdamW lr 1e-3 (wd 1e-5), ReduceLROnPlateau on the
+  data loss (factor 0.5, patience 20) — the optimiser/scheduler already in
+  ``finetune_on_cfd_data``
+* loss = 1.0 * data_MSE + 0.05 * ramp(t) * physics_residual, i.e. the
+  existing data + RANS-residual structure with ``PhysicsWarmupWeighting``:
+  the data weight is constant and the physics weight ramps linearly 0 -> 1
+  over the first half of the run.  The historical schedule decayed the
+  data weight to 0.08 and drove long runs to the trivial constant field
+  (P4.2); it is not used.
+* disclosed exploratory smokes (100 epochs, seed 42, before registration,
+  none of them a gate attempt): constant 0.5/0.5 weighting reached internal
+  val MSE 0.122 with 107 alive units in the narrowest layer; the warm-up
+  ramp 0.040 / 151; data-only 0.015 / 162.  The ramp is registered because
+  the claim under test is "physics-informed"; the data-only configuration
+  is run alongside as REFERENCE 1 (``--physics-weight 0
+  --attempt-id P4.3-reference-1-data-only``), an ablation that is reported
+  next to attempt 1 but does not compete for the gate.
+* physics residual as implemented (planar geometry, Sutherland laminar
+  viscosity in ``_safe_physics_loss``; with ReLU activations its
+  second-derivative terms vanish, so it is effectively an Euler residual).
+  Recorded as a known limitation of attempt 1, not changed here.
+* internal validation split 20 % (seed 42) for best-weight restore and
+  collapse monitoring; the gate is scored on the experiment afterwards by
+  ``sajben_validation.py --model models/le_pinn_sajben_v5.pt``
+* output ``models/le_pinn_sajben_v5.pt`` (never overwrites an existing file)
+
+Gate (fixed in docs/plan.md before this run): held-out wall-Cp shape-L2
+< 0.10 pass / 0.10-0.25 partial / > 0.25 fail.  The training data's own
+score on that metric is 0.089 / 0.084 (P4.1 §3).
 
 Usage::
 
-    python scripts/validation/train_sajben.py [--epochs 5000]
+    python scripts/validation/train_sajben.py                      # attempt 1 as registered
+    python scripts/validation/train_sajben.py --epochs 200 --out /tmp/x.pt   # smoke run
 """
 
 from __future__ import annotations
@@ -25,48 +61,72 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from simulation.nozzle.le_pinn import finetune_on_cfd_data
+from simulation.nozzle.le_pinn import PhysicsWarmupWeighting, finetune_on_cfd_data
 
 # ---------------------------------------------------------------------------
-# Sajben dataset path and training config
+# Dataset path, output path and the pre-registered configuration
 # ---------------------------------------------------------------------------
-DATASET_PATH = str(_ROOT / "data" / "processed" / "master_shock_dataset.pt")
-SAVE_PATH = str(_ROOT / "models" / "le_pinn_sajben.pt")
+DATASET_PATH = str(_ROOT / "data" / "processed" / "sajben_wind_dataset.pt")
+SAVE_PATH = str(_ROOT / "models" / "le_pinn_sajben_v5.pt")
+
+ATTEMPT = {
+    "id": "P4.3-attempt-1",
+    "registered": "2026-09-18",
+    "n_epochs": 5000,
+    "lr": 1e-3,
+    "physics_loss_weight": 0.05,
+    "loss_weighting": {"schedule": "PhysicsWarmupWeighting", "data": 1.0, "warmup_fraction": 0.5},
+    "physics_max_points": None,
+    "val_fraction": 0.2,
+    "seed": 42,
+    "geometry": "planar",
+    "pretrained": None,
+}
+
+
+def resolve_device(name: str) -> str:
+    """``auto`` -> cpu (reproducible everywhere); explicit names pass through."""
+    import torch
+    if name == "auto":
+        return "cpu"
+    if name == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("--device cuda requested but CUDA is not available")
+    if name == "mps" and not torch.backends.mps.is_available():
+        raise RuntimeError("--device mps requested but MPS is not available")
+    return name
 
 
 def train_sajben_le_pinn(
-    n_epochs: int = 5000,
-    lr: float = 1e-5,
+    n_epochs: int = ATTEMPT["n_epochs"],
+    lr: float = ATTEMPT["lr"],
     save_path: str | None = None,
-    device: str = "mps",
+    device: str = "cpu",
     verbose: bool = True,
-    physics_loss_weight: float = 0.05,
+    physics_loss_weight: float = ATTEMPT["physics_loss_weight"],
     physics_debug: bool = False,
+    seed: int = ATTEMPT["seed"],
+    attempt_id: str = ATTEMPT["id"],
 ) -> tuple:
     """
-    Train LE-PINN on Sajben dataset using dataset-backed fine-tuning path.
+    Train the LE-PINN from scratch on the declared Sajben training set.
 
-    This wrapper ensures Sajben training uses the processed dataset
-    (master_shock_dataset.pt) with planar geometry mode, not synthetic-only.
+    Returns ``(model, history)``.
     """
     import torch
 
-    # ---- Phase 1: Lock Correct Sajben Data Path ----
-    if verbose:
-        print("=" * 70)
-        print("LE-PINN SAJBEN TRAINING (dataset-backed, planar geometry)")
-        print("=" * 70)
+    if save_path is None:
+        save_path = SAVE_PATH
 
     # Validate dataset existence
     if not Path(DATASET_PATH).exists():
         raise FileNotFoundError(
             f"Sajben dataset not found: {DATASET_PATH}\n"
-            f"Run 'python3 scripts/parse_sajben_cfd.py' to generate it."
+            f"Run 'python scripts/validation/sajben_split.py' to generate it."
         )
 
     # Load and validate schema
     try:
-        dataset = torch.load(DATASET_PATH, weights_only=True)
+        dataset = torch.load(DATASET_PATH, weights_only=False)
     except TypeError:
         dataset = torch.load(DATASET_PATH)
 
@@ -77,20 +137,31 @@ def train_sajben_le_pinn(
             f"Dataset schema validation failed. Missing keys: {missing}\n"
             f"Expected keys: {required_keys}"
         )
+    split = dataset.get("split")
+    if split is None:
+        raise ValueError(
+            "Dataset carries no declared train/eval split record; refusing to train. "
+            "Build it with scripts/validation/sajben_split.py."
+        )
 
     if verbose:
         print("Dataset validation passed:")
         print(f"  Resolved path: {Path(DATASET_PATH).resolve()}")
         print(f"  Inputs shape : {dataset['inputs'].shape}")
         print(f"  Targets shape: {dataset['targets'].shape}")
-        if "sample_weights" in dataset:
-            print(f"  Sample weights: {dataset['sample_weights'].shape}")
-        else:
-            print(f"  Sample weights: None")
+        print(f"  Split        : train={split['train_source']} ({split['train_rows']} rows), "
+              f"eval={split['eval_source']} (rows in train: {split['eval_rows_in_train']})")
+        print(f"  Attempt      : {attempt_id}  (seed {seed}, epochs {n_epochs}, lr {lr}, "
+              f"physics {physics_loss_weight}, data weight 1.0, physics warm-up over first "
+              f"{int(100*ATTEMPT['loss_weighting']['warmup_fraction'])} % of epochs)")
         print(f"  Geometry mode: planar (Sajben 2D diffuser)")
         print()
 
-    # Redirect to dataset-backed fine-tuning function with geometry="planar"
+    weighting = PhysicsWarmupWeighting(
+        max_epochs=n_epochs,
+        warmup_fraction=ATTEMPT["loss_weighting"]["warmup_fraction"],
+    )
+
     model, history = finetune_on_cfd_data(
         dataset_path=DATASET_PATH,
         pretrained_path=None,  # Fresh init (no pretrained checkpoint)
@@ -98,10 +169,18 @@ def train_sajben_le_pinn(
         n_epochs=n_epochs,
         lr=lr,
         physics_loss_weight=physics_loss_weight,
+        physics_max_points=ATTEMPT["physics_max_points"],
+        val_fraction=ATTEMPT["val_fraction"],
         device=device,
         verbose=verbose,
         geometry="planar",  # Sajben is 2D planar, not axisymmetric
         physics_debug=physics_debug,
+        seed=seed,
+        loss_weighting=weighting,
+        extra_payload={"split": split, "attempt": {**ATTEMPT, "id": attempt_id,
+                                                   "n_epochs": n_epochs, "lr": lr,
+                                                   "physics_loss_weight": physics_loss_weight,
+                                                   "seed": seed}},
     )
 
     return model, history
@@ -109,42 +188,51 @@ def train_sajben_le_pinn(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Train LE-PINN on Sajben diffuser dataset"
+        description="Train LE-PINN on the Sajben WIND dataset (pre-registered attempt)"
     )
-    parser.add_argument(
-        "--epochs", type=int, default=5000,
-        help="Number of training epochs (default: 5000)",
-    )
-    parser.add_argument(
-        "--lr", type=float, default=1e-5,
-        help="Learning rate (default: 1e-5)",
-    )
-    parser.add_argument(
-        "--device", type=str, default="mps",
-        choices=["mps", "cpu", "cuda"],
-        help="Compute device (default: mps)",
-    )
-    parser.add_argument(
-        "--physics-weight", type=float, default=0.05,
-        dest="physics_weight",
-        help="Physics loss weight (default: 0.05)",
-    )
-    parser.add_argument(
-        "--physics-debug",
-        action="store_true",
-        help="Print per-term normalized physics residual losses during training",
-    )
+    parser.add_argument("--epochs", type=int, default=ATTEMPT["n_epochs"],
+                        help=f"Number of training epochs (default: {ATTEMPT['n_epochs']})")
+    parser.add_argument("--lr", type=float, default=ATTEMPT["lr"],
+                        help=f"Learning rate (default: {ATTEMPT['lr']})")
+    parser.add_argument("--device", type=str, default="auto",
+                        choices=["auto", "cpu", "mps", "cuda"],
+                        help="Compute device (default: auto -> cpu)")
+    parser.add_argument("--seed", type=int, default=ATTEMPT["seed"],
+                        help=f"RNG seed (default: {ATTEMPT['seed']})")
+    parser.add_argument("--physics-weight", type=float, default=ATTEMPT["physics_loss_weight"],
+                        dest="physics_weight",
+                        help=f"Physics loss weight (default: {ATTEMPT['physics_loss_weight']})")
+    parser.add_argument("--physics-debug", action="store_true",
+                        help="Print per-term normalized physics residual losses during training")
+    parser.add_argument("--out", type=str, default=SAVE_PATH,
+                        help=f"Checkpoint path (default: {SAVE_PATH}); existing files are not overwritten")
+    parser.add_argument("--attempt-id", type=str, default=ATTEMPT["id"],
+                        help="Attempt label recorded in the checkpoint")
     args = parser.parse_args()
+
+    registered = (args.epochs == ATTEMPT["n_epochs"] and args.lr == ATTEMPT["lr"]
+                  and args.physics_weight == ATTEMPT["physics_loss_weight"]
+                  and args.seed == ATTEMPT["seed"])
+    if not registered and args.attempt_id == ATTEMPT["id"]:
+        print(f"NOTE: hyperparameters differ from the registered {ATTEMPT['id']}; "
+              "pass --attempt-id to label this run as a new attempt.")
 
     model, history = train_sajben_le_pinn(
         n_epochs=args.epochs,
         lr=args.lr,
-        save_path=SAVE_PATH,
-        device=args.device,
+        save_path=args.out,
+        device=resolve_device(args.device),
         physics_loss_weight=args.physics_weight,
         physics_debug=args.physics_debug,
+        seed=args.seed,
+        attempt_id=args.attempt_id,
         verbose=True,
     )
+    print(f"\nEpochs run: {len(history['loss_total'])}  "
+          f"final data loss {history['loss_data'][-1]:.3e}  "
+          f"best val {min(history['val_loss']):.3e}  "
+          f"min alive units {min(history['alive_min'])}")
+    print("Next: python scripts/validation/sajben_validation.py --model", args.out)
 
 
 if __name__ == "__main__":

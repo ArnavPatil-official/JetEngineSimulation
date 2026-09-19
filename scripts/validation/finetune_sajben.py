@@ -4,16 +4,22 @@ Fine-tune the LE-PINN on the NASA Sajben transonic diffuser dataset.
 
 Prerequisites
 -------------
-Run ``scripts/parse_sajben_cfd.py`` first to generate
-``data/processed/master_shock_dataset.pt``.
+Run ``scripts/validation/sajben_split.py`` to build
+``data/processed/sajben_wind_dataset.pt`` (declared train/eval split), and
+``scripts/validation/train_sajben.py`` to produce the initialisation
+``models/le_pinn_sajben_v5.pt``.
+
+Fine-tuning keeps the initialisation's normalisers, refuses a collapsed or
+out-of-domain initialisation, restores the best-validation weights and
+records provenance (P4.2 guarantees in ``finetune_on_cfd_data``).
 
 Usage
 -----
-    python scripts/validation/finetune_sajben.py [--epochs N] [--device mps|cpu|cuda]
+    python scripts/validation/finetune_sajben.py [--epochs N] [--device auto|cpu|mps|cuda]
 
 Output
 ------
-Fine-tuned checkpoint: ``models/le_pinn_sajben_finetuned.pt``
+Fine-tuned checkpoint: ``models/le_pinn_sajben_v5_finetuned.pt`` (never overwritten)
 """
 
 from __future__ import annotations
@@ -30,6 +36,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from simulation.nozzle.le_pinn import finetune_on_cfd_data
+from scripts.validation.train_sajben import resolve_device
+
+DATASET_PATH = str(REPO_ROOT / "data" / "processed" / "sajben_wind_dataset.pt")
+PRETRAINED_PATH = str(REPO_ROOT / "models" / "le_pinn_sajben_v5.pt")
+SAVE_PATH = str(REPO_ROOT / "models" / "le_pinn_sajben_v5_finetuned.pt")
 
 
 def main() -> None:
@@ -40,9 +51,15 @@ def main() -> None:
                         help="Number of fine-tuning epochs (default: 500)")
     parser.add_argument("--lr",      type=float, default=1e-5,
                         help="Learning rate (default: 1e-5)")
-    parser.add_argument("--device",  type=str,   default="mps",
-                        choices=["mps", "cpu", "cuda"],
-                        help="Compute device (default: mps on Apple Silicon)")
+    parser.add_argument("--device",  type=str,   default="auto",
+                        choices=["auto", "cpu", "mps", "cuda"],
+                        help="Compute device (default: auto -> cpu)")
+    parser.add_argument("--seed",    type=int,   default=42,
+                        help="RNG seed for the train/val split (default: 42)")
+    parser.add_argument("--pretrained", type=str, default=PRETRAINED_PATH,
+                        help=f"Initialisation checkpoint (default: {PRETRAINED_PATH})")
+    parser.add_argument("--out", type=str, default=SAVE_PATH,
+                        help=f"Output checkpoint (default: {SAVE_PATH}); never overwritten")
     parser.add_argument("--physics-weight", type=float, default=0.05,
                         dest="physics_weight",
                         help="Physics loss weight (default: 0.05)")
@@ -57,9 +74,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    dataset_path   = str(REPO_ROOT / "data"   / "processed" / "master_shock_dataset.pt")
-    pretrained     = str(REPO_ROOT / "models" / "le_pinn_sajben.pt")
-    save_path      = str(REPO_ROOT / "models" / "le_pinn_sajben_finetuned.pt")
+    dataset_path   = DATASET_PATH
+    pretrained     = args.pretrained
+    save_path      = args.out
+    device         = resolve_device(args.device)
 
     # ---- Phase 1: Lock Correct Sajben Data Path ----
     # Verify dataset existence and schema before training starts
@@ -67,12 +85,12 @@ def main() -> None:
     if not Path(dataset_path).exists():
         raise FileNotFoundError(
             f"Sajben dataset not found: {dataset_path}\n"
-            f"Run 'python3 scripts/parse_sajben_cfd.py' to generate it."
+            f"Run 'python scripts/validation/sajben_split.py' to generate it."
         )
 
     # Load and validate schema
     try:
-        dataset = torch.load(dataset_path, weights_only=True)
+        dataset = torch.load(dataset_path, weights_only=False)
     except TypeError:
         dataset = torch.load(dataset_path)
 
@@ -110,7 +128,8 @@ def main() -> None:
     print(f"  save_path: {save_path}")
     print(f"  epochs   : {args.epochs}")
     print(f"  lr       : {args.lr}")
-    print(f"  device   : {args.device}")
+    print(f"  device   : {device}")
+    print(f"  seed     : {args.seed}")
     print(f"  phys wt  : {args.physics_weight}")
     print(f"  phys max : {args.physics_max_points if args.physics_max_points is not None else 'auto'}")
     print()
@@ -123,10 +142,12 @@ def main() -> None:
         lr=args.lr,
         physics_loss_weight=args.physics_weight,
         physics_max_points=args.physics_max_points,
-        device=args.device,
+        device=device,
         verbose=True,
         geometry="planar",  # Sajben is a 2D planar diffuser (not axisymmetric)
         physics_debug=args.physics_debug,
+        seed=args.seed,
+        extra_payload={"split": dataset.get("split")},
     )
 
     # Summary

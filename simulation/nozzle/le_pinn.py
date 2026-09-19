@@ -705,6 +705,27 @@ class AdaptiveLossWeighting:
         return lambda_data, lambda_physics, lambda_bc
 
 
+class PhysicsWarmupWeighting(AdaptiveLossWeighting):
+    """
+    Constant data weight with a linear physics warm-up (P4.3 attempt 1).
+
+    ``λ_data = 1`` throughout; ``λ_physics`` ramps linearly from 0 to 1 over
+    the first ``warmup_fraction`` of the run and stays at 1; ``λ_bc = 1``.
+    Unlike the parent schedule the data term is never decayed, so the
+    trivial constant field (zero residual everywhere) is never the loss
+    minimiser (see the P4.2 diagnosis).
+    """
+
+    def __init__(self, max_epochs: int = 5000, warmup_fraction: float = 0.5) -> None:
+        super().__init__(max_epochs=max_epochs, alpha_data=0.0, base_physics=0.0)
+        self.warmup_fraction = warmup_fraction
+
+    def compute_weights(self, epoch: int) -> Tuple[float, float, float]:
+        t = epoch / max(self.max_epochs, 1)
+        lam_p = min(1.0, t / self.warmup_fraction) if self.warmup_fraction > 0 else 1.0
+        return 1.0, lam_p, 1.0
+
+
 # ============================================================================
 # 6. GEOMETRY HELPERS
 # ============================================================================
@@ -1587,6 +1608,11 @@ def finetune_on_cfd_data(
     physics_debug: bool = False,
     refit_normalizers: bool = False,
     allow_collapsed_init: bool = False,
+    seed: int = RANDOM_SEED,
+    loss_weighting: Optional["AdaptiveLossWeighting"] = None,
+    abort_on_collapse: bool = True,
+    overwrite: bool = False,
+    extra_payload: Optional[Dict[str, Any]] = None,
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1626,6 +1652,20 @@ def finetune_on_cfd_data(
             the training inputs (see :func:`network_health`) is refused,
             because gradient descent cannot recover it and any downstream
             score is the score of noise. Set ``True`` to override.
+        seed: RNG seed for the train/val split and (fresh-init) weights.
+            Defaults to ``RANDOM_SEED``; recorded in the payload.
+        loss_weighting: An ``AdaptiveLossWeighting`` instance. Default is the
+            historical schedule ``AdaptiveLossWeighting(max_epochs=n_epochs)``,
+            which decays the data weight to 0.08 by the end of the run; P4.2
+            found that schedule converges long runs to the trivial constant
+            field. A pre-registered run passes its own instance.
+        abort_on_collapse: Monitor :func:`network_health` every 50 epochs and
+            stop training (restoring the best weights) if the global net
+            collapses. Recorded as ``collapsed_at_epoch`` in the payload.
+        overwrite: ``save_path`` must not already exist unless ``True``
+            (``models/*.pt`` are never overwritten in place).
+        extra_payload: Extra keys merged into the saved checkpoint, e.g. a
+            declared train/eval split record.
 
     Guarantees (P4.2):
         * the validation loss is measured **before the first update** and the
@@ -1648,6 +1688,11 @@ def finetune_on_cfd_data(
         dataset_path = str(_REPO_ROOT / "data" / "processed" / "master_shock_dataset.pt")
     if save_path is None:
         save_path = str(_REPO_ROOT / "models" / "le_pinn_cfd.pt")
+    if Path(save_path).exists() and not overwrite:
+        raise FileExistsError(
+            f"{save_path} exists; checkpoints are never overwritten in place. "
+            "Choose a new name or pass overwrite=True."
+        )
 
     if not Path(dataset_path).exists():
         raise FileNotFoundError(
@@ -1692,7 +1737,7 @@ def finetune_on_cfd_data(
     N = len(inputs_raw)
 
     # ---- Train / val split ----
-    torch.manual_seed(RANDOM_SEED)
+    torch.manual_seed(seed)
     perm = torch.randperm(N)
     n_val = max(1, int(N * val_fraction))
     n_train = N - n_val
@@ -1829,7 +1874,8 @@ def finetune_on_cfd_data(
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-9
     )
-    weighting = AdaptiveLossWeighting(max_epochs=n_epochs)
+    weighting = loss_weighting if loss_weighting is not None else AdaptiveLossWeighting(max_epochs=n_epochs)
+    collapsed_at_epoch: Optional[int] = None
 
     history: Dict[str, list] = {
         "loss_total": [],
@@ -1837,6 +1883,7 @@ def finetune_on_cfd_data(
         "loss_physics": [],
         "val_loss": [val_loss_init],
         "val_epoch": [-1],
+        "alive_min": [min(health_init["alive_units"])],
         "lr": [],
     }
 
@@ -1920,6 +1967,17 @@ def finetune_on_cfd_data(
                 best_val = val_loss
                 best_epoch = epoch
                 best_state = copy.deepcopy(model.state_dict())
+            health = network_health(model, inputs_train_n)
+            history["alive_min"].append(min(health["alive_units"]))
+            if health["collapsed"] and abort_on_collapse:
+                collapsed_at_epoch = epoch
+                warnings.warn(
+                    f"Global net collapsed at epoch {epoch} (alive units "
+                    f"{health['alive_units']}); stopping and restoring the best "
+                    f"weights from epoch {best_epoch}.",
+                    RuntimeWarning, stacklevel=1,
+                )
+                break
             if verbose:
                 print(
                     f"Ep {epoch:4d} | Total {loss_total.item():.3e} | "
@@ -1966,8 +2024,18 @@ def finetune_on_cfd_data(
                 "dataset": dataset_path,
                 "normalizers": normalizer_source,
             },
-            "seed": RANDOM_SEED,
+            "seed": seed,
             "device": str(dev),
+            "loss_weighting": {
+                "schedule": type(weighting).__name__,
+                "max_epochs": weighting.max_epochs,
+                "alpha_data": weighting.alpha_data,
+                "alpha_bc": weighting.alpha_bc,
+                "base_physics": weighting.base_physics,
+                "warmup_fraction": getattr(weighting, "warmup_fraction", None),
+            },
+            "collapsed_at_epoch": collapsed_at_epoch,
+            "epochs_run": len(history["loss_total"]),
             "dataset_sha256": _sha256_of_file(dataset_path),
             "pretrained_path": pretrained_path if ckpt is not None else None,
             "pretrained_sha256": _sha256_of_file(pretrained_path) if ckpt is not None else None,
@@ -1978,6 +2046,7 @@ def finetune_on_cfd_data(
             "best_epoch": best_epoch,
             "health_init": health_init,
             "health_final": health_final,
+            **(extra_payload or {}),
         },
         save_path,
     )
