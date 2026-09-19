@@ -234,12 +234,19 @@ class NormalizedTurbinePINN(nn.Module):
     At x=0: y = y_in (exact match to combustor exit state)
     """
 
-    def __init__(self):
+    def __init__(self, use_work_fraction: bool = False):
         super().__init__()
-        # 4D input: [x, cp, R, gamma] → 64 → 64 → 64 → 3D output: [rho, p, T] residuals
-        # NOTE: u is NOT predicted - computed from continuity
+        # Input: [x, cp*, R*, gamma*] (+ work fraction tau = W/(m_dot cp T_in) when
+        # use_work_fraction) -> 64 -> 64 -> 64 -> 3D output: [rho, p, T] residuals.
+        # NOTE: u is NOT predicted - computed from continuity.
+        # P4.4: the legacy 4-input net cannot represent the analytic expansion
+        # ratio p5/p4 = (1 - tau)^(gamma/(eta (gamma-1))) because tau is not an
+        # input; the v5 surrogate adds it. Legacy checkpoints load with the
+        # default (False).
+        self.use_work_fraction = use_work_fraction
+        n_in = 5 if use_work_fraction else 4
         self.net = nn.Sequential(
-            nn.Linear(4, 64), nn.Tanh(),
+            nn.Linear(n_in, 64), nn.Tanh(),
             nn.Linear(64, 64), nn.Tanh(),
             nn.Linear(64, 64), nn.Tanh(),
             nn.Linear(64, 3)  # Changed from 4 to 3 outputs
@@ -251,7 +258,8 @@ class NormalizedTurbinePINN(nn.Module):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
 
-    def forward(self, x, cp_feat, R_feat, gamma_feat, inlet_feat, m_dot, A_func):
+    def forward(self, x, cp_feat, R_feat, gamma_feat, inlet_feat, m_dot, A_func,
+                work_fraction=None):
         """
         Forward pass with exact continuity enforcement.
 
@@ -284,8 +292,17 @@ class NormalizedTurbinePINN(nn.Module):
         if gamma_feat.dim() == 0:
             gamma_feat = gamma_feat.view(1, 1).expand(x.size(0), 1)
 
-        # Concatenate features: [x, cp, R, γ]
-        features = torch.cat([x, cp_feat, R_feat, gamma_feat], dim=1)
+        # Concatenate features: [x, cp, R, γ] (+ τ for the v5 surrogate)
+        feats = [x, cp_feat, R_feat, gamma_feat]
+        if self.use_work_fraction:
+            if work_fraction is None:
+                raise ValueError("this turbine surrogate needs work_fraction = W/(m_dot cp T_in)")
+            if not isinstance(work_fraction, torch.Tensor):
+                work_fraction = torch.ones_like(x) * float(work_fraction)
+            if work_fraction.dim() == 0:
+                work_fraction = work_fraction.view(1, 1).expand(x.size(0), 1)
+            feats.append(work_fraction)
+        features = torch.cat(feats, dim=1)
 
         # Predict residuals for [ρ, p, T] only (3D output)
         residuals = self.net(features)  # (N, 3)
@@ -307,7 +324,8 @@ class NormalizedTurbinePINN(nn.Module):
 
         return out_norm
 
-    def predict_physical(self, x, thermo_props, inlet_state, m_dot, geometry, scales):
+    def predict_physical(self, x, thermo_props, inlet_state, m_dot, geometry, scales,
+                         work_fraction=None):
         """
         Predict in physical units with exact continuity enforcement.
 
@@ -352,7 +370,8 @@ class NormalizedTurbinePINN(nn.Module):
             return A_inlet + (A_outlet - A_inlet) * x_pos
 
         # Forward pass → normalized [ρ, p, T]
-        out_norm = self.forward(x, cp_norm, R_norm, gamma_norm, inlet_norm, m_dot, area_func)
+        out_norm = self.forward(x, cp_norm, R_norm, gamma_norm, inlet_norm, m_dot, area_func,
+                                work_fraction=work_fraction)
 
         # Denormalize [ρ, p, T]
         rho = out_norm[:, 0:1] * scales['rho']  # kg/m³
@@ -383,7 +402,8 @@ class NormalizedTurbinePINN(nn.Module):
 # 4. PHYSICS (UPDATED WITH SHAFT WORK)
 # ============================================================================
 
-def compute_loss_components(model, x_col, device, thermo_props, inlet_state, m_dot, geometry, w_target, scales):
+def compute_loss_components(model, x_col, device, thermo_props, inlet_state, m_dot, geometry, w_target, scales,
+                            work_fraction=None):
     """
     Compute physics-based loss components for turbine PINN with exact continuity.
 
@@ -406,7 +426,8 @@ def compute_loss_components(model, x_col, device, thermo_props, inlet_state, m_d
     x = x_col.clone().requires_grad_(True)
 
     # Get physical predictions with exact continuity
-    state = model.predict_physical(x, thermo_props, inlet_state, m_dot, geometry, scales)
+    state = model.predict_physical(x, thermo_props, inlet_state, m_dot, geometry, scales,
+                                   work_fraction=work_fraction)
 
     rho = state[:, 0:1]
     u = state[:, 1:2]
@@ -439,6 +460,45 @@ def compute_loss_components(model, x_col, device, thermo_props, inlet_state, m_d
     loss_work = ((w_pred - w_target) / w_target)**2
 
     return loss_eos, loss_monotonic, loss_work
+
+def analytic_expansion_path(x, thermo_props, inlet_state, m_dot, w_target, eta_poly):
+    """
+    Work-consistent polytropic expansion along the turbine, x in [0, 1]
+    (P4.4 surrogate target; endpoint identical to
+    ``IntegratedEngine.run_turbine_analytic``):
+
+        T(x) = T_in - x W / (m_dot cp)             uniform work extraction
+        p(x) = p_in (T(x)/T_in)^(gamma / (eta_poly (gamma - 1)))
+        rho  = p / (R T)
+
+    Returns (rho, p, T) tensors shaped like ``x``.
+    """
+    cp, R, gamma = thermo_props['cp'], thermo_props['R'], thermo_props['gamma']
+    T_in, p_in = inlet_state['T'], inlet_state['p']
+    T = T_in - x * w_target / (m_dot * cp)
+    p = p_in * (T / T_in) ** (gamma / (eta_poly * (gamma - 1.0)))
+    rho = p / (R * T)
+    return rho, p, T
+
+
+def surrogate_path_loss(model, x_col, thermo_props, inlet_state, m_dot, geometry, scales,
+                        w_target, eta_poly, work_fraction=None):
+    """
+    Pressure-path term (P4.4): mean-squared error of the normalised predicted
+    [rho, p, T](x) against the analytic expansion path, so p5 is constrained
+    by the work-consistent polytropic relation rather than left free.
+    """
+    x = x_col.clone()
+    state = model.predict_physical(x, thermo_props, inlet_state, m_dot, geometry, scales,
+                                   work_fraction=work_fraction)
+    rho_a, p_a, T_a = analytic_expansion_path(x, thermo_props, inlet_state, m_dot, w_target, eta_poly)
+    err = torch.cat([
+        (state[:, 0:1] - rho_a) / scales['rho'],
+        (state[:, 2:3] - p_a) / scales['p'],
+        (state[:, 3:4] - T_a) / scales['T'],
+    ], dim=1)
+    return (err ** 2).mean()
+
 
 def train_phase2_physics(model, x_col, device, n_epochs=5000):
     """
@@ -788,14 +848,17 @@ def run_turbine_pinn(
             f"Please train the turbine PINN first: python simulation/turbine/turbine.py"
         )
 
-    checkpoint = torch.load(model_path, map_location='cpu')
+    checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
     thermo_ref = checkpoint.get('thermo_ref', THERMO_REF)
+    use_tau = 'work_fraction' in checkpoint.get('input_features', [])
 
     # Create and load model
     device = torch.device('cpu')
-    model = NormalizedTurbinePINN().to(device)
+    model = NormalizedTurbinePINN(use_work_fraction=use_tau).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
+    work_fraction = (target_work / (m_dot * thermo_props['cp'] * inlet_state['T'])
+                     if use_tau else None)
 
     # Build geometry dict
     geometry = {
@@ -820,7 +883,8 @@ def run_turbine_pinn(
     with torch.no_grad():
         x_out = torch.tensor([[1.0]], device=device)
         state_out = model.predict_physical(
-            x_out, thermo_props, inlet_state, m_dot, geometry, scales
+            x_out, thermo_props, inlet_state, m_dot, geometry, scales,
+            work_fraction=work_fraction,
         ).cpu().numpy()
 
     # Extract outlet state
