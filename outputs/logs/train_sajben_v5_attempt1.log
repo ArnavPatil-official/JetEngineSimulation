@@ -1,0 +1,126 @@
+Dataset validation passed:
+  Resolved path: /Users/arnavpatil/Documents/JetEngineSimulation/data/processed/sajben_wind_dataset.pt
+  Inputs shape : torch.Size([4080, 6])
+  Targets shape: torch.Size([4080, 9])
+  Split        : train=data/raw/cfd_datasets/nasa/transdif01/sajben.cfl (4080 rows), eval=data/raw/data.Mach46.txt (rows in train: 0)
+  Attempt      : P4.3-attempt-1  (seed 42, epochs 5000, lr 0.001, physics 0.05, data weight 1.0, physics warm-up over first 50 % of epochs)
+  Geometry mode: planar (Sajben 2D diffuser)
+
+======================================================================
+LE-PINN FINE-TUNING ON CFD DATA
+======================================================================
+  Dataset : /Users/arnavpatil/Documents/JetEngineSimulation/data/processed/sajben_wind_dataset.pt
+  Train/Val: 3264 / 816   Epochs: 5000   LR: 0.001
+  Physics weight: 0.05
+  Normalisers: fitted on training split
+  Init: val loss 4.298e-01; alive ReLU units/layer [303, 282, 282, 281, 261, 274, 282]; output spread ['1.56e-02', '2.83e-03', '1.42e-02', '6.23e-03', '6.08e-03']
+======================================================================
+Ep    0 | Total 4.319e-01 | Data 4.319e-01 | Physics 1.632e+07 | Val 3.850e-01 | lr=1.0e-03
+Ep   50 | Total 5.025e-02 | Data 4.746e-02 | Physics 2.799e+00 | Val 4.585e-02 | lr=1.0e-03
+Ep  100 | Total 2.592e-02 | Data 2.312e-02 | Physics 1.402e+00 | Val 2.238e-02 | lr=1.0e-03
+Ep  150 | Total 1.667e-02 | Data 1.185e-02 | Physics 1.609e+00 | Val 1.467e-02 | lr=1.0e-03
+Ep  200 | Total 1.504e-02 | Data 1.184e-02 | Physics 7.999e-01 | Val 1.204e-02 | lr=5.0e-04
+Ep  250 | Total 1.507e-02 | Data 1.089e-02 | Physics 8.367e-01 | Val 1.128e-02 | lr=5.0e-04
+Ep  300 | Total 1.520e-02 | Data 1.115e-02 | Physics 6.759e-01 | Val 1.120e-02 | lr=5.0e-04
+Ep  350 | Total 1.471e-02 | Data 1.084e-02 | Physics 5.523e-01 | Val 1.107e-02 | lr=1.3e-04
+Ep  400 | Total 1.503e-02 | Data 1.088e-02 | Physics 5.187e-01 | Val 1.113e-02 | lr=1.6e-05
+Ep  450 | Total 1.551e-02 | Data 1.094e-02 | Physics 5.074e-01 | Val 1.120e-02 | lr=3.9e-06
+Ep  500 | Total 1.600e-02 | Data 1.098e-02 | Physics 5.013e-01 | Val 1.124e-02 | lr=9.8e-07
+Ep  550 | Total 1.648e-02 | Data 1.100e-02 | Physics 4.977e-01 | Val 1.126e-02 | lr=1.2e-07
+Ep  600 | Total 1.697e-02 | Data 1.101e-02 | Physics 4.967e-01 | Val 1.127e-02 | lr=3.1e-08
+Ep  650 | Total 1.746e-02 | Data 1.101e-02 | Physics 4.962e-01 | Val 1.127e-02 | lr=1.5e-08
+Ep  700 | Total 1.795e-02 | Data 1.102e-02 | Physics 4.954e-01 | Val 1.128e-02 | lr=1.5e-08
+Ep  750 | Total 1.844e-02 | Data 1.102e-02 | Physics 4.947e-01 | Val 1.128e-02 | lr=1.5e-08
+Ep  800 | Total 1.892e-02 | Data 1.103e-02 | Physics 4.934e-01 | Val 1.129e-02 | lr=1.5e-08
+Ep  850 | Total 1.940e-02 | Data 1.103e-02 | Physics 4.923e-01 | Val 1.130e-02 | lr=1.5e-08
+Ep  900 | Total 1.989e-02 | Data 1.104e-02 | Physics 4.914e-01 | Val 1.130e-02 | lr=1.5e-08
+Ep  950 | Total 2.036e-02 | Data 1.105e-02 | Physics 4.901e-01 | Val 1.131e-02 | lr=1.5e-08
+Ep 1000 | Total 2.083e-02 | Data 1.106e-02 | Physics 4.887e-01 | Val 1.132e-02 | lr=1.5e-08
+Ep 1050 | Total 2.131e-02 | Data 1.107e-02 | Physics 4.876e-01 | Val 1.133e-02 | lr=1.5e-08
+Ep 1100 | Total 2.176e-02 | Data 1.108e-02 | Physics 4.858e-01 | Val 1.135e-02 | lr=1.5e-08
+Ep 1150 | Total 2.223e-02 | Data 1.109e-02 | Physics 4.845e-01 | Val 1.136e-02 | lr=1.5e-08
+Ep 1200 | Total 2.271e-02 | Data 1.110e-02 | Physics 4.836e-01 | Val 1.137e-02 | lr=1.5e-08
+Ep 1250 | Total 2.317e-02 | Data 1.111e-02 | Physics 4.823e-01 | Val 1.138e-02 | lr=1.5e-08
+Ep 1300 | Total 2.362e-02 | Data 1.112e-02 | Physics 4.808e-01 | Val 1.140e-02 | lr=1.5e-08
+Ep 1350 | Total 2.408e-02 | Data 1.113e-02 | Physics 4.795e-01 | Val 1.141e-02 | lr=1.5e-08
+Ep 1400 | Total 2.452e-02 | Data 1.114e-02 | Physics 4.777e-01 | Val 1.142e-02 | lr=1.5e-08
+Ep 1450 | Total 2.499e-02 | Data 1.116e-02 | Physics 4.769e-01 | Val 1.144e-02 | lr=1.5e-08
+Ep 1500 | Total 2.545e-02 | Data 1.117e-02 | Physics 4.761e-01 | Val 1.145e-02 | lr=1.5e-08
+Ep 1550 | Total 2.589e-02 | Data 1.118e-02 | Physics 4.746e-01 | Val 1.146e-02 | lr=1.5e-08
+Ep 1600 | Total 2.637e-02 | Data 1.119e-02 | Physics 4.745e-01 | Val 1.148e-02 | lr=1.5e-08
+Ep 1650 | Total 2.686e-02 | Data 1.120e-02 | Physics 4.744e-01 | Val 1.149e-02 | lr=1.5e-08
+Ep 1700 | Total 2.733e-02 | Data 1.122e-02 | Physics 4.741e-01 | Val 1.150e-02 | lr=1.5e-08
+Ep 1750 | Total 2.774e-02 | Data 1.123e-02 | Physics 4.717e-01 | Val 1.152e-02 | lr=1.5e-08
+Ep 1800 | Total 2.817e-02 | Data 1.124e-02 | Physics 4.703e-01 | Val 1.153e-02 | lr=1.5e-08
+Ep 1850 | Total 2.862e-02 | Data 1.125e-02 | Physics 4.694e-01 | Val 1.155e-02 | lr=1.5e-08
+Ep 1900 | Total 2.906e-02 | Data 1.127e-02 | Physics 4.683e-01 | Val 1.156e-02 | lr=1.5e-08
+Ep 1950 | Total 2.953e-02 | Data 1.128e-02 | Physics 4.679e-01 | Val 1.157e-02 | lr=1.5e-08
+Ep 2000 | Total 2.995e-02 | Data 1.129e-02 | Physics 4.665e-01 | Val 1.159e-02 | lr=1.5e-08
+Ep 2050 | Total 3.039e-02 | Data 1.130e-02 | Physics 4.655e-01 | Val 1.160e-02 | lr=1.5e-08
+Ep 2100 | Total 3.084e-02 | Data 1.132e-02 | Physics 4.648e-01 | Val 1.162e-02 | lr=1.5e-08
+Ep 2150 | Total 3.132e-02 | Data 1.133e-02 | Physics 4.649e-01 | Val 1.163e-02 | lr=1.5e-08
+Ep 2200 | Total 3.177e-02 | Data 1.134e-02 | Physics 4.644e-01 | Val 1.164e-02 | lr=1.5e-08
+Ep 2250 | Total 3.225e-02 | Data 1.135e-02 | Physics 4.643e-01 | Val 1.166e-02 | lr=1.5e-08
+Ep 2300 | Total 3.268e-02 | Data 1.137e-02 | Physics 4.634e-01 | Val 1.167e-02 | lr=1.5e-08
+Ep 2350 | Total 3.313e-02 | Data 1.138e-02 | Physics 4.629e-01 | Val 1.169e-02 | lr=1.5e-08
+Ep 2400 | Total 3.358e-02 | Data 1.139e-02 | Physics 4.623e-01 | Val 1.170e-02 | lr=1.5e-08
+Ep 2450 | Total 3.402e-02 | Data 1.140e-02 | Physics 4.615e-01 | Val 1.172e-02 | lr=1.5e-08
+Ep 2500 | Total 3.445e-02 | Data 1.142e-02 | Physics 4.606e-01 | Val 1.173e-02 | lr=1.5e-08
+Ep 2550 | Total 3.440e-02 | Data 1.143e-02 | Physics 4.594e-01 | Val 1.174e-02 | lr=1.5e-08
+Ep 2600 | Total 3.434e-02 | Data 1.144e-02 | Physics 4.580e-01 | Val 1.176e-02 | lr=1.5e-08
+Ep 2650 | Total 3.434e-02 | Data 1.145e-02 | Physics 4.578e-01 | Val 1.177e-02 | lr=1.5e-08
+Ep 2700 | Total 3.432e-02 | Data 1.146e-02 | Physics 4.573e-01 | Val 1.178e-02 | lr=1.5e-08
+Ep 2750 | Total 3.428e-02 | Data 1.147e-02 | Physics 4.561e-01 | Val 1.179e-02 | lr=1.5e-08
+Ep 2800 | Total 3.425e-02 | Data 1.148e-02 | Physics 4.554e-01 | Val 1.180e-02 | lr=1.5e-08
+Ep 2850 | Total 3.421e-02 | Data 1.149e-02 | Physics 4.544e-01 | Val 1.181e-02 | lr=1.5e-08
+Ep 2900 | Total 3.416e-02 | Data 1.150e-02 | Physics 4.532e-01 | Val 1.182e-02 | lr=1.5e-08
+Ep 2950 | Total 3.418e-02 | Data 1.151e-02 | Physics 4.534e-01 | Val 1.184e-02 | lr=1.5e-08
+Ep 3000 | Total 3.416e-02 | Data 1.152e-02 | Physics 4.527e-01 | Val 1.185e-02 | lr=1.5e-08
+Ep 3050 | Total 3.413e-02 | Data 1.153e-02 | Physics 4.520e-01 | Val 1.186e-02 | lr=1.5e-08
+Ep 3100 | Total 3.410e-02 | Data 1.154e-02 | Physics 4.513e-01 | Val 1.187e-02 | lr=1.5e-08
+Ep 3150 | Total 3.404e-02 | Data 1.155e-02 | Physics 4.499e-01 | Val 1.188e-02 | lr=1.5e-08
+Ep 3200 | Total 3.403e-02 | Data 1.156e-02 | Physics 4.494e-01 | Val 1.189e-02 | lr=1.5e-08
+Ep 3250 | Total 3.400e-02 | Data 1.156e-02 | Physics 4.487e-01 | Val 1.189e-02 | lr=1.5e-08
+Ep 3300 | Total 3.402e-02 | Data 1.157e-02 | Physics 4.489e-01 | Val 1.190e-02 | lr=1.5e-08
+Ep 3350 | Total 3.403e-02 | Data 1.158e-02 | Physics 4.489e-01 | Val 1.191e-02 | lr=1.5e-08
+Ep 3400 | Total 3.402e-02 | Data 1.159e-02 | Physics 4.485e-01 | Val 1.192e-02 | lr=1.5e-08
+Ep 3450 | Total 3.403e-02 | Data 1.160e-02 | Physics 4.485e-01 | Val 1.193e-02 | lr=1.5e-08
+Ep 3500 | Total 3.398e-02 | Data 1.161e-02 | Physics 4.474e-01 | Val 1.194e-02 | lr=1.5e-08
+Ep 3550 | Total 3.395e-02 | Data 1.162e-02 | Physics 4.467e-01 | Val 1.195e-02 | lr=1.5e-08
+Ep 3600 | Total 3.389e-02 | Data 1.162e-02 | Physics 4.452e-01 | Val 1.196e-02 | lr=1.5e-08
+Ep 3650 | Total 3.388e-02 | Data 1.163e-02 | Physics 4.450e-01 | Val 1.197e-02 | lr=1.5e-08
+Ep 3700 | Total 3.387e-02 | Data 1.164e-02 | Physics 4.446e-01 | Val 1.198e-02 | lr=1.5e-08
+Ep 3750 | Total 3.387e-02 | Data 1.165e-02 | Physics 4.445e-01 | Val 1.199e-02 | lr=1.5e-08
+Ep 3800 | Total 3.386e-02 | Data 1.165e-02 | Physics 4.440e-01 | Val 1.199e-02 | lr=1.5e-08
+Ep 3850 | Total 3.383e-02 | Data 1.166e-02 | Physics 4.434e-01 | Val 1.200e-02 | lr=1.5e-08
+Ep 3900 | Total 3.382e-02 | Data 1.167e-02 | Physics 4.429e-01 | Val 1.201e-02 | lr=1.5e-08
+Ep 3950 | Total 3.380e-02 | Data 1.168e-02 | Physics 4.424e-01 | Val 1.202e-02 | lr=1.5e-08
+Ep 4000 | Total 3.378e-02 | Data 1.168e-02 | Physics 4.420e-01 | Val 1.203e-02 | lr=1.5e-08
+Ep 4050 | Total 3.377e-02 | Data 1.169e-02 | Physics 4.416e-01 | Val 1.203e-02 | lr=1.5e-08
+Ep 4100 | Total 3.374e-02 | Data 1.170e-02 | Physics 4.409e-01 | Val 1.204e-02 | lr=1.5e-08
+Ep 4150 | Total 3.374e-02 | Data 1.171e-02 | Physics 4.406e-01 | Val 1.205e-02 | lr=1.5e-08
+Ep 4200 | Total 3.369e-02 | Data 1.171e-02 | Physics 4.396e-01 | Val 1.206e-02 | lr=1.5e-08
+Ep 4250 | Total 3.371e-02 | Data 1.172e-02 | Physics 4.398e-01 | Val 1.207e-02 | lr=1.5e-08
+Ep 4300 | Total 3.370e-02 | Data 1.173e-02 | Physics 4.394e-01 | Val 1.207e-02 | lr=1.5e-08
+Ep 4350 | Total 3.368e-02 | Data 1.174e-02 | Physics 4.388e-01 | Val 1.208e-02 | lr=1.5e-08
+Ep 4400 | Total 3.371e-02 | Data 1.174e-02 | Physics 4.392e-01 | Val 1.209e-02 | lr=1.5e-08
+Ep 4450 | Total 3.370e-02 | Data 1.175e-02 | Physics 4.389e-01 | Val 1.210e-02 | lr=1.5e-08
+Ep 4500 | Total 3.369e-02 | Data 1.176e-02 | Physics 4.386e-01 | Val 1.211e-02 | lr=1.5e-08
+Ep 4550 | Total 3.369e-02 | Data 1.177e-02 | Physics 4.385e-01 | Val 1.211e-02 | lr=1.5e-08
+Ep 4600 | Total 3.367e-02 | Data 1.177e-02 | Physics 4.379e-01 | Val 1.212e-02 | lr=1.5e-08
+Ep 4650 | Total 3.365e-02 | Data 1.178e-02 | Physics 4.374e-01 | Val 1.213e-02 | lr=1.5e-08
+Ep 4700 | Total 3.360e-02 | Data 1.179e-02 | Physics 4.363e-01 | Val 1.214e-02 | lr=1.5e-08
+Ep 4750 | Total 3.358e-02 | Data 1.180e-02 | Physics 4.357e-01 | Val 1.215e-02 | lr=1.5e-08
+Ep 4800 | Total 3.354e-02 | Data 1.180e-02 | Physics 4.347e-01 | Val 1.215e-02 | lr=1.5e-08
+Ep 4850 | Total 3.349e-02 | Data 1.181e-02 | Physics 4.337e-01 | Val 1.216e-02 | lr=1.5e-08
+Ep 4900 | Total 3.345e-02 | Data 1.182e-02 | Physics 4.327e-01 | Val 1.217e-02 | lr=1.5e-08
+Ep 4950 | Total 3.343e-02 | Data 1.182e-02 | Physics 4.322e-01 | Val 1.218e-02 | lr=1.5e-08
+Ep 4999 | Total 3.343e-02 | Data 1.183e-02 | Physics 4.319e-01 | Val 1.218e-02 | lr=1.5e-08
+  Restored best weights: epoch 350 (val 1.107e-02; init 4.298e-01); alive units/layer [285, 225, 222, 201, 201, 166, 179]
+
+Fine-tuned checkpoint saved: /Users/arnavpatil/Documents/JetEngineSimulation/models/le_pinn_sajben_v5.pt
+======================================================================
+
+Epochs run: 5000  final data loss 1.183e-02  best val 1.107e-02  min alive units 155
+Next: python scripts/validation/sajben_validation.py --model /Users/arnavpatil/Documents/JetEngineSimulation/models/le_pinn_sajben_v5.pt
+attempt1 exit=0
