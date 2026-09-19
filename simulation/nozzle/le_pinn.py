@@ -121,8 +121,11 @@ def _subnet_health(net: nn.Sequential, inputs_n: torch.Tensor, n_out: int) -> Tu
     alive = []
     for layer in list(net)[:-1]:
         h = layer(h)
-        if isinstance(layer, nn.ReLU):
-            alive.append(int((h > 0).any(dim=0).sum().item()))
+        if isinstance(layer, _ACTIVATION_TYPES):
+            # a unit is alive if its activation varies over the inputs
+            # (for ReLU this is "positive somewhere"; for tanh, "not saturated
+            # to a constant")
+            alive.append(int((h.std(dim=0) > 1e-6).sum().item()))
     out = list(net)[-1](h)[:, :n_out]
     spread = (out.max(dim=0).values - out.min(dim=0).values).tolist()
     return alive, spread
@@ -273,22 +276,42 @@ def _xavier_init(module: nn.Module) -> None:
 # 2. NETWORK ARCHITECTURE
 # ============================================================================
 
+_ACTIVATIONS = {"relu": nn.ReLU, "tanh": nn.Tanh, "silu": nn.SiLU, "gelu": nn.GELU}
+_ACTIVATION_TYPES = tuple(_ACTIVATIONS.values())
+
+
+def _make_activation(name: str) -> nn.Module:
+    """
+    Hidden-layer activation. ``"relu"`` is the historical default and is
+    piecewise linear: its second derivatives are identically zero, so the
+    viscous and thermal-diffusion terms of :func:`compute_rans_residuals`
+    (the only second-derivative terms) vanish and the physics loss reduces to
+    the Euler equations (``outputs/physics_residual_defect.md``). A PINN whose
+    residual is meant to contain those terms needs a C2 activation such as
+    ``"tanh"``. Checkpoints record the activation they were trained with.
+    """
+    try:
+        return _ACTIVATIONS[name]()
+    except KeyError:
+        raise ValueError(f"activation must be one of {sorted(_ACTIVATIONS)}, got {name!r}") from None
+
+
 class GlobalNetwork(nn.Module):
     """Network 1: Global flow field predictor (6 hidden layers, 400 neurons)."""
 
-    def __init__(self) -> None:
+    def __init__(self, activation: str = "relu") -> None:
         super().__init__()
         layers: list[nn.Module] = []
         input_dim = 6   # x, y, A5, A6, P_in, T_in
 
         # Input layer
         layers.append(nn.Linear(input_dim, 400))
-        layers.append(nn.ReLU())
+        layers.append(_make_activation(activation))
 
         # 6 Hidden layers
         for _ in range(6):
             layers.append(nn.Linear(400, 400))
-            layers.append(nn.ReLU())
+            layers.append(_make_activation(activation))
 
         # Output layer: 9 variables
         # [ρ, u, v, P, T, UU, VV, UV, μ_eff]
@@ -304,19 +327,19 @@ class GlobalNetwork(nn.Module):
 class BoundaryNetwork(nn.Module):
     """Network 2: Near-wall P/T predictor (6 hidden layers, 100 neurons)."""
 
-    def __init__(self) -> None:
+    def __init__(self, activation: str = "relu") -> None:
         super().__init__()
         layers: list[nn.Module] = []
         input_dim = 6   # x_b, y_b, A5, A6, P_in, T_in
 
         # Input layer
         layers.append(nn.Linear(input_dim, 100))
-        layers.append(nn.ReLU())
+        layers.append(_make_activation(activation))
 
         # 6 Hidden layers
         for _ in range(6):
             layers.append(nn.Linear(100, 100))
-            layers.append(nn.ReLU())
+            layers.append(_make_activation(activation))
 
         # Output layer: 2 variables [P_b, T_b]
         layers.append(nn.Linear(100, 2))
@@ -331,10 +354,11 @@ class BoundaryNetwork(nn.Module):
 class LE_PINN(nn.Module):
     """Locally Enhanced Physics-Informed Neural Network with fusion."""
 
-    def __init__(self, threshold_delta: float = FUSION_DELTA) -> None:
+    def __init__(self, threshold_delta: float = FUSION_DELTA, activation: str = "relu") -> None:
         super().__init__()
-        self.global_net = GlobalNetwork()
-        self.boundary_net = BoundaryNetwork()
+        self.activation = activation
+        self.global_net = GlobalNetwork(activation=activation)
+        self.boundary_net = BoundaryNetwork(activation=activation)
         self.delta = threshold_delta
 
     def forward(
@@ -1516,9 +1540,16 @@ def _safe_physics_loss(
     output_norm: Optional["MinMaxNormalizer"] = None,
     geometry: str = "axisymmetric",
     max_failures: int = 10,
+    mu_eff_data: Optional[torch.Tensor] = None,
 ) -> PhysicsLossBreakdown:
     """
     Compute the RANS physics loss in physical (de-normalized) space.
+
+    ``mu_eff_data`` (``(N, 1)``, Pa s, physical): the effective viscosity at
+    the collocation points taken from the training field (laminar + eddy,
+    e.g. WIND's ``mul + mut``). When given it replaces the historical
+    Sutherland *molecular* viscosity in the residual, which is wrong by
+    two to three orders of magnitude inside a turbulent boundary layer.
 
     Failures (e.g. autograd graph issues) are reported via ``warnings.warn``.
     After ``max_failures`` consecutive failures a ``RuntimeError`` is raised to
@@ -1553,7 +1584,10 @@ def _safe_physics_loss(
                 )
             else:
                 preds_denorm = preds_denorm_part
-            if n_norm_cols < 9 and preds_denorm.shape[1] > 8:
+            if mu_eff_data is not None:
+                preds_denorm = preds_denorm.clone()
+                preds_denorm[:, 8:9] = mu_eff_data.to(preds_denorm.device, preds_denorm.dtype)
+            elif n_norm_cols < 9 and preds_denorm.shape[1] > 8:
                 T_phys = preds_denorm[:, 4:5].clamp(min=100.0, max=5000.0)
                 mu_eff = SUTHERLAND_C1 * T_phys.pow(1.5) / (T_phys + SUTHERLAND_S)
                 preds_denorm = preds_denorm.clone()
@@ -1614,6 +1648,8 @@ def finetune_on_cfd_data(
     overwrite: bool = False,
     extra_payload: Optional[Dict[str, Any]] = None,
     lr_schedule: str = "plateau",
+    activation: str = "relu",
+    physics_mu_source: str = "sutherland",
 ) -> Tuple["LE_PINN", Dict[str, list]]:
     """
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
@@ -1673,6 +1709,12 @@ def finetune_on_cfd_data(
             loss trajectory). P4.3 attempt 1 showed the plateau scheduler
             driving the rate to 1e-8 within 1000 epochs once the physics
             warm-up made the data loss non-monotonic.
+        activation: Hidden activation for a FRESH model (``"relu"`` historical,
+            ``"tanh"`` C2). A pretrained checkpoint's recorded activation is
+            used regardless of this argument.
+        physics_mu_source: ``"sutherland"`` (historical: molecular viscosity
+            from the predicted T) or ``"data"`` (column 8 of the dataset, the
+            field's laminar + eddy viscosity, at the collocation points).
 
     Guarantees (P4.2):
         * the validation loss is measured **before the first update** and the
@@ -1827,6 +1869,9 @@ def finetune_on_cfd_data(
 
     inputs_train_n = input_norm.transform(inputs_train).to(dev)
     targets_train_5n = output_norm_5.transform(targets_train[:, :5]).to(dev)
+    mu_eff_train = targets_train[:, 8:9].to(dev) if physics_mu_source == "data" else None
+    if mu_eff_train is not None and not torch.isfinite(mu_eff_train).all():
+        raise ValueError("physics_mu_source='data' needs finite mu_eff in target column 8")
     inputs_val_n = input_norm.transform(inputs_val).to(dev)
     targets_val_5n = output_norm_5.transform(targets_val[:, :5]).to(dev)
 
@@ -1837,7 +1882,11 @@ def finetune_on_cfd_data(
     wall_dists_val = _estimate_wall_distances(inputs_val[:, :2], ref_x, ref_y_abs).to(dev)
 
     # ---- Load or init model ----
-    model = LE_PINN().to(dev)
+    if physics_mu_source not in ("sutherland", "data"):
+        raise ValueError(f"physics_mu_source must be 'sutherland' or 'data', got {physics_mu_source!r}")
+    if ckpt is not None:
+        activation = str(ckpt.get("activation", "relu"))
+    model = LE_PINN(activation=activation).to(dev)
     if ckpt is not None:
         try:
             model.load_state_dict(ckpt["model_state_dict"])
@@ -1935,6 +1984,7 @@ def finetune_on_cfd_data(
         if physics_loss_weight > 0:
             phys_inputs = inputs_train_n
             phys_walls = wall_dists_train
+            phys_mu = mu_eff_train
             if (
                 physics_max_points is not None
                 and physics_max_points > 0
@@ -1945,12 +1995,14 @@ def finetune_on_cfd_data(
                 )[:physics_max_points]
                 phys_inputs = inputs_train_n[phys_idx]
                 phys_walls = wall_dists_train[phys_idx]
+                phys_mu = mu_eff_train[phys_idx] if mu_eff_train is not None else None
             physics_breakdown = _coerce_physics_loss_breakdown(
                 _safe_physics_loss(
                     model, phys_inputs, phys_walls,
                     input_norm=input_norm,
                     output_norm=output_norm_5,
                     geometry=geometry,
+                    mu_eff_data=phys_mu,
                 ),
                 dev,
             )
@@ -2035,6 +2087,7 @@ def finetune_on_cfd_data(
                 "n_epochs": n_epochs,
                 "lr": lr,
                 "lr_schedule": lr_schedule,
+                "physics_mu_source": physics_mu_source,
                 "physics_loss_weight": physics_loss_weight,
                 "physics_max_points": physics_max_points,
                 "val_fraction": val_fraction,
@@ -2044,6 +2097,7 @@ def finetune_on_cfd_data(
             },
             "seed": seed,
             "device": str(dev),
+            "activation": model.activation,
             "loss_weighting": {
                 "schedule": type(weighting).__name__,
                 "max_epochs": weighting.max_epochs,
@@ -2507,7 +2561,7 @@ def run_le_pinn(
     output_norm = _restore_normalizer(ckpt["output_norm_min"][:5], ckpt["output_norm_max"][:5])
 
     dev = torch.device(device)
-    model = LE_PINN().to(dev)
+    model = LE_PINN(activation=str(ckpt.get("activation", "relu"))).to(dev)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 

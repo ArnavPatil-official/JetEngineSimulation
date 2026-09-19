@@ -45,6 +45,47 @@ Gate (fixed in docs/plan.md before this run): held-out wall-Cp shape-L2
 < 0.10 pass / 0.10-0.25 partial / > 0.25 fail.  The training data's own
 score on that metric is 0.089 / 0.084 (P4.1 §3).
 
+ATTEMPT 3 — TERMINAL (registered 2026-09-19, before the run)
+------------------------------------------------------------
+Attempts 1 and 2 (0.258 fail, 0.245 partial on one seed) and the data-only
+ablation (0.105) share one diagnosed defect, verified independently of any
+score in ``outputs/physics_residual_defect.md``: the physics loss enforced
+inviscid Euler. (i) ReLU is piecewise linear, so every second derivative in
+``compute_rans_residuals`` — the viscous and thermal-diffusion terms, the
+only second-derivative terms — is exactly zero; (ii) ``mu_eff`` was
+overwritten with Sutherland molecular viscosity while the field is a
+turbulent RANS solution with mu_t/mu_l up to 1750 in the boundary layer.
+Neither fix works alone. Attempt 3 changes exactly these two things,
+together, on top of attempt 2's configuration:
+
+* ``activation = "tanh"`` (C-infinity) in both sub-networks — recorded in
+  the checkpoint; ReLU checkpoints still load;
+* ``physics_mu_source = "data"``: the residual uses the WIND field's
+  ``mu_l + mu_t`` at the collocation points (dataset target column 8).
+  The residual keeps its existing Laplacian form mu_eff * lap(u); the
+  grad(mu) . grad(u) term of the full divergence form is NOT added and is
+  recorded as a known approximation of the formulation.
+
+Design fixed before the run:
+
+* seeds {42, 43, 44}; each seed trained twice, physics-on (weight 0.05,
+  warm-up as before) and a MATCHED data-only ablation (weight 0.0);
+* the band is called on the DISTRIBUTION over seeds: on the mean worse-wall
+  L2, and only claimed if every seed falls in the same band — otherwise the
+  result is reported as straddling, with the range;
+* supplementary, not a gate change: the ceiling-relative error
+  L2 - 0.089 is reported beside each score, since the training data itself
+  scores 0.089 on the upper wall;
+* interpretation, fixed now: physics-on within the seed spread of data-only
+  = physics consistency at no accuracy cost; physics-on below data-only =
+  the paper's positive result; physics-on above data-only = a negative
+  result about this residual formulation, reported as such.
+* This is the last attempt the executor registers. Whatever it shows is
+  the P4.3 outcome.
+
+    python scripts/validation/train_sajben.py --attempt 3 --seed 42
+    python scripts/validation/train_sajben.py --attempt 3 --seed 42 --physics-weight 0 --attempt-id P4.3-attempt-3-dataonly
+
 Usage::
 
     python scripts/validation/train_sajben.py                      # attempt 1 as registered
@@ -107,6 +148,32 @@ ATTEMPTS = {
         "geometry": "planar",
         "pretrained": None,
         "out": "models/le_pinn_sajben_v5_a2.pt",
+    },
+    # TERMINAL attempt, registered 2026-09-19 before the run. Fixes the
+    # residual-formulation defect (outputs/physics_residual_defect.md):
+    # tanh activation (non-zero second derivatives) + mu_eff from the WIND
+    # field (mu_l + mu_t) at the collocation points. Three seeds, matched
+    # data-only ablation, band called on the distribution. See docstring.
+    3: {
+        "id": "P4.3-attempt-3",
+        "registered": "2026-09-19",
+        "n_epochs": 5000,
+        "lr": 1e-3,
+        "lr_schedule": "cosine",
+        "activation": "tanh",
+        "physics_mu_source": "data",
+        "physics_loss_weight": 0.05,
+        "loss_weighting": {"schedule": "PhysicsWarmupWeighting", "data": 1.0, "warmup_fraction": 0.5},
+        "physics_max_points": None,
+        "val_fraction": 0.2,
+        "seed": 42,
+        "seeds": [42, 43, 44],
+        "geometry": "planar",
+        "pretrained": None,
+        "out": "models/le_pinn_sajben_v5_a3_s{seed}.pt",
+        "out_dataonly": "models/le_pinn_sajben_v5_a3_dataonly_s{seed}.pt",
+        "band_rule": "mean over seeds; claimed only if all seeds agree, else reported as straddling",
+        "terminal": True,
     },
 }
 ATTEMPT = ATTEMPTS[1]   # rebound by main() from --attempt
@@ -206,6 +273,8 @@ def train_sajben_le_pinn(
         seed=seed,
         loss_weighting=weighting,
         lr_schedule=ATTEMPT.get("lr_schedule", "plateau"),
+        activation=ATTEMPT.get("activation", "relu"),
+        physics_mu_source=ATTEMPT.get("physics_mu_source", "sutherland"),
         extra_payload={"split": split, "attempt": {**ATTEMPT, "id": attempt_id,
                                                    "n_epochs": n_epochs, "lr": lr,
                                                    "physics_loss_weight": physics_loss_weight,
@@ -242,17 +311,20 @@ def main() -> None:
                         help="Attempt label recorded in the checkpoint")
     args = parser.parse_args()
     ATTEMPT = ATTEMPTS[args.attempt]
-    SAVE_PATH = str(_ROOT / ATTEMPT["out"])
+    out_key = "out_dataonly" if (args.physics_weight == 0 and "out_dataonly" in ATTEMPT) else "out"
+    SAVE_PATH = str(_ROOT / ATTEMPT[out_key].format(seed=args.seed))
     if args.attempt != 1:
         # defaults above were bound to attempt 1; rebind the registered values
         if args.attempt_id == ATTEMPTS[1]["id"]:
-            args.attempt_id = ATTEMPT["id"]
+            args.attempt_id = ATTEMPT["id"] + ("-dataonly" if out_key == "out_dataonly" else "")
         if args.out == str(_ROOT / ATTEMPTS[1]["out"]):
             args.out = SAVE_PATH
+    if "seeds" in ATTEMPT and args.seed not in ATTEMPT["seeds"]:
+        print(f"NOTE: seed {args.seed} is not one of the registered seeds {ATTEMPT['seeds']}.")
 
     registered = (args.epochs == ATTEMPT["n_epochs"] and args.lr == ATTEMPT["lr"]
-                  and args.physics_weight == ATTEMPT["physics_loss_weight"]
-                  and args.seed == ATTEMPT["seed"])
+                  and args.physics_weight in (ATTEMPT["physics_loss_weight"], 0.0)
+                  and args.seed in ATTEMPT.get("seeds", [ATTEMPT["seed"]]))
     if not registered and args.attempt_id == ATTEMPT["id"]:
         print(f"NOTE: hyperparameters differ from the registered {ATTEMPT['id']}; "
               "pass --attempt-id to label this run as a new attempt.")

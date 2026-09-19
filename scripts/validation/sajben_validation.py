@@ -731,9 +731,12 @@ def main(model_file: Path | None = None) -> dict:
         try:
             try:
                 ckpt = torch.load(str(model_file), map_location="cpu",
-                                  weights_only=True)
+                                  weights_only=False)
             except TypeError:
                 ckpt = torch.load(str(model_file), map_location="cpu")
+            # Checkpoints record their hidden activation (P4.3 attempt 3);
+            # legacy ones are ReLU.
+            model = LE_PINN(activation=str(ckpt.get("activation", "relu")))
             model.load_state_dict(ckpt["model_state_dict"])
             print(f"  Loaded weights: {model_file.name}")
         except Exception as exc:

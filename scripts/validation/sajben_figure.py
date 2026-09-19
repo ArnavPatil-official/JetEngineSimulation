@@ -91,8 +91,8 @@ def main():
     for label, path in MODELS.items():
         # metrics via the validation module's own main() would re-print
         # everything; recompute compactly here with its building blocks
-        model = sv.LE_PINN()
-        ckpt = torch.load(str(path), map_location="cpu")
+        ckpt = torch.load(str(path), map_location="cpu", weights_only=False)
+        model = sv.LE_PINN(activation=str(ckpt.get("activation", "relu")))
         model.load_state_dict(ckpt["model_state_dict"])
         norm_in, norm_out_fresh = sv._build_sajben_normalizers(
             geom, N_AXIAL, N_NORMAL)
