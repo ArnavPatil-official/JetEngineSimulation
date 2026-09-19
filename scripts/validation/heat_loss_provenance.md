@@ -1,8 +1,11 @@
 # Combustor heat-loss fraction ξ — provenance record (P4.5 step 1)
 
-**Status: BLOCKED — no defensible sourced value found; escalated per `docs/plan.md` P4.5(1).**
-Nothing in the code or calibration was changed on the basis of this document.
-Date of search: 2026-09-18. Sources are listed in §4 so the search can be extended rather than repeated.
+**Status: DECIDED 2026-09-19 — ξ = 0 in production, by the structural argument in §2, not as a sourced value.**
+The user accepted option A of §6 with two corrections, both applied below: (i) no source says ξ = 0
+either — what is sourced is the *structure* (liner heat is recovered by the annulus air upstream of the
+turbine; only casing loss is a cycle term), and the preprint claims the argument, not a value; (ii) a
+bound from the calibration residual was proposed and was **tested and found not to hold in this model**
+(§5). Date of search: 2026-09-18; sources in §4.
 
 ## 1. What ξ is in this code
 
@@ -15,12 +18,10 @@ and turbine inlet. It is a cycle heat loss, not a liner heat flux. `integrated_e
 `design_point['combustor_heat_loss_fraction']` (production default 0.0), and the Phase-2.6 sweep
 `outputs/heat_loss_sensitivity.csv` shows ξ = 4 % moves T4 by 45 K and TSFC by 0.059 mg/(N·s).
 
-The combustion efficiency η_b is a **fitted** calibration parameter (`calibrate_lto.py`, search range
-0.96–0.999; v4 optimum 0.9963, `outputs/calibration_trent1000_ae3_v4.json`). Only the product
-η_b(1 − ξ) enters the temperature rise, so a fixed ξ is identifiable only through η_b's bound: the v4
-fit can absorb at most ξ ≈ 0.27 % (0.9963/0.999 − 1) without changing the calibrated cycle. Any larger
-fixed ξ changes every manuscript-bound number by the choice of that number. `outputs/parameter_provenance.md`
-already labels η_b a "lumped heat-delivery efficiency" for this reason.
+The combustion efficiency η_b is a calibration parameter (`calibrate_lto.py`, search range 0.96–0.999;
+v4 value 0.9963). Only the product η_b(1 − ξ) enters the temperature rise. An earlier draft of this record
+argued that η_b's headroom to its 0.999 bound (≈ 0.27 %) limits an absorbable ξ; §5 shows that η_b is
+not determined by the calibration at all, so that argument is withdrawn.
 
 ## 2. What the reviewer asked and what would answer it
 
@@ -44,13 +45,23 @@ So "turning on ξ" at a liner-heat-transfer magnitude (the 2–6 % range of the 
 model energy leaving the cycle that, in the real engine, does not. That is the substantive finding of
 this step.
 
+**Caveat the preprint must state (user, 2026-09-19).** The recovery argument assumes the cooling air
+re-enters *upstream of the turbine*. In the code, `combustor_air_fraction = 0.8` sends 20 % of the core
+air past the burner and remixes it with the products at compressor-exit temperature *at the combustor
+exit* (`integrated_engine.py`, "Combustor dilution mix", T4_mix), i.e. upstream of the turbine — in
+energy terms exactly full recovery. Turbine cooling air that re-enters **downstream of the NGV throat**
+bypasses part of the expansion and is a genuine cycle effect; the model does not represent it. The
+preprint should say: the split captures liner-cooling and dilution air (recovered), not turbine cooling
+air (not modelled).
+
 ## 3. Values considered and why none is adoptable under the plan's rule
 
 | Candidate | Basis | Verdict |
 |---|---|---|
 | ξ from Lefebvre & Ballal ch. 8 | The plan's named source. Not accessible in this session (Google Books API quota exhausted; publisher excerpt timed out). From the chapter's structure the liner heat balance (R1, C1 vs R2, C2 to the annulus air) supports the recovery argument in §2 but does not give a cycle-loss fraction. | **no number to adopt**; user may supply a page-cited value |
 | ξ ≈ 0.1 % (order of magnitude) | Casing ≈ 2 m² at ≈ T3 (≈ 900 K) losing to bay air by convection + radiation ≈ 0.05–0.1 MW against ≈ 100 MW take-off heat release. | an estimate this document made, **not a source**; prohibited by P4.5(1) |
-| ξ ≤ 0.27 % | Headroom of the fitted η_b to its 0.999 bound. | a property of the fit, not physics; **not a source** |
+| ξ ≤ 0.27 % | Headroom of the fitted η_b to its 0.999 bound. | withdrawn: η_b is not fitted in any meaningful sense (§5) |
+| ξ ≲ a few 0.1 % from the held-out fuel-flow residual | Proposed 2026-09-19: v4 fits held-out fuel flow to 2.50 % with η_b off its bound, so a large cycle loss would have shown as a systematic bias. | **does not hold**: fuel flow is independent of η_b(1 − ξ) by construction (§5) |
 | "conventional combustors lose ~2 orders of magnitude less than micro-combustors" | Micro-combustion literature (surface-to-volume argument; micro-combustors lose tens of per cent). | supports "O(0.1–1 %)" qualitatively; no engine-class number |
 | "total radiative heat flux to the walls < 25 % of the energy supplied … justifying the adiabatic assumption" | Bahador, Nilsson & Sundén, *On heat load calculations in gas turbine combustors*, WIT Trans. Eng. Sci. 46 (2004), citing a CFD study of a laboratory combustor. | wall **flux**, not cycle loss; lab geometry; **not applicable** |
 | ξ = 0 | Adiabatic-combustor treatment used by the cycle-analysis references located (§4); η_b lumps heat delivery. | the only value with literature support, **but it is the status quo** the user asked to move away from — a decision, not an executor call |
@@ -80,7 +91,51 @@ this step.
 10. `docs/response_letter_draft.md`, `docs/plan_phase2_completed.md` §2.6, `outputs/parameter_provenance.md`
     (ξ and η_b rows), `outputs/heat_loss_sensitivity.csv` — repo record of the reviewer point and the sweep.
 
-## 5. Decision needed from the user (P4.5 is blocked here)
+## 5. What the calibration can and cannot say about ξ — measured 2026-09-19
+
+The proposed bound was tested directly. At the v4 take-off point (`IntegratedTurbofanEngine`, Jet-A1,
+φ_to from the v4 record):
+
+| η_b | ξ | fuel flow (kg/s) | T4 (K) | thrust (kN) | TSFC (mg/N·s) |
+|---|---|---|---|---|---|
+| 0.9963 | 0.00 | 2.31821 | 1894.8 | 241.61 | 9.595 |
+| 0.9600 | 0.00 | 2.31821 | 1858.3 | 238.40 | 9.724 |
+| 0.9990 | 0.00 | 2.31821 | 1897.6 | 241.84 | 9.586 |
+| 0.9963 | 0.04 | 2.31821 | 1854.7 | 238.08 | 9.737 |
+
+Fuel flow is identical to five decimals. The fuel–air ratio is set by φ, so fuel flow =
+φ·f_stoich·β·ṁ_core, and neither η_b nor ξ enters it. The calibration objective
+(`calibrate_lto.py`, mean |Δfuel flow| over three modes) therefore has **zero sensitivity to η_b**, and
+the held-out 2.50 % residual carries no information about η_b(1 − ξ). Neither the headroom argument nor
+the residual argument bounds ξ. What ξ does move is T4 (−40 K at 4 %), thrust (−1.5 %) and TSFC (+1.5 %),
+none of which is fitted or validated against data at the take-off point (the model's 241.6 kN static
+thrust vs the ICAO rated 310.9 kN is a separate, larger discrepancy discussed in the manuscript).
+
+The same test on the other calibrated parameters at the approach point:
+
+| Parameter (range) | fuel flow at range ends | Sensitivity of the objective |
+|---|---|---|
+| η_b (0.96 → 0.999) | 1.09655 → 1.09655 | **none** |
+| pressure_loss (0.03 → 0.06) | 1.09655 → 1.09655 | **none** |
+| k_pi (0.5 → 1.5) | 1.09655 → 1.09655 | **none** — yet approach thrust 83.7 → 57.1 kN, T4 1373 → 1184 K, TSFC 7.40 → 10.85 |
+| k_mdot (0.3 → 1.0) | 1.615 → 0.695 | strong |
+| φ_app (0.30 → 0.40) | 1.014 → 1.216 | strong (by construction) |
+
+**Finding.** Of the seven parameters Optuna samples, the objective identifies four (k_mdot and the
+three φ). η_b = 0.9963, pressure_loss = 0.0442 and k_pi = 0.562 are wherever the seeded sampler landed
+and carry no information; `outputs/parameter_provenance.md` already flagged pressure_loss as inert in
+an earlier version and must now say the same of η_b and k_pi. Every manuscript-bound T4, thrust and
+TSFC depends on these three; across their search ranges that dependence is ±20 K / ±0.7 % at take-off
+from η_b alone and far larger at part power from k_pi. This is a Phase-4 finding outside P4.5's scope,
+recorded here because it was found here; how to fix it (fix the three at sourced values, or add a
+thrust or temperature target to the objective) is a user decision for P4.6/P4.8.
+
+**Consequence for ξ.** The decision rests on §2 alone. ξ = 0 is adopted because the cycle-relevant
+casing loss has no engine-class source and every performance reference located treats it as negligible;
+η_b is *declared* the lumped heat-delivery efficiency and its value is *unidentified* by the data. The
+Phase-2.6 sweep remains the reported sensitivity.
+
+## 6. Decision needed from the user — RESOLVED (option A, with the corrections above)
 
 Options, in the order this record recommends them:
 

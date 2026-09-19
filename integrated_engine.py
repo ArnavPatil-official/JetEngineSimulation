@@ -673,8 +673,13 @@ class IntegratedTurbofanEngine:
             'combustor_pressure_loss': 0.0,   # Fractional total-pressure loss between
                                               # compressor exit and combustor
                                               # (p_comb = p3 * (1 - loss)); 0 = legacy
-            'combustor_heat_loss_fraction': 0.0,  # Case/liner heat loss xi (Phase 2.6);
-                                                  # temperature rise scales by (1 - xi)
+            'combustor_heat_loss_fraction': 0.0,  # Cycle heat loss xi (Phase 2.6 hook).
+                                                  # Production 0.0 by argument, not by a
+                                                  # sourced value: liner heat is recovered
+                                                  # by the annulus air upstream of the
+                                                  # turbine, only casing loss is a cycle
+                                                  # term and no engine-class source exists.
+                                                  # scripts/validation/heat_loss_provenance.md
             'combustor_air_fraction': 1.0,    # beta (Phase 3.4): fraction of core air
                                               # burned at phi; (1-beta) bypasses the
                                               # burner as cooling/dilution air and

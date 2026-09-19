@@ -58,6 +58,14 @@ SEED = args.seed
 BASE_PI_C = 43.2      # Trent 1000-AE3 rated OPR (ICAO CSV, UID 02P23RR126)
 BASE_AIRFLOW = 79.9   # Rated core mass flow assumption [kg/s] (hand-set, unsourced)
 FPR_RATED = 1.45      # Rated fan pressure ratio (see simulation/fan.py sourcing)
+# Cycle heat loss fraction: 0 by the structural argument in
+# scripts/validation/heat_loss_provenance.md (liner heat recovered upstream of
+# the turbine; casing loss has no engine-class source). Fixed, never fitted:
+# fitting it would be a learnable factor absorbing model error (Reviewer 2, 4c).
+# Note (same record, section 5): fuel flow is independent of eta_b and xi by
+# construction, so the objective below identifies only k_mdot and the three phi;
+# eta_combustor, pressure_loss and k_pi are inert in it.
+HEAT_LOSS_XI = 0.0
 
 # Targets: Trent 1000-AE3 (UID 02P23RR126), all traceable to data/icao_engine_data.csv.
 # Power fractions are the CSV 'Power (%)' column. No CLIMB rows exist in the CSV.
@@ -99,6 +107,7 @@ def objective(trial):
             engine.design_point['mass_flow_core'] = m_dot
             engine.design_point['combustor_pressure_loss'] = p_loss
             engine.design_point['combustor_air_fraction'] = args.beta
+            engine.design_point['combustor_heat_loss_fraction'] = HEAT_LOSS_XI
             # Fan pressure ratio follows the same throttle law as pi_c
             # (rated FPR at full power would demand rated fan work at idle)
             x = target['power_fraction']
@@ -194,6 +203,7 @@ calibration_record = {
         "fpr_rated": FPR_RATED,
         "eta_fan": 0.90,
         "combustor_air_fraction": args.beta,
+        "combustor_heat_loss_fraction": HEAT_LOSS_XI,   # fixed, not fitted (P4.5)
         "eta_compressor": 0.86,
         "eta_turbine_polytropic": 0.9,
     },
