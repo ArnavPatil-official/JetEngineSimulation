@@ -121,8 +121,13 @@ The same test on the other calibrated parameters at the approach point:
 | k_mdot (0.3 → 1.0) | 1.615 → 0.695 | strong |
 | φ_app (0.30 → 0.40) | 1.014 → 1.216 | strong (by construction) |
 
-**Finding.** Of the seven parameters Optuna samples, the objective identifies four (k_mdot and the
-three φ). η_b = 0.9963, pressure_loss = 0.0442 and k_pi = 0.562 are wherever the seeded sampler landed
+**Finding.** Of the seven parameters Optuna samples, the objective identifies **φ_to alone**.
+[Corrected 2026-09-25: this paragraph originally said "identifies four (k_mdot and the three φ)". The
+table above shows k_mdot and φ_app each *move* fuel flow, but not that they are separately identified:
+fuel flow is φ·f_st·β·ṁ_rated·x^k_mdot, so take-off (x = 1) pins φ_to while idle and approach give two
+equations in three unknowns — k_mdot, φ_idle and φ_app lie on a ridge of identical objective. Measured
+table: `docs/plan.md` (Phase 5), finding F2; also `outputs/parameter_provenance.md`, Phase 5 section.]
+η_b = 0.9963, pressure_loss = 0.0442 and k_pi = 0.562 are wherever the seeded sampler landed
 and carry no information; `outputs/parameter_provenance.md` already flagged pressure_loss as inert in
 an earlier version and must now say the same of η_b and k_pi. Every manuscript-bound T4, thrust and
 TSFC depends on these three; across their search ranges that dependence is ±20 K / ±0.7 % at take-off
@@ -141,10 +146,10 @@ Options, in the order this record recommends them:
 
 **A. ξ = 0, sourced.** Production stays at ξ = 0, now *justified* rather than defaulted: the combustor is
 adiabatic to the cycle because liner heat is recovered by the annulus air (Lefebvre & Ballal ch. 8
-heat-balance structure), external casing loss is below the resolution of the fitted η_b, and η_b is
+heat-balance structure), external casing loss is below the resolution of η_b (sampled, not identified — §5), and η_b is
 declared the lumped heat-delivery efficiency (already so labelled). The Phase-2.6 sweep is reported as a
 bound on the blend effect size, as it is now. Reviewer 1's point is answered in the model's *structure*
-(fitted η_b) and in the physics, not by a limitations paragraph. Consequence for Phase 4: v5 differs
+(a lumped η_b) and in the physics, not by a limitations paragraph. Consequence for Phase 4: v5 differs
 from v4 only through the P4.3/P4.4 component adjudication; no combustor recalibration.
 
 **B. The user supplies a page-cited ξ.** If the user has Lefebvre & Ballal (or Walsh & Fletcher) to hand

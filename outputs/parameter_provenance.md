@@ -9,9 +9,14 @@ sourcing status. "Unsourced" means no literature citation exists for the
 value; the manuscript must not describe such values as literature-based or
 learnable.
 
-Calibrated values below are the converged parameters of the seeded one-time
-Optuna calibration (`scripts/optimization/calibrate_lto.py`, seed 42,
-50 trials), frozen in `outputs/calibration_trent1000_ae3.json`.
+Values marked "calibrated" in the Phase 1–3 sections are the values the
+seeded one-time Optuna calibration (`scripts/optimization/calibrate_lto.py`,
+seed 42) returned, frozen in `outputs/calibration_trent1000_ae3*.json`.
+**Returned is not identified:** the Phase 5 section at the end (2026-09-25)
+supersedes every status below — of the seven sampled parameters the
+fuel-flow objective identifies **φ_to alone**; η_b, pressure_loss and k_pi
+are unidentified, and k_mdot / φ_idle / φ_app are jointly unidentified (a
+ridge). None of the unidentified values is a converged estimate.
 
 ## Cycle parameters
 
@@ -23,12 +28,12 @@ Optuna calibration (`scripts/optimization/calibrate_lto.py`, seed 42,
 | Core mass flow (design) | 79.9 kg/s | **Fixed**, hand-set | — | `integrated_engine.py:545` | Hand-set during calibration to bring take-off fuel flow into range; not a published Trent 1000 core flow. |
 | Bypass ratio | 9.1 | **Fixed** (bookkeeping only; no fan/bypass thrust model in Phase 1) | — | `integrated_engine.py:546` | Trent 1000-AE3, ICAO CSV. |
 | Ambient T, P | 288.15 K, 101325 Pa | Fixed | — | `integrated_engine.py:550-551` | Sea-level ISA (standard). |
-| Combustor efficiency η_comb (LTO calibration) | **0.9765** (converged) | **Calibrated** once vs 3 Trent 1000-AE3 LTO points + 1 untraceable climb point | 0.96–0.999 | `scripts/optimization/calibrate_lto.py`; frozen in `outputs/calibration_trent1000_ae3.json` | Calibration artifact, not a measurement. In-sample mean abs. error of seeded run: **5.46%**. |
+| Combustor efficiency η_comb (LTO calibration) | 0.9765 (sampler's value; not an estimate) | **Unidentified by the objective** (Phase 5) — sampled once vs 3 Trent 1000-AE3 LTO points + 1 untraceable climb point; fuel flow has zero sensitivity to it | 0.96–0.999 | `scripts/optimization/calibrate_lto.py`; frozen in `outputs/calibration_trent1000_ae3.json` | Calibration artifact, not a measurement. In-sample mean abs. error of seeded run: **5.46%**. |
 | Combustor efficiency (blend optimization) | 0.98 | **Fixed** during all Optuna blend trials | — | `scripts/optimization/optimize_blend.py` (objective) | Assumed constant; NOT learnable, contrary to manuscript §2.1–2.2 wording. |
 | η_comb φ-parabola (η = 0.995 − 0.04(φ−1)², clip [0.90, 0.999]) | η_max=0.995, k_φ=0.04 | Fixed functional form | — | `simulation/combustor/combustor.py::estimate_efficiency` | Unsourced heuristic shape; only used when no explicit efficiency is passed. |
 | SAF name-triggered efficiency penalties (−1.5% 'Bio-SPK', −1.0% 'HEFA') | — | **REMOVED 2026-07-13** | — | formerly `simulation/combustor/combustor.py::estimate_efficiency` | Unsourced. Ablation (`scripts/validation/ablate_saf_penalty.py`, `outputs/ablation_saf_penalty.csv`, φ=0.5): penalties shifted TSFC +0.333% (HEFA blends) / +0.501% (Bio-SPK), thrust −0.33%/−0.50%, T4 −10.5/−15.7 K — and **flipped the TSFC fuel ranking** (with penalties Jet-A1 ranked above HEFA/Bio-SPK; without them Jet-A1 ranks last). Any blend-sensitivity claim built on these penalties must be withdrawn. |
-| Combustor pressure loss p_loss | 0.0497 (converged) | **INERT** — sampled by Optuna but never consumed by any cycle equation | 0.03–0.06 | `scripts/optimization/calibrate_lto.py` | No pressure-loss model exists in the cycle path; the parameter has zero effect on the objective. Must not be reported as a model parameter. |
-| φ per LTO mode | Idle **0.2950**, Approach **0.3401**, Climb **0.4573**, Take-off **0.5065** | **Calibrated** (converged values) | 0.22–0.30 / 0.30–0.40 / 0.42–0.50 / 0.50–0.60 | `scripts/optimization/calibrate_lto.py`; JSON | Throttle-setting surrogates, not measured equivalence ratios. NOTE: the Climb target (2.050 kg/s) does **not** appear in `data/icao_engine_data.csv` (the CSV has no CLIMB rows); only Idle/Approach/Take-off targets are traceable to the dataset. |
+| Combustor pressure loss p_loss | 0.0497 (sampler's value) | **INERT** — sampled by Optuna but never consumed by any cycle equation | 0.03–0.06 | `scripts/optimization/calibrate_lto.py` | No pressure-loss model exists in the cycle path; the parameter has zero effect on the objective. Must not be reported as a model parameter. |
+| φ per LTO mode | Idle **0.2950**, Approach **0.3401**, Climb **0.4573**, Take-off **0.5065** | φ_to identified; φ_idle and φ_app **jointly unidentified (ridge)** with the airflow law (Phase 5 F2) | 0.22–0.30 / 0.30–0.40 / 0.42–0.50 / 0.50–0.60 | `scripts/optimization/calibrate_lto.py`; JSON | Throttle-setting surrogates, not measured equivalence ratios. NOTE: the Climb target (2.050 kg/s) does **not** appear in `data/icao_engine_data.csv` (the CSV has no CLIMB rows); only Idle/Approach/Take-off targets are traceable to the dataset. |
 | Per-mode airflow scales | 0.15 / 0.35 / 0.85 / 1.00 | Fixed, hand-set | — | `scripts/optimization/calibrate_lto.py::MODE_SCALES` | Unsourced hand-tuning. |
 | Per-mode π scales | 0.15 / 0.40 / 0.90 / 1.00 | **INERT** — assigned to `design_point['pi_c']`, which `run_compressor()` never reads (`Compressor.pi_c` stays 43.2) | — | `scripts/optimization/calibrate_lto.py::MODE_SCALES` | Dead code path: every LTO mode was simulated at full rated OPR. Disclose in manuscript; a real part-power OPR model is Phase 2 scope. |
 | TIT hard limit / soft limit / penalty slope | 2800 K / 1850 K / 5×10⁻⁴ K⁻¹ | Fixed | — | `scripts/optimization/optimize_blend.py` | Unsourced optimization heuristics (hard limit is far above real TIT capability; it is a solver-failure guard, not a design constraint). |
@@ -112,9 +117,9 @@ thrust, and TSFC number was not. Fixed in commit 9588d31.
 | Parameter | Value | Status | Code location | Source / notes |
 |---|---|---|---|---|
 | Part-power throttle law | pi_c = 1+(pi_rated−1)x^k_pi; m_dot = m_rated·x^k_mdot; x = ICAO power setting | Functional form, hand-chosen | `integrated_engine.part_power_state` | Low-fidelity throttle model; replaces the 4 hand-set scales (2 of which were inert). |
-| k_pi | 1.342 (v3 converged) | Calibrated, **unidentifiable from fuel flow**: FAR depends on phi only, so pi_c does not enter the calibration objective except via crashes; v2 converged to 0.61, v3 to 1.34 on the same data. It DOES affect NOx (OPR) and T3. Report as an assumption, not a fitted constant. | `outputs/calibration_trent1000_ae3_v3.json` | — |
-| k_mdot | 0.697 (v3) | Calibrated (identifiable; fuel flow ∝ m_dot) | same | — |
-| p_loss (combustor pressure loss) | 0.0340 (v3) | Calibrated, **now consumed**: p_comb = p3(1−p_loss). Phase 1 "inert" row superseded. | `run_full_cycle` | — |
+| k_pi | 1.342 (v3 sampler's value) | **Unidentified by the v4 objective** (and v2/v3): FAR depends on phi only, so pi_c does not enter the calibration objective except via crashes; v2 landed at 0.61, v3 at 1.34 on the same data. It DOES affect NOx (OPR) and T3. Report as an assumption, not a fitted constant. | `outputs/calibration_trent1000_ae3_v3.json` | — |
+| k_mdot | 0.697 (v3 sampler's value) | **Jointly unidentified (ridge)** with φ_idle / φ_app — Phase 5 F2. The earlier reading "identifiable; fuel flow ∝ m_dot" was wrong: fuel flow ∝ φ·x^k_mdot, so idle and approach give two equations in three unknowns. | same | — |
+| p_loss (combustor pressure loss) | 0.0340 (v3 sampler's value) | Consumed by the cycle (p_comb = p3(1−p_loss)) but **unidentified by the fuel-flow objective** (zero fuel-flow sensitivity; `scripts/validation/heat_loss_provenance.md` §5). | `run_full_cycle` | — |
 | Per-mode pi-scales | — | **DELETED** (replaced by part-power law) | — | — |
 | Climb calibration target (2.050 kg/s) | — | **DELETED** (untraceable; CSV has no CLIMB rows) | — | — |
 | FPR (fan pressure ratio) | 1.45 rated; part power 1+(0.45)x^k_pi | Fixed, design-class value | `simulation/fan.py`, `design_point['fpr']` | Standard civil high-BPR fan magnitude (Mattingly-class textbook value); not measured Trent 1000 data. |
@@ -185,10 +190,47 @@ between configurations is disclosed as model-choice sensitivity
 | v3 | + fan/bypass | 10.11% | 12.71% | +19.7% |
 | **v4 (adopted)** | + airflow split β=0.8 | **1.62%** | **2.50%** | **1.81%** |
 
-v4 converged: η_comb 0.9963, p_loss 0.0442, k_π 0.5618 (unidentifiable-from-
-fuel-flow caveat stands), k_ṁ 0.6218, φ = {0.2953, 0.3053, 0.5409} — φ_app
-off its bound (the β headroom resolved the bound-pinning). Bias-hypothesis
+v4 values returned by the sampler: η_comb 0.9963, p_loss 0.0442, k_π 0.5618,
+k_ṁ 0.6218, φ = {0.2953, 0.3053, 0.5409}. Only φ_to = 0.5409 is identified by
+the objective; η_comb, p_loss and k_π are unidentified and k_ṁ / φ_idle /
+φ_app lie on a ridge (Phase 5 section). φ_app sits off its search bound, but
+that is the box selecting a point on the ridge, not the data. Bias-hypothesis
 history: part-power OPR falsified (P2.1); airflow split confirmed (P3.4).
 
 Canonical number sources: `outputs/ARTIFACT_MANIFEST.md`. Old→new mapping:
 `docs/number_crosswalk.md`.
+
+---
+
+# Phase 5 updates (2026-09-25) — identifiability of the LTO calibration
+
+Supersedes every "calibrated" / "converged" status above for the LTO
+calibration parameters. Source: `docs/plan.md` (Phase 5), finding F2, and
+`scripts/validation/heat_loss_provenance.md` §5.
+
+Fuel flow per mode is φ·f_st·β·ṁ_rated·x^k_mdot. Take-off (x = 1) pins φ_to;
+idle and approach give two equations in three unknowns (φ_idle, φ_app,
+k_mdot). Moving along that ridge with every other parameter at v4
+(measured 2026-09-26, F2):
+
+| k_mdot | φ_idle | φ_app | fuel-flow MAPE | idle thrust | approach thrust |
+|---|---|---|---|---|---|
+| 0.5800 | 0.2643 | 0.2903 | 1.619 % | 28.56 kN | 84.44 kN |
+| 0.6000 | 0.2787 | 0.2974 | 1.619 % | 27.58 kN | 83.30 kN |
+| 0.6218 (v4) | 0.2953 | 0.3053 | 1.619 % | 26.53 kN | 82.04 kN |
+
+Identical objective, 8 % spread in idle thrust; the only thing selecting v4's
+point is the φ search box.
+
+| Parameter (v4 value) | Status under the v4 fuel-flow objective |
+|---|---|
+| φ_to (0.5409) | **Identified** |
+| η_b / η_comb (0.9963) | **Unidentified by the v4 objective** — zero fuel-flow sensitivity |
+| pressure_loss (0.0442) | **Unidentified by the v4 objective** — zero fuel-flow sensitivity |
+| k_pi (0.5618) | **Unidentified by the v4 objective** — zero fuel-flow sensitivity; swings approach thrust 57 → 84 kN across its range |
+| k_mdot (0.6218) | **Jointly unidentified (ridge)** with φ_idle, φ_app |
+| φ_idle (0.2953) | **Jointly unidentified (ridge)** with k_mdot, φ_app |
+| φ_app (0.3053) | **Jointly unidentified (ridge)** with k_mdot, φ_idle |
+
+Every T4, thrust and TSFC derived from v4 (and v1–v3) depends on the six
+unidentified values. The repair is Phase 5 P5.2 (calibration v5).

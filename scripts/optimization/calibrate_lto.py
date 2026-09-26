@@ -63,8 +63,9 @@ FPR_RATED = 1.45      # Rated fan pressure ratio (see simulation/fan.py sourcing
 # the turbine; casing loss has no engine-class source). Fixed, never fitted:
 # fitting it would be a learnable factor absorbing model error (Reviewer 2, 4c).
 # Note (same record, section 5): fuel flow is independent of eta_b and xi by
-# construction, so the objective below identifies only k_mdot and the three phi;
-# eta_combustor, pressure_loss and k_pi are inert in it.
+# construction; eta_combustor, pressure_loss and k_pi are inert in the fuel-flow
+# objective, and k_mdot / phi_idle / phi_app lie on a ridge (two equations, three
+# unknowns). It identifies phi_to alone (docs/plan.md Phase 5, finding F2).
 HEAT_LOSS_XI = 0.0
 
 # Targets: Trent 1000-AE3 (UID 02P23RR126), all traceable to data/icao_engine_data.csv.
