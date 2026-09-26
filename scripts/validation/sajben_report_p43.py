@@ -14,8 +14,24 @@ Bands (docs/plan.md P4.3, fixed before any run):
     0.10 – 0.25   partial  quantified near-miss; PINN stays non-production
     > 0.25        fail     retired to an appendix
 
+Terminal-attempt guard (P5.1): a checkpoint of a ``terminal`` attempt is
+only reported when ALL of that attempt's registered runs (every seed,
+physics-on and matched data-only) have a checkpoint and completion evidence
+with exit code 0. Evidence is, in order of preference:
+
+* ``<log>.done`` written by ``train_sajben.py``'s launch guard — observed
+  exit code, bound to the checkpoint by SHA-256;
+* for runs launched before the guard existed (the 2026-09-19 data-only
+  runs), the ``exit=N`` trailer their launcher appended to the log, accepted
+  only if the log also names the checkpoint as saved and its "best val"
+  matches the checkpoint. The report labels which kind each run has.
+
+Anything else — missing checkpoint, missing evidence, non-zero exit — makes
+the report refuse (non-zero exit). A half-run terminal attempt cannot be reported.
+
 Usage::
 
+    python scripts/validation/sajben_report_p43.py            # every registered attempt
     python scripts/validation/sajben_report_p43.py \
         models/le_pinn_sajben_v5.pt models/le_pinn_sajben_v5_dataonly_ref.pt
 """
@@ -36,6 +52,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.validation import sajben_validation as sv  # noqa: E402
+from scripts.validation.train_sajben import (  # noqa: E402
+    ATTEMPTS, default_log_path, done_marker_path,
+)
 
 OUT_MD = REPO_ROOT / "outputs" / "sajben_retrain_v5.md"
 OUT_CSV = REPO_ROOT / "outputs" / "sajben_retrain_v5.csv"
@@ -51,6 +70,93 @@ def band(v: float) -> str:
     if v < GATE_PARTIAL:
         return "partial"
     return "fail"
+
+
+# Every registered run, in registration order (the no-argument default).
+REGISTERED = [
+    "models/le_pinn_sajben_v5.pt",                 # attempt 1
+    "models/le_pinn_sajben_v5_dataonly_ref.pt",    # reference 1 (data-only)
+    "models/le_pinn_sajben_v5_a2.pt",              # attempt 2
+] + [ATTEMPTS[3][k].format(seed=s) for s in ATTEMPTS[3]["seeds"] for k in ("out", "out_dataonly")]
+
+
+def completion_evidence(checkpoint: Path, log: Path) -> dict:
+    """Exit-code evidence for one run; ``ok`` only if it shows exit 0 for THIS checkpoint."""
+    import hashlib
+    import json
+    import re
+
+    ev = {"checkpoint": str(checkpoint.relative_to(REPO_ROOT)), "log": str(log.relative_to(REPO_ROOT)),
+          "ok": False, "kind": None, "exit_code": None, "detail": ""}
+    if not checkpoint.exists():
+        ev["detail"] = "checkpoint missing"
+        return ev
+    marker = done_marker_path(log)
+    if marker.exists():
+        rec = json.loads(marker.read_text())
+        sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+        ev.update(kind="launch-guard .done marker", exit_code=rec.get("exit_code"))
+        if rec.get("exit_code") != 0:
+            ev["detail"] = f"exit code {rec.get('exit_code')}"
+        elif rec.get("checkpoint_sha256") != sha:
+            ev["detail"] = "marker SHA-256 does not match the checkpoint"
+        else:
+            ev.update(ok=True, detail=f"sha256 {sha[:12]} matches; finished {rec.get('finished')}")
+        return ev
+    if not log.exists() or log.stat().st_size == 0:
+        ev["detail"] = "no .done marker and no (non-empty) log"
+        return ev
+    text = log.read_text()
+    m = re.search(r"^exit=(\d+)\s*\Z", text, re.M)
+    ev["kind"] = "legacy log trailer (exit=N appended by the pre-guard launcher)"
+    if m is None:
+        ev["detail"] = "log has no exit=N trailer"
+        return ev
+    ev["exit_code"] = int(m.group(1))
+    saved = f"Fine-tuned checkpoint saved: {checkpoint.resolve()}" in text
+    bv = re.search(r"best val ([0-9.eE+-]+)", text)
+    ck = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    vb = ck.get("val_loss_best")
+    val_match = bv is not None and vb is not None and f"{vb:.3e}" == bv.group(1)
+    if ev["exit_code"] != 0:
+        ev["detail"] = f"exit code {ev['exit_code']}"
+    elif not saved:
+        ev["detail"] = "log does not record saving this checkpoint"
+    elif not val_match:
+        ev["detail"] = f"log best val {bv.group(1) if bv else None} != checkpoint {vb}"
+    else:
+        ev.update(ok=True, detail=f"log names this checkpoint as saved; best val {bv.group(1)} matches the checkpoint")
+    return ev
+
+
+def terminal_guard(paths: list[Path]) -> list[dict]:
+    """Refuse (SystemExit 2) unless every registered run of each terminal attempt completed with exit 0."""
+    families = set()
+    for p in paths:
+        att = (torch.load(p, map_location="cpu", weights_only=False).get("attempt") or {}) if p.exists() else {}
+        if att.get("terminal"):
+            families.add(str(att.get("id")).removesuffix("-dataonly"))
+    # a terminal attempt whose runs are absent from `paths` must still be complete
+    for p in paths:
+        for n, a in ATTEMPTS.items():
+            if a.get("terminal") and any(p.name == Path(a[k].format(seed=s)).name
+                                         for s in a["seeds"] for k in ("out", "out_dataonly")):
+                families.add(a["id"])
+    evidence = []
+    for n, a in ATTEMPTS.items():
+        if a["id"] not in families:
+            continue
+        for s in a["seeds"]:
+            for k in ("out", "out_dataonly"):
+                ev = completion_evidence(REPO_ROOT / a[k].format(seed=s),
+                                         default_log_path(n, s, k == "out_dataonly"))
+                ev.update(attempt=a["id"] + ("-dataonly" if k == "out_dataonly" else ""), seed=s)
+                evidence.append(ev)
+    bad = [e for e in evidence if not e["ok"]]
+    if bad:
+        msg = "\n".join(f"  {e['attempt']} seed {e['seed']}: {e['checkpoint']} — {e['detail']}" for e in bad)
+        raise SystemExit(f"REFUSING to report a terminal attempt with incomplete runs:\n{msg}")
+    return evidence
 
 
 def score(path: Path) -> dict:
@@ -83,9 +189,12 @@ def score(path: Path) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("checkpoints", nargs="+")
+    ap.add_argument("checkpoints", nargs="*", help="default: every registered run (REGISTERED)")
     args = ap.parse_args()
-    rows = [score(Path(p)) for p in args.checkpoints]
+    paths = [(REPO_ROOT / p) if not Path(p).is_absolute() else Path(p)
+             for p in (args.checkpoints or REGISTERED)]
+    evidence = terminal_guard(paths)
+    rows = [score(p) for p in paths]
     df = pd.DataFrame(rows)
     df.to_csv(OUT_CSV, index=False)
 
@@ -191,6 +300,13 @@ def main() -> None:
                      f"{off.mean():.3f}, difference {d:+.3f} against a seed spread (larger sd) of {spread:.3f} → {verdict}.")
         L.append("\nThe pass band (< 0.10) sits 0.011 above the training data's own score; the ceiling-relative column "
                  "shows how much of each score is the surrogate's error rather than the CFD's. The gate itself is unchanged.")
+    if evidence:
+        L.append("\n## Completion evidence for the terminal attempt (P5.1 guard)\n")
+        L.append("Every registered run must have completed with exit code 0 before the terminal attempt is reported.\n")
+        L.append("| Run | Seed | Checkpoint | Evidence | Exit | Check |")
+        L.append("|---|---|---|---|---|---|")
+        for e in evidence:
+            L.append(f"| {e['attempt']} | {e['seed']} | `{e['checkpoint']}` | {e['kind']} | {e['exit_code']} | {e['detail']} |")
     L.append("\n## Observations recorded for any future attempt (no re-tuning was done)\n")
     for r in rows:
         if r["best_epoch"] is not None and r["epochs"] and r["best_epoch"] < 0.2 * r["epochs"]:

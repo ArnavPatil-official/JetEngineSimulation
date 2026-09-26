@@ -284,6 +284,106 @@ def train_sajben_le_pinn(
     return model, history
 
 
+class _Tee:
+    """Write-through copy of a stream into the run log (flushed per write, so a
+    killed run leaves everything it printed — unlike a buffered redirect)."""
+
+    def __init__(self, stream, fh):
+        self.stream, self.fh = stream, fh
+
+    def write(self, s):
+        self.stream.write(s)
+        self.fh.write(s)
+        self.fh.flush()
+        return len(s)
+
+    def flush(self):
+        self.stream.flush()
+        self.fh.flush()
+
+
+def default_log_path(attempt: int, seed: int, dataonly: bool) -> Path:
+    """Registered log location; attempts 1/2 keep their historical names."""
+    tag = f"a{attempt}_dataonly_s{seed}" if dataonly else f"a{attempt}_s{seed}"
+    return _ROOT / "outputs" / "logs" / f"train_sajben_v5_{tag}.log"
+
+
+def done_marker_path(log_path: Path) -> Path:
+    return log_path.with_suffix(".done")
+
+
+def guarded_run(log_path: Path, checkpoint: str, run) -> int:
+    """
+    P5.1 launch guard. Tees stdout/stderr into ``log_path`` and, when the run
+    ends by any route Python can observe (success, exception, SIGTERM/SIGINT/
+    SIGHUP), writes ``<log>.done`` recording the exit code. A run killed with
+    SIGKILL or by power loss leaves no marker, which the reporter treats as a
+    failed run. Refuses to start over an existing marker or non-empty log.
+    """
+    import hashlib
+    import json
+    import os
+    import platform
+    import signal
+    import time
+    import traceback
+
+    import torch
+
+    marker = done_marker_path(log_path)
+    if marker.exists() or (log_path.exists() and log_path.stat().st_size > 0):
+        raise SystemExit(f"refusing to launch: {log_path} or {marker} already exists "
+                         "(logs and completion markers are never overwritten)")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _on_signal(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, _on_signal)
+
+    started = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    fh = open(log_path, "a", encoding="utf-8")
+    out, err = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = _Tee(out, fh), _Tee(err, fh)
+    print(f"[launch-guard] pid {os.getpid()}  started {started}  argv {' '.join(sys.argv)}")
+    exit_code, error = 1, None
+    try:
+        run()
+        exit_code = 0
+    except SystemExit as exc:
+        exit_code = exc.code if isinstance(exc.code, int) else 1
+        error = f"SystemExit({exc.code})"
+    except BaseException:  # noqa: BLE001 — recorded, then re-signalled via exit code
+        error = traceback.format_exc()
+        print(error)
+    finally:
+        sha = None
+        if exit_code == 0 and Path(checkpoint).exists():
+            sha = hashlib.sha256(Path(checkpoint).read_bytes()).hexdigest()
+        record = {
+            "exit_code": exit_code,
+            "error": error,
+            "checkpoint": str(Path(checkpoint).resolve().relative_to(_ROOT))
+            if Path(checkpoint).resolve().is_relative_to(_ROOT) else str(checkpoint),
+            "checkpoint_sha256": sha,
+            "log": str(log_path.relative_to(_ROOT)) if log_path.is_relative_to(_ROOT) else str(log_path),
+            "started": started,
+            "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "pid": os.getpid(),
+            "argv": sys.argv,
+            "host": platform.node(),
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+            "torch_threads": torch.get_num_threads(),
+        }
+        print(f"[launch-guard] exit_code {exit_code}")
+        sys.stdout, sys.stderr = out, err
+        fh.close()
+        marker.write_text(json.dumps(record, indent=2) + "\n")
+    return exit_code
+
+
 def main() -> None:
     global ATTEMPT, SAVE_PATH
     parser = argparse.ArgumentParser(
@@ -309,6 +409,10 @@ def main() -> None:
                         help=f"Checkpoint path (default: {SAVE_PATH}); existing files are not overwritten")
     parser.add_argument("--attempt-id", type=str, default=ATTEMPT["id"],
                         help="Attempt label recorded in the checkpoint")
+    parser.add_argument("--log", type=str, default=None,
+                        help="Run log (tee'd) with a .done exit-code marker beside it. Default for "
+                             "attempt 3: outputs/logs/train_sajben_v5_a3[_dataonly]_s{seed}.log; "
+                             "'-' disables the guard (smoke runs only)")
     args = parser.parse_args()
     ATTEMPT = ATTEMPTS[args.attempt]
     out_key = "out_dataonly" if (args.physics_weight == 0 and "out_dataonly" in ATTEMPT) else "out"
@@ -329,22 +433,31 @@ def main() -> None:
         print(f"NOTE: hyperparameters differ from the registered {ATTEMPT['id']}; "
               "pass --attempt-id to label this run as a new attempt.")
 
-    model, history = train_sajben_le_pinn(
-        n_epochs=args.epochs,
-        lr=args.lr,
-        save_path=args.out,
-        device=resolve_device(args.device),
-        physics_loss_weight=args.physics_weight,
-        physics_debug=args.physics_debug,
-        seed=args.seed,
-        attempt_id=args.attempt_id,
-        verbose=True,
-    )
-    print(f"\nEpochs run: {len(history['loss_total'])}  "
-          f"final data loss {history['loss_data'][-1]:.3e}  "
-          f"best val {min(history['val_loss']):.3e}  "
-          f"min alive units {min(history['alive_min'])}")
-    print("Next: python scripts/validation/sajben_validation.py --model", args.out)
+    def run() -> None:
+        model, history = train_sajben_le_pinn(
+            n_epochs=args.epochs,
+            lr=args.lr,
+            save_path=args.out,
+            device=resolve_device(args.device),
+            physics_loss_weight=args.physics_weight,
+            physics_debug=args.physics_debug,
+            seed=args.seed,
+            attempt_id=args.attempt_id,
+            verbose=True,
+        )
+        print(f"\nEpochs run: {len(history['loss_total'])}  "
+              f"final data loss {history['loss_data'][-1]:.3e}  "
+              f"best val {min(history['val_loss']):.3e}  "
+              f"min alive units {min(history['alive_min'])}")
+        print("Next: python scripts/validation/sajben_validation.py --model", args.out)
+
+    log = args.log
+    if log is None and ATTEMPT.get("terminal"):
+        log = str(default_log_path(args.attempt, args.seed, out_key == "out_dataonly"))
+    if log is None or log == "-":
+        run()
+        return
+    sys.exit(guarded_run(Path(log).resolve(), args.out, run))
 
 
 if __name__ == "__main__":
