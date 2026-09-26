@@ -1,8 +1,10 @@
 # Phase 5 execution status — 2026-09-26
 
-Plans: `docs/plan.md` (Phase 5, original) and `docs/plan_phase5_review.md` (review corrections).
-Branch `phase4`. **State: STOPPED AT THE P5.2 STEP 2 ESCALATION GATE: the take-off thrust gap is
-structural.** P5.1 finished independently overnight; the terminal report passed its
+Plans: `docs/plan.md` (Phase 5, original), `docs/plan_phase5_review.md` (review corrections) and
+`docs/plan_phase5_nozzle_repair.md` (approved 2026-09-26: static-thrust accounting repair).
+Branch `phase4`. **State: the approved accounting repair is done. The work is STILL STOPPED AT THE P5.2 STEP 2 GATE,
+because the remaining 52.79 kN (17.0 %) take-off shortfall is unexplained and no sourced input
+closes it.** P5.1 finished independently overnight; the terminal report passed its
 completion guard and P4.3 is closed with the registered outcome below.
 
 ## Completed and committed
@@ -15,6 +17,9 @@ completion guard and P4.3 is closed with the registered outcome below.
 | Import-safe `calibrate_lto.py` reviewed. It reproduces the v4 objective bit-exactly and now refuses to overwrite an existing calibration record | `0de4b10` | `test_refactored_calibration_reproduces_v4_objective`, `test_calibration_refuses_to_overwrite_a_frozen_record` |
 | P5.2 Step 1: identifiability profile on v4 reproduces F2 | `e148402` | `outputs/identifiability_profile_v4.{json,csv}`, `outputs/logs/identifiability_profile_v4.log` |
 | P5.2 Step 2: take-off thrust decomposition | `f1bd920` | `outputs/takeoff_thrust_gap.{json,md}`, `outputs/logs/takeoff_thrust_gap.log` |
+| Repair phase 1: static-thrust regression tests, which fail before the fix (6 failed, 1 passed) | `8e14f10` | `tests/test_static_thrust_accounting.py`, `outputs/logs/static_thrust_accounting_prefix_pytest.log` |
+| Repair phases 2–3: analytic core nozzle F = ṁ·u_e (u_0 = 0); ideal-expansion boundary documented; `A_exit_effective` exposed as diagnostic metadata | `0be8227` | `integrated_engine.py` `run_nozzle` |
+| Repair phase 4: decomposition repeated with frozen inputs; pre-repair evidence preserved | this commit | `outputs/takeoff_thrust_gap_after_accounting.{json,md}`, `outputs/logs/takeoff_thrust_gap_after_accounting.log` |
 
 ### v4 identifiability (computed, closed form, cycle cross-checked)
 
@@ -38,7 +43,15 @@ k_mdot 0.575–0.625. The profile minimum is ≈ 0 against v4's 1.619 %, so the 
 
 ## Tests
 
-Full suite `python -m pytest tests/ -v`: **125 passed, 1 skipped, 9 warnings** (baseline 104 / 1 / 9; +21 new:
+**After the accounting repair (2026-09-26):** `.venv/bin/python -m pytest tests/ -v`: **132 passed, 1 skipped,
+9 warnings**, which is the 125/1 floor plus 7 new static-thrust tests
+(`outputs/logs/static_thrust_accounting_full_pytest.log`). `scripts/test_emissions.py` exits 0
+(`outputs/logs/static_thrust_accounting_emissions.log`). All three Cantera mechanisms load and validate
+(`outputs/logs/static_thrust_accounting_mechanisms.log`). The 39 hashed protected and evidence files
+(data YAMLs, `models/*.pt`, v1–v4 calibration and hold-out artifacts, `outputs/takeoff_thrust_gap.{json,md}`, and
+`outputs/identifiability_profile_v4.*`) are byte-identical before and after.
+
+Before the repair: full suite `python -m pytest tests/ -v`: **125 passed, 1 skipped, 9 warnings** (baseline 104 / 1 / 9; +21 new:
 12 report guard, 9 identifiability). This is the post-change P5.0 count. `scripts/test_emissions.py` was not run
 because no cycle or emissions code changed. The full suite was repeated after P5.1
 completed: **125 passed, 1 skipped, 9 warnings** in 93.83 s; retained output is
@@ -75,7 +88,9 @@ identifies the code loaded at startup as `459b900`; subsequent training-module c
 were log-label text only. The original checkpoint bytes are preserved, with this
 distinction recorded in the launch evidence rather than rewriting their metadata.
 
-## GATE: take-off thrust gap is structural (docs/plan.md P5.2 Step 2)
+## Pre-repair GATE record: take-off thrust gap is structural (docs/plan.md P5.2 Step 2)
+
+*Historical record from `f1bd920`, kept unchanged. The repair and the repeated diagnosis follow in the next section.*
 
 | | kN |
 |---|---|
@@ -99,7 +114,7 @@ distinction recorded in the launch evidence rather than rewriting their metadata
   (the core's 79.9 kg/s is hand-set and unsourced) or BPR 12.29 (against the ICAO-sourced 9.1). FPR cannot close it
   alone within [1.45, 2.0].
 
-**Proposed repair (not implemented; needs the user's decision):**
+**Proposed repair (approved 2026-09-26 and implemented; see below):**
 `docs/plan_phase5_nozzle_repair.md` defines the exact scope and acceptance tests.
 It corrects the analytic core's static momentum accounting, preserves and explicitly
 labels the ideal-expansion approximation, and reruns the decomposition with frozen
@@ -109,6 +124,39 @@ unexplained residual until the follow-up diagnosis establishes its causes. An un
 airflow or geometry must not be selected merely to close it. The original citation and
 identifiability gates remain in force; all historical v1–v4 artifacts remain frozen.
 
+## Static-thrust accounting repair (docs/plan_phase5_nozzle_repair.md) — done
+
+At the frozen v4 take-off point, with all inputs unchanged
+(`outputs/takeoff_thrust_gap_after_accounting.md`):
+
+| | Pre-repair | After repair |
+|---|---|---|
+| Core kN | 55.3914545 | **71.8918355** |
+| Bypass kN | 186.2185401 | 186.2185401 |
+| Total kN | 241.6099946 | **258.1103756** |
+| Gap to 310.9 kN | 69.2900054 | **52.7896244 (17.0 %)** |
+
+The three kinds of result are kept separate:
+
+1. **Corrected accounting (a model fix).** Core and bypass now both use the static engine-level balance
+   F = ṁ_e·u_e + (p_e − p_amb)A_e, with u_0 = 0. The change is exactly the previously subtracted internal
+   momentum; the residual is 1.8e-14 kN. Fuel flow (2.3182068896 kg/s), T4, turbine-exit state, core jet
+   velocity and emissions are unchanged: the max relative difference is 0. TSFC, thermal efficiency and
+   specific thrust are downstream of thrust, so they now move.
+2. **Unexplained residual (not a model fix).** The remaining **52.7896244 kN** is not attributed to any
+   audited term. Ideal full expansion bounds the core from above: the convergent counterfactual,
+   from the same stagnation state with a throat area implied by continuity and not sourced, is 1.29 kN lower.
+   The effective exit area (0.2374 m²) comes from continuity and is not a measured dimension. The
+   configured 0.340 m² PINN geometry does not constrain the analytic flow.
+3. **Illustrative input changes (none adopted).** On their own, total airflow ×1.2045 or BPR 12.29 would close
+   the gap. FPR cannot close it within [1.45, 2.0]. Core airflow 79.9 kg/s is a hand-set design-point value;
+   BPR 9.1 is the ICAO-sourced value. Neither closer has a source.
+
+**Gate status.** The accounting defect is resolved. Under docs/plan.md P5.2 Step 2 and "no sourced value, no fixed
+value", P5.2 registration does **not** resume. The residual needs either a sourced airflow/cycle input or a
+separately justified model term. Both need the user's decision; the repair approval did not waive this.
+The η_b / pressure_loss citation gate is also still open.
+
 ## Blocked until the gate is resolved
 
 P5.2 Steps 3–4 (register the v5 objective, calibrate v5, v5 identifiability, hold-out thrust MAPE), P5.3, P5.4 (pins
@@ -117,5 +165,7 @@ values before v5 can fix them.
 
 ## Next required action
 
-1. **User:** decide the proposed repair in `docs/plan_phase5_nozzle_repair.md`.
-2. P5.1 is closed; no training or report-supervisor jobs remain active.
+1. **User:** decide how to treat the remaining 52.79 kN take-off residual. The options are a sourced core/total airflow
+   (or other cycle input), a separately justified model term, or an explicit decision on carrying the residual.
+2. **User/executor:** page-cited η_b and pressure_loss values (still required before v5 can fix them).
+3. P5.1 is closed; no training or report-supervisor jobs remain active.

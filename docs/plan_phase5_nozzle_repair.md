@@ -1,10 +1,11 @@
-# Proposed P5.2 structural repair — awaiting user decision
+# P5.2 structural repair — approved 2026-09-26
 
 ## Objective
 
 Correct the static engine thrust accounting exposed by the P5.2 decomposition,
-then repeat the diagnosis before any v5 calibration. This proposal is not yet
-approved: `docs/plan.md`, P5.2 Step 2 says to stop and escalate on a structural gap.
+then repeat the diagnosis before any v5 calibration. The user explicitly approved
+this plan on 2026-09-26, resolving the request under `docs/plan.md`, P5.2 Step 2
+for this repair scope. Execute it without requesting approval again.
 
 Independent review reproduces 241.6099946 kN = 55.3914545 kN core +
 186.2185401 kN bypass. The core calculation subtracts 16.5003810 kN of internal
@@ -107,6 +108,6 @@ no model weights or historical calibration files are replaced.
 ## Escalation Guidance
 
 Medium-to-high complexity; Claude executor via the dispatcher, followed by review.
-User approval is needed because the original plan explicitly requires escalation
-when the thrust gap includes a structural defect. Any additional nozzle physics,
+The user has approved this repair following the original plan's structural-gap
+escalation. Any additional nozzle physics,
 geometry choice, or adoption of a new airflow/FPR value needs separate justification.

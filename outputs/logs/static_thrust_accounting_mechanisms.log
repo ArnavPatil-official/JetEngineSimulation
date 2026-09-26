@@ -1,0 +1,68 @@
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species CH2OCH, discontinuity in cp/R detected at Tmid = 500
+	Value computed using low-temperature polynomial:  8.393471510000001
+	Value computed using high-temperature polynomial: 9.1801039121875
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species CH2OCH, discontinuity in h/RT detected at Tmid = 500
+	Value computed using low-temperature polynomial:  42.19914708979167
+	Value computed using high-temperature polynomial: 41.961461604875
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species CH2OCH, discontinuity in s/R detected at Tmid = 500
+	Value computed using low-temperature polynomial:  33.70692865946735
+	Value computed using high-temperature polynomial: 33.51209988778391
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C4H5-2, discontinuity in h/RT detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  47.65235236593109
+	Value computed using high-temperature polynomial: 48.43623165666667
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C4H5-2, discontinuity in s/R detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  52.42918829260522
+	Value computed using high-temperature polynomial: 54.32081704699501
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C4H6-2, discontinuity in h/RT detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  28.072393266570767
+	Value computed using high-temperature polynomial: 28.60292515
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C4H6-2, discontinuity in s/R detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  50.25139828976554
+	Value computed using high-temperature polynomial: 51.51521152074738
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C2H3CHOCH2, discontinuity in h/RT detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  13.197490232436893
+	Value computed using high-temperature polynomial: 13.009458623333332
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species C2H3CHOCH2, discontinuity in s/R detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  55.5754926344824
+	Value computed using high-temperature polynomial: 53.052987694542516
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species CH3CHCHCHO, discontinuity in h/RT detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  -0.8755307677062499
+	Value computed using high-temperature polynomial: -0.7952995433333364
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species CH3CHCHCHO, discontinuity in s/R detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  59.194456477008444
+	Value computed using high-temperature polynomial: 62.495269678449205
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species iC4H7-1, discontinuity in cp/R detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  21.845278721000003
+	Value computed using high-temperature polynomial: 22.278588722899997
+
+<stdin>:3: UserWarning: NasaPoly2::validate: 
+For species iC4H7-1, discontinuity in h/RT detected at Tmid = 1000
+	Value computed using low-temperature polynomial:  39.871290752200004
+	Value computed using high-temperature polynomial: 39.80803510063
+
+data/creck_c1c16_full.yaml: loaded and validated; 492 species, 17790 reactions
+data/A1highT.yaml: loaded and validated; 119 species, 841 reactions
+data/A2NOx.yaml: loaded and validated; 201 species, 1589 reactions

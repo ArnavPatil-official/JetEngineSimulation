@@ -28,12 +28,19 @@ a fix, and no input value is adopted.
    single-input value that would alone close the gap is reported as a
    diagnostic, not as a candidate value.
 
-Outputs: outputs/takeoff_thrust_gap.json, outputs/takeoff_thrust_gap.md
+Outputs: outputs/takeoff_thrust_gap[_<tag>].json and .md. The untagged pair is the
+pre-repair evidence (commit f1bd920). Existing outputs are never overwritten. A tagged
+run compares itself with the preserved pre-repair JSON (``--compare-to``).
+
+After the static-thrust accounting repair (docs/plan_phase5_nozzle_repair.md), the
+term in item 2 is detected from the nozzle's own output (m·u_exit − thrust_momentum),
+so a corrected cycle reports zero subtracted momentum. It does not double-count.
 
 Usage::
 
     python scripts/validation/takeoff_thrust_gap.py \\
-        [--calibration outputs/calibration_trent1000_ae3_v4.json]
+        [--calibration outputs/calibration_trent1000_ae3_v4.json] \\
+        [--tag after_accounting] [--compare-to outputs/takeoff_thrust_gap.json]
 """
 
 from __future__ import annotations
@@ -117,8 +124,10 @@ def decompose(engine, res: dict) -> dict:
     else:
         u_star = A_star = p_star = None
         F_conv = m_core * nozz["u"]
-    A_full = m_core / (nozz["rho"] * nozz["u"])
+    A_full = nozz.get("A_exit_effective", m_core / (nozz["rho"] * nozz["u"]))
     fpr = engine.design_point["fpr"]
+    # momentum the core nozzle actually subtracts: m·u_e − its momentum term (0 once repaired)
+    subtracted = m_core * nozz["u"] - nozz["thrust_momentum"]
     return {
         "thrust_kN": perf["thrust_kN"],
         "core_kN": perf["thrust_core_kN"],
@@ -130,7 +139,8 @@ def decompose(engine, res: dict) -> dict:
         "core_nozzle_inlet_u_m_s": turb["u"],
         "core_momentum_kN": nozz["thrust_momentum"] / 1e3,
         "core_pressure_kN": nozz["thrust_pressure"] / 1e3,
-        "subtracted_inlet_momentum_kN": m_core * turb["u"] / 1e3,
+        "nozzle_inlet_momentum_kN": m_core * turb["u"] / 1e3,
+        "subtracted_inlet_momentum_kN": subtracted / 1e3,
         "bypass_jet_u_m_s": fan["u_bypass_exit"],
         "turbine_exit_T_K": T0, "turbine_exit_p_Pa": p0, "turbine_exit_gamma": g,
         "core_nozzle_pressure_ratio": p0 / p_amb, "core_critical_pressure_ratio": pr_crit,
@@ -151,11 +161,35 @@ def restored(d: dict) -> float:
     return d["thrust_kN"] + d["subtracted_inlet_momentum_kN"]
 
 
+PRE_REPAIR_JSON = REPO_ROOT / "outputs" / "takeoff_thrust_gap.json"
+DEFECT_TOL_KN = 1e-6
+
+
+def output_paths(tag: str) -> tuple[Path, Path]:
+    stem = "takeoff_thrust_gap" + (f"_{tag}" if tag else "")
+    return REPO_ROOT / "outputs" / f"{stem}.json", REPO_ROOT / "outputs" / f"{stem}.md"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--calibration", type=Path,
                     default=REPO_ROOT / "outputs" / "calibration_trent1000_ae3_v4.json")
+    ap.add_argument("--tag", default="",
+                    help="output suffix, e.g. 'after_accounting' -> outputs/takeoff_thrust_gap_after_accounting.*")
+    ap.add_argument("--compare-to", type=Path, default=PRE_REPAIR_JSON,
+                    help="preserved earlier diagnostic to compare against (tagged runs only)")
     args = ap.parse_args()
+    json_path, md_path = output_paths(args.tag)
+    existing = [p for p in (json_path, md_path) if p.exists()]
+    if existing:
+        raise SystemExit(f"refusing to overwrite preserved diagnostic {[str(p.relative_to(REPO_ROOT)) for p in existing]}; "
+                         "pass a new --tag")
+    compare = None
+    if args.tag:
+        cmp_path = args.compare_to.resolve()
+        if not cmp_path.exists():
+            raise SystemExit(f"--compare-to {cmp_path} does not exist")
+        compare = (cmp_path, json.loads(cmp_path.read_text()))
     cyc = TakeoffCycle(args.calibration.resolve())
     target = rated_thrust_kN(cyc.rec["icao_uid"])
     base = cyc.run()
@@ -195,10 +229,14 @@ def main() -> None:
     ]
 
     # ---- verdict (the gate) ----
+    defect = bool(base["subtracted_inlet_momentum_kN"] > DEFECT_TOL_KN)
     structural = [
         {"term": "core nozzle subtracts its own inlet (turbine-exit) momentum",
-         "evidence": f"F_core = m (u_exit - u_in) with u_in = {base['core_nozzle_inlet_u_m_s']:.4f} m/s; "
-                     f"engine-level static thrust has u_0 = 0 (NASA general thrust equation, {NASA_THRUST})",
+         "evidence": (f"F_core = m (u_exit - u_in) with u_in = {base['core_nozzle_inlet_u_m_s']:.4f} m/s; "
+                      if defect else
+                      f"RESOLVED: F_core = m u_exit (subtracted {base['subtracted_inlet_momentum_kN']:.3e} kN); "
+                      f"u_in = {base['core_nozzle_inlet_u_m_s']:.4f} m/s no longer enters thrust; ")
+                     + f"engine-level static thrust has u_0 = 0 (NASA general thrust equation, {NASA_THRUST})",
          "effect_kN": base["subtracted_inlet_momentum_kN"],
          "note": "u_in is set by continuity through A_combustor_exit x 1.82 (an area choice), so the "
                  "subtracted term is also an artifact of that area"},
@@ -212,6 +250,52 @@ def main() -> None:
                  "this treatment does not explain the shortfall, it bounds the core term from above"},
     ]
     residual_after_restore = target - F_restored
+    if defect:
+        verdict = "STRUCTURAL"
+        basis = (
+            "The production thrust equation contains an incorrect term (nozzle-inlet momentum subtracted "
+            "at an internal station), worth {:.4f} kN; per docs/plan.md P5.2 Step 2 this is a missing/"
+            "incorrect model term, not a mis-set input, so fitting thrust now would hide it in a parameter. "
+            "Restoring it alone leaves {:.4f} kN ({:.1f} %) unexplained; no single input in the tested "
+            "ranges is sourced, so none is adopted.".format(
+                base["subtracted_inlet_momentum_kN"], residual_after_restore,
+                100 * residual_after_restore / target))
+    else:
+        verdict = "ACCOUNTING RESOLVED; RESIDUAL UNEXPLAINED (ESCALATE)"
+        c_air = next(c for c in closes if c["input"] == "airflow_scale")["production"]
+        c_bpr = next(c for c in closes if c["input"] == "bpr")["production"]
+        basis = (
+            "Core and bypass now both use the static engine-level momentum balance (u_0 = 0); no internal-"
+            "station momentum is subtracted. The remaining {:.4f} kN ({:.1f} %) shortfall is NOT explained by "
+            "any term audited here: ideal full expansion bounds the core from above (the convergent-nozzle "
+            "counterfactual is {:.4f} kN lower), so nozzle treatment cannot close it. Illustrative single-input "
+            "closers exist (total airflow x{}, BPR {}), but none is sourced: core airflow {} kg/s is a "
+            "hand-set design-point value and BPR {} is the ICAO-sourced value. Under docs/plan.md "
+            "('no sourced value, no fixed value'), none is adopted, and P5.2 Step 3 does not resume. The "
+            "residual needs either a sourced airflow/cycle input or a separately justified model term.".format(
+                gap, 100 * gap / target,
+                (base["core_kN"] - base["core_convergent_kN"]),
+                f"{c_air:.4f}" if isinstance(c_air, float) else c_air,
+                f"{c_bpr:.4f}" if isinstance(c_bpr, float) else c_bpr,
+                cyc.engine.design_point["mass_flow_core"], cyc.base_bpr))
+    comparison = None
+    if compare is not None:
+        cmp_path, pre = compare
+        pb = pre["base"]
+        unchanged_keys = ("fuel_flow_kg_s", "T4_K", "turbine_exit_T_K", "turbine_exit_p_Pa",
+                          "core_jet_u_m_s", "core_nozzle_inlet_u_m_s", "bypass_kN", "core_mass_flow_kg_s")
+        comparison = {
+            "compared_to": str(cmp_path.relative_to(REPO_ROOT)),
+            "pre_total_kN": pb["thrust_kN"], "post_total_kN": base["thrust_kN"],
+            "pre_core_kN": pb["core_kN"], "post_core_kN": base["core_kN"],
+            "delta_total_kN": base["thrust_kN"] - pb["thrust_kN"],
+            "pre_subtracted_inlet_momentum_kN": pb["subtracted_inlet_momentum_kN"],
+            "delta_minus_pre_subtracted_kN": base["thrust_kN"] - pb["thrust_kN"] - pb["subtracted_inlet_momentum_kN"],
+            "pre_gap_kN": pre["gap_kN"], "post_gap_kN": gap,
+            "post_matches_pre_restored_counterfactual_kN": base["thrust_kN"] - pre["restored_term_kN"],
+            "unchanged_state_max_rel_diff": max(abs(base[k] - pb[k]) / abs(pb[k]) for k in unchanged_keys),
+            "unchanged_state_keys": list(unchanged_keys),
+        }
     out = {
         "calibration": str(args.calibration.resolve().relative_to(REPO_ROOT)),
         "configuration": "turbine analytic, nozzle analytic, xi from record, Jet-A1, v4 phi_to/eta_b/p_loss",
@@ -222,32 +306,31 @@ def main() -> None:
         "convergent_core_engine_level_total_kN": conv_total,
         "sensitivities": sens, "single_input_to_close_gap": closes,
         "structural_findings": structural,
-        "verdict": "STRUCTURAL" if base["subtracted_inlet_momentum_kN"] > 1e-6 else "NO STRUCTURAL TERM FOUND",
-        "verdict_basis": (
-            "The production thrust equation contains an incorrect term (nozzle-inlet momentum subtracted "
-            "at an internal station), worth {:.4f} kN; per docs/plan.md P5.2 Step 2 this is a missing/"
-            "incorrect model term, not a mis-set input, so fitting thrust now would hide it in a parameter. "
-            "Restoring it alone leaves {:.4f} kN ({:.1f} %) unexplained; no single input in the tested "
-            "ranges is sourced, so none is adopted.".format(
-                base["subtracted_inlet_momentum_kN"], residual_after_restore,
-                100 * residual_after_restore / target)
-            if base["subtracted_inlet_momentum_kN"] > 1e-6 else
-            "The thrust-equation audit found no incorrect term; the gap is input-level (see sensitivities)."),
+        "accounting_defect_present": defect,
+        "verdict": verdict,
+        "verdict_basis": basis,
+        "tag": args.tag,
+        "comparison_to_pre_repair": comparison,
     }
-    (REPO_ROOT / "outputs" / "takeoff_thrust_gap.json").write_text(json.dumps(out, indent=2) + "\n")
-    write_md(out)
-    print(Path(REPO_ROOT / "outputs" / "takeoff_thrust_gap.md").read_text())
+    json_path.write_text(json.dumps(out, indent=2) + "\n")
+    write_md(out, md_path)
+    print(md_path.read_text())
 
 
-def write_md(o: dict) -> None:
+def write_md(o: dict, md_path: Path) -> None:
     b = o["base"]
-    L = [f"# Take-off thrust gap decomposition (P5.2 Step 2)\n",
+    defect = o.get("accounting_defect_present", True)
+    title = ("Take-off thrust gap decomposition (P5.2 Step 2)" if defect else
+             "Take-off thrust gap after the static-thrust accounting repair (P5.2 Step 2, repeated)")
+    L = [f"# {title}\n",
          f"Calibration `{o['calibration']}`; {o['configuration']}. Target {o['target_kN']:.1f} kN "
-         f"({o['target_source']}). Generated by `scripts/validation/takeoff_thrust_gap.py`. "
+         f"({o['target_source']}). Generated by `scripts/validation/takeoff_thrust_gap.py`"
+         + (f" `--tag {o['tag']}`" if o.get("tag") else "") + ". "
          "**Every counterfactual below is a diagnostic, not a fix; no input value is adopted.**\n",
          "## 1. Where the thrust comes from\n",
          "| Term | kN |", "|---|---|",
-         f"| Core nozzle, momentum m(u_e − u_in) | {b['core_momentum_kN']:.7f} |",
+         (f"| Core nozzle, momentum m(u_e − u_in) | {b['core_momentum_kN']:.7f} |" if defect else
+          f"| Core nozzle, momentum m·u_e (u_e = {b['core_jet_u_m_s']:.2f} m/s) | {b['core_momentum_kN']:.7f} |"),
          f"| Core nozzle, pressure (p_e − p_amb)A_e | {b['core_pressure_kN']:.7f} |",
          f"| Bypass m_bp·u_bp (u_bp = {b['bypass_jet_u_m_s']:.2f} m/s) | {b['bypass_kN']:.7f} |",
          f"| **Model total** | **{b['thrust_kN']:.7f}** |",
@@ -257,14 +340,36 @@ def write_md(o: dict) -> None:
          f"T4 {b['T4_K']:.1f} K; fan work {b['fan_work_MW']:.2f} MW.\n",
          "## 2. Thrust-equation audit\n",
          f"The engine-level static thrust is F = m_e·u_e − m_0·u_0 + (p_e − p_0)A_e with u_0 = 0 "
-         f"([NASA general thrust equation]({NASA_THRUST}) subtracts *freestream* inlet momentum). "
-         f"The analytic core nozzle subtracts the momentum at its own inlet, the turbine exit: "
-         f"{b['core_mass_flow_kg_s']:.7f} kg/s × {b['core_nozzle_inlet_u_m_s']:.7f} m/s = "
-         f"**{b['subtracted_inlet_momentum_kN']:.7f} kN**. That velocity is itself set by continuity through "
-         "`A_combustor_exit × 1.82`, an area choice.\n",
-         f"- Restoring that term alone: **{o['restored_term_kN']:.7f} kN**, still "
-         f"**{o['residual_after_restore_kN']:.7f} kN** ({100 * o['residual_after_restore_kN'] / o['target_kN']:.1f} %) below target.\n",
-         "## 3. Nozzle pressure / area / choking\n",
+         f"([NASA general thrust equation]({NASA_THRUST}) subtracts *freestream* inlet momentum). "]
+    if defect:
+        L += [f"The analytic core nozzle subtracts the momentum at its own inlet, the turbine exit: "
+              f"{b['core_mass_flow_kg_s']:.7f} kg/s × {b['core_nozzle_inlet_u_m_s']:.7f} m/s = "
+              f"**{b['subtracted_inlet_momentum_kN']:.7f} kN**. That velocity is itself set by continuity through "
+              "`A_combustor_exit × 1.82`, an area choice.\n",
+              f"- Restoring that term alone: **{o['restored_term_kN']:.7f} kN**, still "
+              f"**{o['residual_after_restore_kN']:.7f} kN** ({100 * o['residual_after_restore_kN'] / o['target_kN']:.1f} %) below target.\n"]
+    else:
+        L += ["**Corrected.** The analytic core nozzle now uses F = ṁ·u_e + (p_e − p_amb)A_e. The momentum it "
+              f"subtracts is {b['subtracted_inlet_momentum_kN']:.3e} kN. The turbine-exit momentum "
+              f"({b['core_mass_flow_kg_s']:.7f} kg/s × {b['core_nozzle_inlet_u_m_s']:.7f} m/s = "
+              f"{b['nozzle_inlet_momentum_kN']:.7f} kN) remains a diagnostic only. The core and the bypass "
+              "(m_bp·u_bp) now use the same freestream reference.\n",
+              f"- Model total **{b['thrust_kN']:.7f} kN**; **{o['gap_kN']:.7f} kN** "
+              f"({o['gap_pct']:.1f} %) below target. This residual is **unexplained**; see the verdict.\n"]
+    c = o.get("comparison_to_pre_repair")
+    if c:
+        L += ["### Comparison with the preserved pre-repair diagnostic\n",
+              f"Pre-repair evidence: `{c['compared_to']}` (kept unchanged).\n",
+              "| | Pre-repair | This run | Δ |", "|---|---|---|---|",
+              f"| Core kN | {c['pre_core_kN']:.7f} | {c['post_core_kN']:.7f} | {c['post_core_kN'] - c['pre_core_kN']:+.7f} |",
+              f"| Total kN | {c['pre_total_kN']:.7f} | {c['post_total_kN']:.7f} | {c['delta_total_kN']:+.7f} |",
+              f"| Gap to target kN | {c['pre_gap_kN']:.7f} | {c['post_gap_kN']:.7f} | {c['post_gap_kN'] - c['pre_gap_kN']:+.7f} |\n",
+              f"- Thrust change minus the pre-repair subtracted term ({c['pre_subtracted_inlet_momentum_kN']:.7f} kN): "
+              f"**{c['delta_minus_pre_subtracted_kN']:.3e} kN**. The change is exactly the removed internal momentum.",
+              f"- This run minus the pre-repair 'restored term' counterfactual: {c['post_matches_pre_restored_counterfactual_kN']:.3e} kN.",
+              f"- Fuel flow, T4, turbine-exit T/p/u, core jet velocity, core mass flow and bypass thrust: max relative "
+              f"difference **{c['unchanged_state_max_rel_diff']:.2e}**, so they are unchanged.\n"]
+    L += ["## 3. Nozzle pressure / area / choking\n",
          "| Stream | p0/p_amb | critical | choked (convergent)? |", "|---|---|---|---|",
          f"| Core | {b['core_nozzle_pressure_ratio']:.3f} | {b['core_critical_pressure_ratio']:.3f} | {'yes' if b['core_choked'] else 'no'} |",
          f"| Bypass | {b['bypass_pressure_ratio']:.3f} | {b['bypass_critical_pressure_ratio']:.3f} | {'yes' if b['bypass_choked'] else 'no'} |\n",
@@ -275,7 +380,13 @@ def write_md(o: dict) -> None:
          f"vs {b['core_kN'] + b['subtracted_inlet_momentum_kN']:.4f} kN fully expanded — lower, so nozzle "
          "treatment does not explain the shortfall. The bypass stream is unchoked; its full expansion is exact "
          "for a convergent nozzle.\n",
-         "## 4. Input sensitivities (production thrust | with restored term)\n",
+         "Assumptions of the analytic nozzle and of the convergent counterfactual: turbine-exit T and p are "
+         "used as the nozzle total state; the expansion is isentropic with the turbine-exit γ, cp and R; the "
+         "ideal nozzle's exit area and the convergent throat area both follow from continuity. **Neither area "
+         "is a measured or sourced engine dimension**, and no nozzle geometry is imposed. The design area "
+         "is the configured PINN geometry and does not constrain the analytic flow.\n",
+         ("## 4. Input sensitivities (production thrust | with restored term)\n" if defect else
+          "## 4. Input sensitivities (illustrative only; the 'Restored' column equals production after the repair)\n"),
          "| Input | Value | Thrust kN | Restored kN | T4 K |", "|---|---|---|---|---|",
          f"| baseline | — | {b['thrust_kN']:.2f} | {o['restored_term_kN']:.2f} | {b['T4_K']:.1f} |"]
     for key, rows in o["sensitivities"].items():
@@ -290,7 +401,12 @@ def write_md(o: dict) -> None:
     if o["verdict"] == "STRUCTURAL":
         L.append("Per docs/plan.md P5.2 Step 2 this is an escalation gate: P5.2 Steps 3–4 (v5 objective and fit) "
                  "and everything downstream stop until the user decides the repair.\n")
-    (REPO_ROOT / "outputs" / "takeoff_thrust_gap.md").write_text("\n".join(L))
+    elif not defect:
+        L.append("Gate status: the approved accounting repair is complete. The original gate still applies, "
+                 "because the take-off gap is not explained and cannot be closed with a sourced input. "
+                 "P5.2 Steps 3–4 and everything downstream stay stopped until the user decides how to treat the "
+                 "residual. The η_b / pressure_loss citation gate is also still open.\n")
+    md_path.write_text("\n".join(L))
 
 
 if __name__ == "__main__":

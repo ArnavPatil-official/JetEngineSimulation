@@ -188,4 +188,4 @@ tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness
     warnings.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-============ 132 passed, 1 skipped, 9 warnings in 97.13s (0:01:37) =============
+============ 132 passed, 1 skipped, 9 warnings in 100.37s (0:01:40) ============
