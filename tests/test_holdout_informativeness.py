@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-V4_CSV = ROOT / "outputs" / "holdout_icao_validation_v4.csv"
+V4_CSV = ROOT / "outputs" / "archive" / "pre_phase6" / "holdout_icao_validation_v4.csv"  # archived P6.6
 V5_CSV = ROOT / "outputs" / "holdout_icao_validation_v5.csv"
 ICAO_CSV = ROOT / "data" / "icao_engine_data.csv"
 AE3_UID = "02P23RR126"

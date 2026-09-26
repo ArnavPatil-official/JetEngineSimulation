@@ -161,7 +161,7 @@ def restored(d: dict) -> float:
     return d["thrust_kN"] + d["subtracted_inlet_momentum_kN"]
 
 
-PRE_REPAIR_JSON = REPO_ROOT / "outputs" / "takeoff_thrust_gap.json"
+PRE_REPAIR_JSON = REPO_ROOT / "outputs" / "archive" / "pre_phase6" / "takeoff_thrust_gap.json"  # archived P6.6
 DEFECT_TOL_KN = 1e-6
 
 

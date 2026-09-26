@@ -31,7 +31,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts" / "optimization"))
 import calibrate_lto as cal  # noqa: E402
 
 V4 = REPO_ROOT / "outputs" / "calibration_trent1000_ae3_v4.json"
-PRE_REPAIR = REPO_ROOT / "outputs" / "takeoff_thrust_gap.json"
+PRE_REPAIR = REPO_ROOT / "outputs" / "archive" / "pre_phase6" / "takeoff_thrust_gap.json"  # archived P6.6
 
 # Frozen v4 take-off point, captured from the cycle before the repair.
 PRE_CORE_KN = 55.3914545
