@@ -1,0 +1,70 @@
+$ .venv/bin/python scripts/validation/holdout_icao_validation.py --tag _v5  # started 2026-09-26T18:22:41-04:00
+{
+  "registration": "outputs/phase6/p61_registration.json (A1)",
+  "calibration": "outputs/calibration_v5_A2.json",
+  "fitted_params": {
+    "W_ref": 102.39547191158805,
+    "a_thrust": 1.109036507149692,
+    "k_pi": 1.3482577723216178,
+    "k_mdot": 0.41360456851971344
+  },
+  "W_ref_vs_handset": {
+    "fitted_rated_core_airflow_AE3_kg_s": 102.39547191158805,
+    "handset_v4_kg_s": 79.9,
+    "ratio": 1.281545330558048
+  },
+  "primary_group_weighted_mape_pct": {
+    "model": 1.8236129405720565,
+    "B0": 2.1886504344831437,
+    "B1": 1.0763401571313587
+  },
+  "A2": {
+    "margin_pp": 0.25,
+    "verdict": "FAIL: no demonstrated skill"
+  },
+  "A3": {
+    "icao": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": -1.1461908799409693e-05,
+        "partial_slope_given_F": 3.382848723372188e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -9.530195668951011e-05,
+        "partial_slope_given_F": 6.518873592178805e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 4.603836779966398e-05,
+        "partial_slope_given_F": 2.137357776630343e-05
+      }
+    },
+    "model": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": 9.997409894653488e-06,
+        "partial_slope_given_F": 6.716745975250873e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -5.7574910818264074e-05,
+        "partial_slope_given_F": 1.948788526767923e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 2.7129603480876566e-05,
+        "partial_slope_given_F": 9.758728798797667e-05
+      }
+    },
+    "sign_agrees": {
+      "APPROACH": false,
+      "IDLE": true,
+      "TAKE-OFF": true
+    },
+    "verdict": "FAIL"
+  },
+  "unreachable_rows": [],
+  "nox_note": "model_nox_corr_g_s from a NOx correlation refit without held-out models"
+}
+exit 0 2026-09-26T18:23:03-04:00

@@ -1,0 +1,5 @@
+Scope,n,Model_MAPE_pct,Model_group_weighted_MAPE_pct,Naive_MAPE_pct,Naive_group_weighted_MAPE_pct,fit
+ALL (held-out group),87,4.051430899492876,3.7659014425153376,7.827446190974618,10.597786564692106,EI_NOx = 8.8295 * OPR^0.2348 * mdot^0.9558; 93 calibration records / 15 models; in-sample R^2 0.9968 (training diagnostic)
+APPROACH,29,5.126485142410146,4.949321793691015,3.9825322331628987,5.744191353246588,EI_NOx = 8.8295 * OPR^0.2348 * mdot^0.9558; 93 calibration records / 15 models; in-sample R^2 0.9968 (training diagnostic)
+IDLE,29,4.563537498662249,3.6455412366624245,6.12963248015632,7.803212567374167,EI_NOx = 8.8295 * OPR^0.2348 * mdot^0.9558; 93 calibration records / 15 models; in-sample R^2 0.9968 (training diagnostic)
+TAKE-OFF,29,2.4642700574062353,2.7028412971925717,13.370173859604632,18.245955773455567,EI_NOx = 8.8295 * OPR^0.2348 * mdot^0.9558; 93 calibration records / 15 models; in-sample R^2 0.9968 (training diagnostic)
