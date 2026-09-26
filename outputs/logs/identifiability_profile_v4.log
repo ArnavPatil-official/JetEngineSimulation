@@ -1,0 +1,22 @@
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+Calibration outputs/calibration_trent1000_ae3_v4.json  objective fuel_flow_v4  fitted ['eta_combustor', 'pressure_loss', 'k_pi', 'k_mdot', 'phi_idle', 'phi_app', 'phi_to']
+f_st 0.0670467098; objective at the frozen point 0.016190
+  eta_combustor  min 0.000000 at 0.9600  edge rise 0.0000/0.0000  interval [0.9600, 0.9990] (100.0%)  -> not identified: edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%
+  pressure_loss  min 0.000000 at 0.0300  edge rise 0.0000/0.0000  interval [0.0300, 0.0600] (100.0%)  -> not identified: edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%
+  k_pi           min 0.000000 at 0.5000  edge rise 0.0000/0.0000  interval [0.5000, 1.5000] (100.0%)  -> not identified: edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%
+  k_mdot         min 0.000000 at 0.5835  edge rise 0.3778/0.2771  interval [0.5753, 0.6251] (7.1%)  -> not identified: flat valley: interval 7.1% of the box >= 2%
+  phi_idle       min 0.000000 at 0.2656  edge rise 0.0281/0.0000  interval [0.2629, 0.3000] (46.4%)  -> not identified: edge rise 2.81e-02 / 3.50e-09 < margin 0.005; minimum interval touches the upper box edge; flat valley: interval 46.4% of the box >= 2%
+  phi_app        min 0.000000 at 0.3027  edge rise 0.0000/0.0854  interval [0.3000, 0.3185] (18.5%)  -> not identified: edge rise 1.43e-09 / 8.54e-02 < margin 0.005; minimum interval touches the lower box edge; flat valley: interval 18.5% of the box >= 2%
+  phi_to         min 0.000014 at 0.5430  edge rise 0.0264/0.0350  interval [0.5428, 0.5432] (0.4%)  -> IDENTIFIED
+Ridge check (F2): objective spread 9.71e-17 -> ridge PRESENT
+  k_mdot 0.5800  phi_idle 0.2643  phi_app 0.2903  obj 0.016190 (cycle 0.016190)  idle 28.56 kN  approach 84.44 kN  [outside phi box]
+  k_mdot 0.6000  phi_idle 0.2787  phi_app 0.2974  obj 0.016190 (cycle 0.016190)  idle 27.58 kN  approach 83.30 kN  [outside phi box]
+  k_mdot 0.6218  phi_idle 0.2953  phi_app 0.3053  obj 0.016190 (cycle 0.016190)  idle 26.53 kN  approach 82.04 kN
+Cycle cross-check: 39 points, 89 mode runs; closed form agrees at every feasible point: True (max rel fuel-flow diff 3.4e-16); crashed points: 0
+
+Identified: ['phi_to']
+Not identified: ['eta_combustor', 'pressure_loss', 'k_pi', 'k_mdot', 'phi_idle', 'phi_app']
+Runtime 634.2 s. Written: outputs/identifiability_profile_v4.json, outputs/identifiability_profile_v4.csv
+.venv/bin/python scripts/validation/identifiability_profile.py --calibration   320.81s user 76.75s system 61% cpu 10:49.58 total

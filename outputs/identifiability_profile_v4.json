@@ -1,0 +1,1259 @@
+{
+  "calibration": "outputs/calibration_trent1000_ae3_v4.json",
+  "objective": "fuel_flow_v4",
+  "method": "closed-form fuel-flow objective (exact inner minimisation); cycle cross-checked",
+  "f_st": 0.0670467098061115,
+  "beta": 0.8,
+  "m_rated_kg_s": 79.9,
+  "objective_at_calibration": 0.01619039847849917,
+  "fitted": [
+    "eta_combustor",
+    "pressure_loss",
+    "k_pi",
+    "k_mdot",
+    "phi_idle",
+    "phi_app",
+    "phi_to"
+  ],
+  "inert_in_objective": [
+    "eta_combustor",
+    "pressure_loss",
+    "k_pi"
+  ],
+  "criteria": {
+    "MARGIN": 0.005,
+    "DELTA": 0.0001,
+    "WIDTH_FRAC": 0.02,
+    "N_GRID": 401,
+    "N_K": 4001,
+    "N_BISECT": 40,
+    "CYCLE_RTOL": 1e-09
+  },
+  "identified": [
+    "phi_to"
+  ],
+  "not_identified": [
+    "eta_combustor",
+    "pressure_loss",
+    "k_pi",
+    "k_mdot",
+    "phi_idle",
+    "phi_app"
+  ],
+  "profiles": [
+    {
+      "parameter": "eta_combustor",
+      "bounds": [
+        0.96,
+        0.999
+      ],
+      "calibrated": 0.9963347754418137,
+      "objective_at_calibrated_value": 0.0,
+      "profile_min": 0.0,
+      "argmin": 0.96,
+      "edge_rise_lower": 0.0,
+      "edge_rise_upper": 0.0,
+      "interval": [
+        0.96,
+        0.999
+      ],
+      "interval_width_frac": 1.0,
+      "touches_lower": true,
+      "touches_upper": true,
+      "identified": false,
+      "why_not": "edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.96,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.5767795591557383,
+        "phi_idle": 0.26393648757293925,
+        "phi_app": 0.30045712571420585,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.96,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.999,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "pressure_loss",
+      "bounds": [
+        0.03,
+        0.06
+      ],
+      "calibrated": 0.0442453140416395,
+      "objective_at_calibrated_value": 0.0,
+      "profile_min": 0.0,
+      "argmin": 0.03,
+      "edge_rise_lower": 0.0,
+      "edge_rise_upper": 0.0,
+      "interval": [
+        0.03,
+        0.06
+      ],
+      "interval_width_frac": 1.0,
+      "touches_lower": true,
+      "touches_upper": true,
+      "identified": false,
+      "why_not": "edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.03,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.5767795591557383,
+        "phi_idle": 0.26393648757293925,
+        "phi_app": 0.30045712571420585,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.03,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.06,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "k_pi",
+      "bounds": [
+        0.5,
+        1.5
+      ],
+      "calibrated": 0.561834047335499,
+      "objective_at_calibrated_value": 0.0,
+      "profile_min": 0.0,
+      "argmin": 0.5,
+      "edge_rise_lower": 0.0,
+      "edge_rise_upper": 0.0,
+      "interval": [
+        0.5,
+        1.5
+      ],
+      "interval_width_frac": 1.0,
+      "touches_lower": true,
+      "touches_upper": true,
+      "identified": false,
+      "why_not": "edge rise 0.00e+00 / 0.00e+00 < margin 0.005; minimum interval touches the lower and upper box edge; flat valley: interval 100.0% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.5,
+        "k_mdot": 0.5767795591557383,
+        "phi_idle": 0.26393648757293925,
+        "phi_app": 0.30045712571420585,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.5,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 1.5,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "k_mdot",
+      "bounds": [
+        0.3,
+        1.0
+      ],
+      "calibrated": 0.6217921052413873,
+      "objective_at_calibrated_value": 0.0,
+      "profile_min": 0.0,
+      "argmin": 0.5834999999999999,
+      "edge_rise_lower": 0.3778204533641423,
+      "edge_rise_upper": 0.2771164794258028,
+      "interval": [
+        0.5752657810617275,
+        0.6250538990302104
+      ],
+      "interval_width_frac": 0.0711258828121183,
+      "touches_lower": false,
+      "touches_upper": false,
+      "identified": false,
+      "why_not": "flat valley: interval 7.1% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.5834999999999999,
+        "phi_idle": 0.2686958032004827,
+        "phi_app": 0.30289805456452806,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.3,
+          "phi_idle": 0.22,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 1.0,
+          "phi_idle": 0.3,
+          "phi_app": 0.4,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "phi_idle",
+      "bounds": [
+        0.22,
+        0.3
+      ],
+      "calibrated": 0.29534021495306023,
+      "objective_at_calibrated_value": 1.267037931768533e-09,
+      "profile_min": 4.927672568713581e-11,
+      "argmin": 0.2656,
+      "edge_rise_lower": 0.02809257473444726,
+      "edge_rise_upper": 3.4970925669554654e-09,
+      "interval": [
+        0.26287614420421224,
+        0.3
+      ],
+      "interval_width_frac": 0.464048197447347,
+      "touches_lower": false,
+      "touches_upper": true,
+      "identified": false,
+      "why_not": "edge rise 2.81e-02 / 3.50e-09 < margin 0.005; minimum interval touches the upper box edge; flat valley: interval 46.4% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.5791422166392044,
+        "phi_idle": 0.2656,
+        "phi_app": 0.3013130153937742,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5083090325700943,
+          "phi_idle": 0.22,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6249410727681205,
+          "phi_idle": 0.3,
+          "phi_app": 0.3183941943277266,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "phi_app",
+      "bounds": [
+        0.3,
+        0.4
+      ],
+      "calibrated": 0.3052826104671048,
+      "objective_at_calibrated_value": 2.1952629558144242e-10,
+      "profile_min": 2.808432594827064e-11,
+      "argmin": 0.30274999999999996,
+      "edge_rise_lower": 1.4310053056120765e-09,
+      "edge_rise_upper": 0.08543477614792126,
+      "interval": [
+        0.3,
+        0.31848970933456167
+      ],
+      "interval_width_frac": 0.18489709334561671,
+      "touches_lower": true,
+      "touches_upper": false,
+      "identified": false,
+      "why_not": "edge rise 1.43e-09 / 8.54e-02 < margin 0.005; minimum interval touches the lower box edge; flat valley: interval 18.5% of the box >= 2%",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.58309391693646,
+        "phi_idle": 0.26840580046456447,
+        "phi_app": 0.30274999999999996,
+        "phi_to": 0.5429778911844277
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5755149151207791,
+          "phi_idle": 0.2630503554617513,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6249410633989025,
+          "phi_idle": 0.29999999571717634,
+          "phi_app": 0.4,
+          "phi_to": 0.5429778911844277
+        }
+      }
+    },
+    {
+      "parameter": "phi_to",
+      "bounds": [
+        0.5,
+        0.6
+      ],
+      "calibrated": 0.5409261230079053,
+      "objective_at_calibrated_value": 0.0012595774830087504,
+      "profile_min": 1.3572569547369815e-05,
+      "argmin": 0.543,
+      "edge_rise_lower": 0.02637049197660304,
+      "edge_rise_upper": 0.034992216641738794,
+      "interval": [
+        0.5427928890015,
+        0.5431628933673555
+      ],
+      "interval_width_frac": 0.0037000436585543648,
+      "touches_lower": false,
+      "touches_upper": false,
+      "identified": true,
+      "why_not": "",
+      "argmin_params": {
+        "eta_combustor": 0.9963347754418137,
+        "pressure_loss": 0.0442453140416395,
+        "k_pi": 0.561834047335499,
+        "k_mdot": 0.5767795591557383,
+        "phi_idle": 0.26393648757293925,
+        "phi_app": 0.30045712571420585,
+        "phi_to": 0.543
+      },
+      "edge_params": {
+        "lower": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5
+        },
+        "upper": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.6
+        }
+      }
+    }
+  ],
+  "ridge_check": {
+    "rows": [
+      {
+        "k_mdot": 0.58,
+        "phi_idle": 0.2642754386647624,
+        "phi_app": 0.2903018898896355,
+        "objective_closed_form": 0.016190398478499266,
+        "in_box": false,
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.58,
+          "phi_idle": 0.2642754386647624,
+          "phi_app": 0.2903018898896355,
+          "phi_to": 0.5409261230079053
+        },
+        "objective_cycle": 0.016190398478499207,
+        "thrust_Idle_kN": 28.558576528090754,
+        "thrust_Approach_kN": 84.44477462523835,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "k_mdot": 0.6,
+        "phi_idle": 0.27871146979561445,
+        "phi_app": 0.29737704255663916,
+        "objective_closed_form": 0.016190398478499245,
+        "in_box": false,
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6,
+          "phi_idle": 0.27871146979561445,
+          "phi_app": 0.29737704255663916,
+          "phi_to": 0.5409261230079053
+        },
+        "objective_cycle": 0.016190398478499266,
+        "thrust_Idle_kN": 27.576387639307214,
+        "thrust_Approach_kN": 83.29829822838528,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "k_mdot": 0.6217921052413873,
+        "phi_idle": 0.29534021495306023,
+        "phi_app": 0.3052826104671048,
+        "objective_closed_form": 0.01619039847849917,
+        "in_box": true,
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "objective_cycle": 0.01619039847849928,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 241.60999464425643
+      }
+    ],
+    "objective_spread": 9.71445146547012e-17,
+    "ridge_present": true,
+    "idle_thrust_spread_pct": 7.3546678256164855
+  },
+  "cycle_cross_check": {
+    "n_points": 39,
+    "n_cycle_mode_runs": 89,
+    "all_feasible_points_agree": true,
+    "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+    "crashed_points": [],
+    "points": [
+      {
+        "label": "frozen calibration",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "eta_combustor at lower box edge (0.96)",
+        "params": {
+          "eta_combustor": 0.96,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.219931807573353,
+        "thrust_Approach_kN": 80.897941130785,
+        "thrust_Takeoff_kN": 238.39889857214476
+      },
+      {
+        "label": "eta_combustor at upper box edge (0.999)",
+        "params": {
+          "eta_combustor": 0.999,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.55442957073744,
+        "thrust_Approach_kN": 82.12245766717625,
+        "thrust_Takeoff_kN": 241.83945609323914
+      },
+      {
+        "label": "pressure_loss at lower box edge (0.03)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.03,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.61989220188006,
+        "thrust_Approach_kN": 82.30720373759154,
+        "thrust_Takeoff_kN": 242.20829439639644
+      },
+      {
+        "label": "pressure_loss at upper box edge (0.06)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.06,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.43187571292699,
+        "thrust_Approach_kN": 81.7375342846972,
+        "thrust_Takeoff_kN": 240.9300132369388
+      },
+      {
+        "label": "k_pi at lower box edge (0.5)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.5,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 27.960961685918214,
+        "thrust_Approach_kN": 83.6908162059339,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "k_pi at upper box edge (1.5)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 1.5,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 9.605706792374487,
+        "thrust_Approach_kN": 57.06226017817039,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "k_mdot at lower box edge (0.3)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.3,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.5858950734690549,
+        "objective_cycle": 0.5858950734690547,
+        "max_rel_fuel_flow_diff": 1.947798353399951e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 60.18331697559962,
+        "thrust_Approach_kN": 117.7543878124728,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "k_mdot at upper box edge (1.0)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 1.0,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.343415357616194,
+        "objective_cycle": 0.3434153576161941,
+        "max_rel_fuel_flow_diff": 2.8286073894489177e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 9.868408692157399,
+        "thrust_Approach_kN": 53.06645680051726,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "phi_idle at lower box edge (0.22)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.22,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.1006056832071907,
+        "objective_cycle": 0.10060568320719072,
+        "max_rel_fuel_flow_diff": 1.538233417138652e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 24.156860927558725,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "phi_idle at upper box edge (0.3)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.3,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01657536933389439,
+        "objective_cycle": 0.016575369333894314,
+        "max_rel_fuel_flow_diff": 2.2560756784700224e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.65795924009714,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "phi_app at lower box edge (0.3)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.02174187772894722,
+        "objective_cycle": 0.021741877728947336,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 81.52341324866632,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "phi_app at upper box edge (0.4)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.4,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.09070307904768005,
+        "objective_cycle": 0.09070307904768021,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 89.72195051232578,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "phi_to at lower box edge (0.5)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.04131488554164083,
+        "objective_cycle": 0.041314885541641005,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 235.10039944183956
+      },
+      {
+        "label": "phi_to at upper box edge (0.6)",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.6
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.04993661020677658,
+        "objective_cycle": 0.04993661020677662,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 249.8762560801033
+      },
+      {
+        "label": "eta_combustor: profile minimiser",
+        "params": {
+          "eta_combustor": 0.96,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.433501243349706,
+        "thrust_Approach_kN": 84.62524828586658,
+        "thrust_Takeoff_kN": 238.71055853490338
+      },
+      {
+        "label": "eta_combustor: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.96,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.433501243349706,
+        "thrust_Approach_kN": 84.62524828586658,
+        "thrust_Takeoff_kN": 238.71055853490338
+      },
+      {
+        "label": "eta_combustor: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.999,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.81002300583023,
+        "thrust_Approach_kN": 85.93377004134287,
+        "thrust_Takeoff_kN": 242.14694314462838
+      },
+      {
+        "label": "pressure_loss: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.03,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.88923333214305,
+        "thrust_Approach_kN": 86.13496354024541,
+        "thrust_Takeoff_kN": 242.51487388940504
+      },
+      {
+        "label": "pressure_loss: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.03,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.88923333214305,
+        "thrust_Approach_kN": 86.13496354024541,
+        "thrust_Takeoff_kN": 242.51487388940504
+      },
+      {
+        "label": "pressure_loss: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.06,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.66573114160399,
+        "thrust_Approach_kN": 85.51817864464518,
+        "thrust_Takeoff_kN": 241.23909603771713
+      },
+      {
+        "label": "k_pi: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.5,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 30.332133125326976,
+        "thrust_Approach_kN": 87.55806010951494,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "k_pi: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.5,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 30.332133125326976,
+        "thrust_Approach_kN": 87.55806010951494,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "k_pi: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 1.5,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 3.7917453026815455e-17,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 10.267560311944534,
+        "thrust_Approach_kN": 59.67127633608671,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "k_mdot: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5834999999999999,
+          "phi_idle": 0.2686958032004827,
+          "phi_app": 0.30289805456452806,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.0,
+        "objective_cycle": 0.0,
+        "max_rel_fuel_flow_diff": 0.0,
+        "agrees": true,
+        "thrust_Idle_kN": 28.44996884855131,
+        "thrust_Approach_kN": 85.44757255862065,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "k_mdot: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.3,
+          "phi_idle": 0.22,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.3778204533641423,
+        "objective_cycle": 0.3778204533641423,
+        "max_rel_fuel_flow_diff": 0.0,
+        "agrees": true,
+        "thrust_Idle_kN": 54.453249162170465,
+        "thrust_Approach_kN": 116.96015017984853,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "k_mdot: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 1.0,
+          "phi_idle": 0.3,
+          "phi_app": 0.4,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.2771164794258028,
+        "objective_cycle": 0.2771164794258028,
+        "max_rel_fuel_flow_diff": 0.0,
+        "agrees": true,
+        "thrust_Idle_kN": 9.914116359653862,
+        "thrust_Approach_kN": 57.80575253615374,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_idle: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5791422166392044,
+          "phi_idle": 0.2656,
+          "phi_app": 0.3013130153937742,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 4.927672568713581e-11,
+        "objective_cycle": 4.927664985222975e-11,
+        "max_rel_fuel_flow_diff": 2.2750471812726067e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.666790173368142,
+        "thrust_Approach_kN": 85.70646900584792,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_idle: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5083090325700943,
+          "phi_idle": 0.22,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.028092574783723984,
+        "objective_cycle": 0.028092574783723928,
+        "max_rel_fuel_flow_diff": 1.592424047920224e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 32.30890700765357,
+        "thrust_Approach_kN": 92.70299088389214,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_idle: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6249410727681205,
+          "phi_idle": 0.3,
+          "phi_app": 0.3183941943277266,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 3.5463692926426013e-09,
+        "objective_cycle": 3.5463693305600544e-09,
+        "max_rel_fuel_flow_diff": 1.1375236029067e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.441486408684685,
+        "thrust_Approach_kN": 82.97422217272022,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_app: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.58309391693646,
+          "phi_idle": 0.26840580046456447,
+          "phi_app": 0.30274999999999996,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 2.808432594827064e-11,
+        "objective_cycle": 2.8084363865723665e-11,
+        "max_rel_fuel_flow_diff": 1.1375235908044636e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.470130908389653,
+        "thrust_Approach_kN": 85.47171098908925,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_app: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5755149151207791,
+          "phi_idle": 0.2630503554617513,
+          "phi_app": 0.3,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 1.4590896315603472e-09,
+        "objective_cycle": 1.4590896315603472e-09,
+        "max_rel_fuel_flow_diff": 0.0,
+        "agrees": true,
+        "thrust_Idle_kN": 28.84802498869469,
+        "thrust_Approach_kN": 85.92172128862701,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_app: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6249410633989025,
+          "phi_idle": 0.29999999571717634,
+          "phi_app": 0.4,
+          "phi_to": 0.5429778911844277
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.08543477617600559,
+        "objective_cycle": 0.08543477617600559,
+        "max_rel_fuel_flow_diff": 0.0,
+        "agrees": true,
+        "thrust_Idle_kN": 26.441486936218404,
+        "thrust_Approach_kN": 89.39709089955166,
+        "thrust_Takeoff_kN": 241.91773980306695
+      },
+      {
+        "label": "phi_to: profile minimiser",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.543
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 1.3572569547369815e-05,
+        "objective_cycle": 1.357256954734412e-05,
+        "max_rel_fuel_flow_diff": 1.9083417631768136e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.784760887875738,
+        "thrust_Approach_kN": 85.84670086897405,
+        "thrust_Takeoff_kN": 241.9210470128724
+      },
+      {
+        "label": "phi_to: re-optimised at lower edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.5
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.026384064546150412,
+        "objective_cycle": 0.026384064546150512,
+        "max_rel_fuel_flow_diff": 2.0724591548100198e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.784760887875738,
+        "thrust_Approach_kN": 85.84670086897405,
+        "thrust_Takeoff_kN": 235.10039944183956
+      },
+      {
+        "label": "phi_to: re-optimised at upper edge",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.5767795591557383,
+          "phi_idle": 0.26393648757293925,
+          "phi_app": 0.30045712571420585,
+          "phi_to": 0.6
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.035005789211286165,
+        "objective_cycle": 0.03500578921128614,
+        "max_rel_fuel_flow_diff": 1.7270492956750164e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.784760887875738,
+        "thrust_Approach_kN": 85.84670086897405,
+        "thrust_Takeoff_kN": 249.8762560801033
+      },
+      {
+        "label": "ridge k_mdot=0.5800",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.58,
+          "phi_idle": 0.2642754386647624,
+          "phi_app": 0.2903018898896355,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.016190398478499266,
+        "objective_cycle": 0.016190398478499207,
+        "max_rel_fuel_flow_diff": 1.793972585554678e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 28.558576528090754,
+        "thrust_Approach_kN": 84.44477462523835,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "ridge k_mdot=0.6000",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6,
+          "phi_idle": 0.27871146979561445,
+          "phi_app": 0.29737704255663916,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.016190398478499245,
+        "objective_cycle": 0.016190398478499266,
+        "max_rel_fuel_flow_diff": 1.7939725855546778e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 27.576387639307214,
+        "thrust_Approach_kN": 83.29829822838528,
+        "thrust_Takeoff_kN": 241.60999464425643
+      },
+      {
+        "label": "ridge k_mdot=0.6218",
+        "params": {
+          "eta_combustor": 0.9963347754418137,
+          "pressure_loss": 0.0442453140416395,
+          "k_pi": 0.561834047335499,
+          "k_mdot": 0.6217921052413873,
+          "phi_idle": 0.29534021495306023,
+          "phi_app": 0.3052826104671048,
+          "phi_to": 0.5409261230079053
+        },
+        "crashed_modes": {},
+        "objective_closed_form": 0.01619039847849917,
+        "objective_cycle": 0.01619039847849928,
+        "max_rel_fuel_flow_diff": 3.437506996711795e-16,
+        "agrees": true,
+        "thrust_Idle_kN": 26.531950860755643,
+        "thrust_Approach_kN": 82.0409234039951,
+        "thrust_Takeoff_kN": 241.60999464425643
+      }
+    ]
+  },
+  "runtime_s": 634.2
+}
