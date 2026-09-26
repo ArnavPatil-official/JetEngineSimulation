@@ -1120,12 +1120,29 @@ class IntegratedTurbofanEngine:
 
         This is where fuel chemistry directly translates to performance differences.
 
+        Thrust model (static test stand, same as the bypass stream and the PINN
+        paths' thrust_model='static_test_stand'): engine-level momentum balance
+        F = ṁ·u_exit − ṁ_0·u_0 + (p_exit − p_amb)·A_exit with freestream u_0 = 0
+        (NASA general thrust equation). The inlet velocity flow_state_in['u'] is an
+        internal station (turbine exit) and is not subtracted; it does not enter
+        this model and remains available on the turbine state for diagnostics.
+
+        Modeling boundary: an ideal nozzle that always expands fully to p_amb
+        (p_exit = p_amb, so the pressure term is zero whenever p_in ≥ p_amb). T and
+        p of flow_state_in are used as the nozzle total state. The exit area is not
+        a constraint here: it follows from continuity, A_exit_effective =
+        ṁ/(ρ_exit·u_exit), and is returned as diagnostic metadata only — it is not
+        a measured engine dimension. The configured design_point['A_nozzle_exit']
+        (the PINN geometry) does not constrain this flow and is used only in the
+        signed pressure term.
+
         Args:
             flow_state_in: Inlet flow state dict with rho, u, p, T, cp, R, gamma
             m_dot: Total mass flow rate [kg/s]
 
         Returns:
-            Nozzle exit state dict with rho, u, p, T, thrust_total, thrust_momentum, thrust_pressure
+            Nozzle exit state dict with rho, u, p, T, thrust_total, thrust_momentum,
+            thrust_pressure, thrust_model, A_exit_effective
         """
         if m_dot <= 0:
             raise ValueError("Mass flow rate must be positive for nozzle computation")
@@ -1165,9 +1182,9 @@ class IntegratedTurbofanEngine:
         # Calculate exit density from ideal gas law (fuel-dependent R)
         rho_exit = P_amb / (R * T_exit)
 
-        # Calculate thrust: F = ṁ (u_exit - u_inlet) + (P_exit - P_amb) A_exit
-        u_inlet = flow_state_in['u']
-        F_momentum = m_dot * (u_exit_isentropic - u_inlet)
+        # Static-stand thrust: F = ṁ u_exit + (P_exit - P_amb) A_exit (freestream u_0 = 0;
+        # the internal nozzle-inlet momentum is not subtracted)
+        F_momentum = m_dot * u_exit_isentropic
         p_exit = p_in * pressure_ratio
         delta_p = p_exit - P_amb
         pressure_tol = 1.0  # Pa tolerance to avoid numerical noise
@@ -1191,7 +1208,10 @@ class IntegratedTurbofanEngine:
             'T': T_exit,
             'thrust_total': F_total,
             'thrust_momentum': F_momentum,
-            'thrust_pressure': F_pressure
+            'thrust_pressure': F_pressure,
+            'thrust_model': 'static_test_stand',
+            # continuity-implied exit area of the ideal fully expanded jet (diagnostic only)
+            'A_exit_effective': m_dot / (rho_exit * u_exit_isentropic)
         }
 
     def _run_nozzle_stage(
