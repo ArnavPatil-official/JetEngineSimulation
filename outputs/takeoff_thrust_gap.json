@@ -1,0 +1,169 @@
+{
+  "calibration": "outputs/calibration_trent1000_ae3_v4.json",
+  "configuration": "turbine analytic, nozzle analytic, xi from record, Jet-A1, v4 phi_to/eta_b/p_loss",
+  "target_kN": 310.9,
+  "target_source": "data/icao_engine_data.csv 'Rated Thrust (kN)', UID 02P23RR126, Power 100 %",
+  "base": {
+    "thrust_kN": 241.60999464425643,
+    "core_kN": 55.391454506992275,
+    "bypass_kN": 186.21854013726414,
+    "core_mass_flow_kg_s": 82.21820688959112,
+    "bypass_mass_flow_kg_s": 727.09,
+    "fuel_flow_kg_s": 2.318206889591116,
+    "core_jet_u_m_s": 874.4028631755976,
+    "core_nozzle_inlet_u_m_s": 200.69011021595028,
+    "core_momentum_kN": 55.391454506992275,
+    "core_pressure_kN": 0.0,
+    "subtracted_inlet_momentum_kN": 16.500381002429844,
+    "bypass_jet_u_m_s": 256.1148415426758,
+    "turbine_exit_T_K": 1174.3793059470293,
+    "turbine_exit_p_Pa": 369180.7343580888,
+    "turbine_exit_gamma": 1.28035804961842,
+    "core_nozzle_pressure_ratio": 3.6435305636130155,
+    "core_critical_pressure_ratio": 1.8204902396969354,
+    "core_choked": true,
+    "core_A_exit_design_m2": 0.34,
+    "core_A_exit_fully_expanded_m2": 0.2373683678056291,
+    "core_A_throat_convergent_m2": 0.19551696692571385,
+    "core_convergent_kN": 70.60376078070641,
+    "bypass_pressure_ratio": 1.45,
+    "bypass_critical_pressure_ratio": 1.8929291587378538,
+    "bypass_choked": false,
+    "fan_work_MW": 26.20305374183248,
+    "T4_K": 1894.8836005359406
+  },
+  "gap_kN": 69.29000535574355,
+  "gap_pct": 22.28691069660455,
+  "restored_term_kN": 258.1103756466863,
+  "residual_after_restore_kN": 52.789624353313684,
+  "convergent_core_engine_level_total_kN": 256.82230091797055,
+  "sensitivities": {
+    "airflow_scale": [
+      {
+        "value": 0.9,
+        "thrust_kN": 218.9340294700495,
+        "restored_kN": 232.29933808201767,
+        "T4_K": 1894.8836005359406,
+        "fuel_flow_kg_s": 2.0863862006320044
+      },
+      {
+        "value": 1.1,
+        "thrust_kN": 263.95595219841476,
+        "restored_kN": 283.9214132113549,
+        "T4_K": 1894.8836005359406,
+        "fuel_flow_kg_s": 2.5500275785502273
+      },
+      {
+        "value": 1.2,
+        "thrust_kN": 285.9719021325245,
+        "restored_kN": 309.7324507760235,
+        "T4_K": 1894.8836005359408,
+        "fuel_flow_kg_s": 2.781848267509339
+      },
+      {
+        "value": 1.3,
+        "thrust_kN": 307.6578444465856,
+        "restored_kN": 335.5434883406921,
+        "T4_K": 1894.8836005359406,
+        "fuel_flow_kg_s": 3.0136689564684502
+      }
+    ],
+    "bpr": [
+      {
+        "value": 8.0,
+        "thrust_kN": 224.4902488350261,
+        "restored_kN": 239.42044434492234,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 60.78164212094774,
+        "bypass_kN": 163.70860671407837
+      },
+      {
+        "value": 10.0,
+        "thrust_kN": 255.29702451712697,
+        "restored_kN": 273.23761274366547,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 50.661266124529,
+        "bypass_kN": 204.63575839259795
+      },
+      {
+        "value": 11.0,
+        "thrust_kN": 270.11290985034293,
+        "restored_kN": 289.8422568601694,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 45.01357561848518,
+        "bypass_kN": 225.09933423185777
+      }
+    ],
+    "fpr": [
+      {
+        "value": 1.35,
+        "thrust_kN": 230.4525683650817,
+        "restored_kN": 244.44772727413562,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 64.13142418783593,
+        "bypass_kN": 166.32114417724577
+      },
+      {
+        "value": 1.55,
+        "thrust_kN": 249.3736875262942,
+        "restored_kN": 268.7988116002231,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 45.958630549810806,
+        "bypass_kN": 203.4150569764834
+      },
+      {
+        "value": 1.65,
+        "thrust_kN": 254.2486391818376,
+        "restored_kN": 277.0938824102494,
+        "T4_K": 1894.8836005359406,
+        "core_kN": 35.625747253181956,
+        "bypass_kN": 218.62289192865566
+      }
+    ]
+  },
+  "single_input_to_close_gap": [
+    {
+      "input": "airflow_scale",
+      "bracket": [
+        1.0,
+        1.6
+      ],
+      "production": 1.315075280360184,
+      "restored_term": 1.204523449400479
+    },
+    {
+      "input": "bpr",
+      "bracket": [
+        9.1,
+        16.0
+      ],
+      "production": 13.970670407163869,
+      "restored_term": 12.291275030085316
+    },
+    {
+      "input": "fpr",
+      "bracket": [
+        1.45,
+        2.0
+      ],
+      "production": null,
+      "restored_term": null
+    }
+  ],
+  "structural_findings": [
+    {
+      "term": "core nozzle subtracts its own inlet (turbine-exit) momentum",
+      "evidence": "F_core = m (u_exit - u_in) with u_in = 200.6901 m/s; engine-level static thrust has u_0 = 0 (NASA general thrust equation, https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/thrust-force/)",
+      "effect_kN": 16.500381002429844,
+      "note": "u_in is set by continuity through A_combustor_exit x 1.82 (an area choice), so the subtracted term is also an artifact of that area"
+    },
+    {
+      "term": "nozzle treatment: always fully expanded; design exit area never constrains the flow",
+      "evidence": "core p05/p_amb = 3.644 > critical 1.820 (choked for a convergent nozzle); fully-expanded exit area 0.2374 m2 vs design 0.340 m2 (unused)",
+      "effect_kN": -1.2880747287157135,
+      "note": "sign: a convergent choked nozzle gives LESS gross thrust than ideal full expansion; this treatment does not explain the shortfall, it bounds the core term from above"
+    }
+  ],
+  "verdict": "STRUCTURAL",
+  "verdict_basis": "The production thrust equation contains an incorrect term (nozzle-inlet momentum subtracted at an internal station), worth 16.5004 kN; per docs/plan.md P5.2 Step 2 this is a missing/incorrect model term, not a mis-set input, so fitting thrust now would hide it in a parameter. Restoring it alone leaves 52.7896 kN (17.0 %) unexplained; no single input in the tested ranges is sourced, so none is adopted."
+}
