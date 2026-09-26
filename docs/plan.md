@@ -149,8 +149,8 @@ unrelated existing work into implementation commits.
   Do only the prerequisites needed to preserve empty launch logs and implement/check
   the launch guard, then launch the registered physics-on runs sleep-proof before
   continuing P5.0 and P5.2. Record the launcher PID and log locations.
-- Preserve existing checkpoints byte-for-byte. Legacy data-only runs lack captured
-  exit codes: do not manufacture a historical zero-exit marker. Inspect their completion
+- Preserve existing checkpoints byte-for-byte. Legacy data-only runs predate `.done`
+  markers: do not manufacture a historical zero-exit marker. Inspect their completion
   evidence and distinguish it from observed process status. If the strict six-run guard
   cannot be satisfied from retained evidence, report that issue before publishing an
   outcome; do not silently weaken the registered gate or overwrite existing checkpoints.
