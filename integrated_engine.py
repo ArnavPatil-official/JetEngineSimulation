@@ -1757,6 +1757,7 @@ class IntegratedTurbofanEngine:
         phi_bounds: Tuple[float, float] = PHI_SOLVE_BOUNDS,
         t4_max_K: float = T4_GUARD_K,
         phi_xtol: float = 1e-12,
+        phi_guess: Optional[float] = None,
         **cycle_kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -1769,11 +1770,15 @@ class IntegratedTurbofanEngine:
         run_full_cycle's result at the solved phi plus ``'thrust_match'``
         (solved phi, status, residual, evaluations, bracket, guard).
 
-        The upper end of the bracket is the smaller of phi_bounds[1] and the phi
-        at which the mixed turbine-inlet temperature reaches ``t4_max_K``.
-        Failure is explicit: ThrustTargetUnreachable is raised (never a default
-        phi) when the target is below the thrust at phi_bounds[0] or above the
-        thrust at the guarded upper end.
+        Bracket: from the lowest phi at which the cycle closes (turbine supplies
+        compressor + fan work) up to phi_bounds[1]; the solution must also keep
+        the mixed turbine-inlet temperature at or below ``t4_max_K``. Thrust and
+        T4 both rise monotonically with phi on the lean side (tested), so the
+        solution is unique. ``phi_guess`` (e.g. the previous solution in a
+        parameter sweep) only narrows the initial bracket; it does not change
+        the root. Failure is explicit: ThrustTargetUnreachable is raised (never
+        a default phi) when the target is below the thrust at cycle closure or
+        above the thrust at the T4 guard / upper phi bound.
         """
         import contextlib
         import io
@@ -1782,67 +1787,105 @@ class IntegratedTurbofanEngine:
         lo, hi = phi_bounds
         if not 0.0 < lo < hi:
             raise ValueError(f"phi_bounds must satisfy 0 < lo < hi, got {phi_bounds}")
-        cache: Dict[float, Dict[str, Any]] = {}
+        target = float(target_kN)
+        cache: Dict[float, Any] = {}
 
         def cycle(phi: float) -> Dict[str, Any]:
             if phi not in cache:
-                with contextlib.redirect_stdout(io.StringIO()):
-                    cache[phi] = self.run_full_cycle(
-                        fuel_blend=fuel_blend, phi=phi,
-                        combustor_efficiency=combustor_efficiency, **cycle_kwargs)
+                try:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        cache[phi] = self.run_full_cycle(
+                            fuel_blend=fuel_blend, phi=phi,
+                            combustor_efficiency=combustor_efficiency, **cycle_kwargs)
+                except ValueError as exc:   # turbine cannot supply compressor + fan work
+                    cache[phi] = exc
+            if isinstance(cache[phi], Exception):
+                raise cache[phi]
             return cache[phi]
-
-        def t4(phi: float) -> float:
-            return float(cycle(phi)['combustor']['T_out'])
-
-        def residual(phi: float) -> float:
-            return float(cycle(phi)['performance']['thrust_kN']) - float(target_kN)
 
         def runs(phi: float) -> bool:
             try:
                 cycle(phi)
                 return True
-            except ValueError:   # turbine cannot supply compressor + fan work
+            except ValueError:
                 return False
 
+        def t4(phi: float) -> float:
+            return float(cycle(phi)['combustor']['T_out'])
+
+        def residual(phi: float) -> float:
+            return float(cycle(phi)['performance']['thrust_kN']) - target
+
         info: Dict[str, Any] = {'phi_bounds': (lo, hi), 't4_max_K': t4_max_K}
-        if not runs(lo):
-            # Lowest phi at which the cycle closes (turbine work and a positive
-            # core-nozzle pressure ratio); below it no thrust is defined.
-            if not runs(hi):
-                raise ThrustTargetUnreachable(
-                    f"cycle does not close anywhere in phi {phi_bounds}", target_kN, info)
-            a, b = lo, hi
-            while b - a > 1e-9 * b:
-                m = 0.5 * (a + b)
-                a, b = (a, m) if runs(m) else (m, b)
-            lo = b
-            info['phi_lower_cycle_closure'] = lo
-        if t4(lo) > t4_max_K:
-            raise ThrustTargetUnreachable(
-                f"T4 {t4(lo):.1f} K at phi={lo} already exceeds the guard", target_kN, info)
-        phi_hi, guard_active = hi, False
-        if t4(hi) > t4_max_K:
-            phi_hi = brentq(lambda p: t4(p) - t4_max_K, lo, hi, xtol=phi_xtol)
-            guard_active = True
-        info.update(phi_upper=float(phi_hi), t4_guard_active=guard_active,
-                    thrust_at_lower_kN=residual(lo) + target_kN,
-                    thrust_at_upper_kN=residual(phi_hi) + target_kN)
-        if residual(lo) > 0.0:
-            raise ThrustTargetUnreachable(
-                f"below the minimum thrust {info['thrust_at_lower_kN']:.3f} kN at phi={lo}",
-                target_kN, info)
-        if residual(phi_hi) < 0.0:
-            where = (f"the T4 guard ({t4_max_K:.1f} K, phi={phi_hi:.4f})" if guard_active
-                     else f"phi={phi_hi}")
+
+        def guard_phi(a: float) -> float:
+            return float(brentq(lambda p: t4(p) - t4_max_K, a, hi, xtol=phi_xtol))
+
+        def fail_high(a: float) -> None:
+            if t4(hi) > t4_max_K:
+                g = guard_phi(a)
+                info.update(phi_upper=g, t4_guard_active=True,
+                            thrust_at_upper_kN=residual(g) + target)
+                where = f"the T4 guard ({t4_max_K:.1f} K, phi={g:.4f})"
+            else:
+                info.update(phi_upper=hi, t4_guard_active=False,
+                            thrust_at_upper_kN=residual(hi) + target)
+                where = f"phi={hi}"
             raise ThrustTargetUnreachable(
                 f"above the maximum thrust {info['thrust_at_upper_kN']:.3f} kN at {where}",
                 target_kN, info)
-        phi = brentq(residual, lo, phi_hi, xtol=phi_xtol, rtol=4 * np.finfo(float).eps)
+
+        a = b = None
+        if phi_guess is not None and lo < phi_guess < hi:
+            # warm start: widen geometrically around the guess until the sign changes
+            p0, step = float(phi_guess), 1.02
+            if runs(p0):
+                r0 = residual(p0)
+                p1 = p0
+                for _ in range(12):
+                    p1 = min(p1 * step, hi) if r0 < 0 else max(p1 / step, lo)
+                    if not runs(p1):
+                        break
+                    if (residual(p1) > 0) != (r0 > 0):
+                        a, b = (p0, p1) if p0 < p1 else (p1, p0)
+                        break
+                    if p1 in (lo, hi):
+                        break
+        if a is None:
+            if not runs(lo):
+                if not runs(hi):
+                    raise ThrustTargetUnreachable(
+                        f"cycle does not close anywhere in phi {phi_bounds}", target_kN, info)
+                # lowest phi at which the cycle closes: coarse bisection, refined
+                # only if the target lies below the coarse point's thrust
+                c0, c1 = lo, hi
+                while c1 - c0 > 1e-4 * c1:
+                    m = 0.5 * (c0 + c1)
+                    c0, c1 = (c0, m) if runs(m) else (m, c1)
+                if residual(c1) > 0.0:
+                    while c1 - c0 > 1e-9 * c1:
+                        m = 0.5 * (c0 + c1)
+                        c0, c1 = (c0, m) if runs(m) else (m, c1)
+                lo = c1
+                info['phi_lower_cycle_closure'] = lo
+            info['thrust_at_lower_kN'] = residual(lo) + target
+            if t4(lo) > t4_max_K:
+                raise ThrustTargetUnreachable(
+                    f"T4 {t4(lo):.1f} K at phi={lo} already exceeds the guard", target_kN, info)
+            if residual(lo) > 0.0:
+                raise ThrustTargetUnreachable(
+                    f"below the minimum thrust {info['thrust_at_lower_kN']:.3f} kN at phi={lo}",
+                    target_kN, info)
+            if residual(hi) < 0.0:
+                fail_high(lo)
+            a, b = lo, hi
+        phi = float(brentq(residual, a, b, xtol=phi_xtol, rtol=4 * np.finfo(float).eps))
+        if t4(phi) > t4_max_K:
+            fail_high(lo)
         result = cycle(phi)
         result['thrust_match'] = dict(
-            info, phi=float(phi), status='converged', target_kN=float(target_kN),
-            residual_kN=residual(phi), n_cycle_evaluations=len(cache))
+            info, phi=phi, status='converged', target_kN=target,
+            residual_kN=residual(phi), t4_K=t4(phi), n_cycle_evaluations=len(cache))
         return result
 
     def run_hychem_validation_case(

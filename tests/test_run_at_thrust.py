@@ -46,13 +46,25 @@ def test_round_trip_recovers_phi(engine, phi0):
         ref["performance"]["fuel_mass_flow"], rel=1e-6)
 
 
-def test_thrust_monotone_in_phi_over_working_range(engine):
+def test_thrust_and_t4_monotone_in_phi_over_working_range(engine):
     res = engine.run_at_thrust(250.0, JET_A1, combustor_efficiency=ETA_B)
-    lo = res["thrust_match"].get("phi_lower_cycle_closure", 0.05)
-    hi = res["thrust_match"]["phi_upper"]
-    phis = np.linspace(lo * 1.0001, hi, 12)
-    thrust = [thrust_at(engine, p)["performance"]["thrust_kN"] for p in phis]
+    lo = res["thrust_match"]["phi_lower_cycle_closure"]
+    phis = np.linspace(lo * 1.0001, 1.0, 16)
+    runs = [thrust_at(engine, p) for p in phis]
+    thrust = [r["performance"]["thrust_kN"] for r in runs]
+    t4 = [r["combustor"]["T_out"] for r in runs]
     assert np.all(np.diff(thrust) > 0)
+    assert np.all(np.diff(t4) > 0)
+
+
+def test_warm_start_gives_the_same_root(engine):
+    cold = engine.run_at_thrust(240.0, JET_A1, combustor_efficiency=ETA_B)
+    for guess in (0.3, 0.5, 0.6):
+        warm = engine.run_at_thrust(240.0, JET_A1, combustor_efficiency=ETA_B, phi_guess=guess)
+        assert abs(warm["thrust_match"]["phi"] - cold["thrust_match"]["phi"]) < 1e-10
+    near = engine.run_at_thrust(240.0, JET_A1, combustor_efficiency=ETA_B,
+                                phi_guess=cold["thrust_match"]["phi"] * 1.01)
+    assert near["thrust_match"]["n_cycle_evaluations"] < cold["thrust_match"]["n_cycle_evaluations"]
 
 
 def test_unreachable_above_t4_guard_fails_cleanly(engine):
