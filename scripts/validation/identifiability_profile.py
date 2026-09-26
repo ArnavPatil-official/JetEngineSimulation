@@ -9,7 +9,7 @@ explicit ridge check of Phase 5 finding F2 (docs/plan.md): move k_mdot while
 re-solving phi_idle / phi_app so idle and approach fuel flow are unchanged, and
 see whether the objective moves.
 
-STRUCTURAL BASIS (v1-v4 objective ``fuel_flow_v4``). The cycle sets fuel flow
+STRUCTURAL BASIS (v2-v4 objective ``fuel_flow_v4``). The cycle sets fuel flow
 before any thermodynamics that depends on eta_b, pressure_loss or k_pi:
 
     FAR = phi * f_st                     (Cantera set_equivalence_ratio; exact)
@@ -96,7 +96,7 @@ def load_calibration(path: Path) -> dict:
     rec = json.loads(path.read_text())
     fixed = rec.get("fixed_parameters", {})
     best = dict(rec["best_params"])
-    # v5+ records list what was fitted and what was fixed; v1-v4 fitted all seven
+    # v5+ records list what was fitted and what was fixed; v2-v4 sampled all seven
     fitted = list(rec.get("fitted_parameters") or best.keys())
     full = {k: best.get(k, fixed.get(k)) for k in cal.PARAM_BOUNDS}
     missing = [k for k, v in full.items() if v is None]
@@ -120,7 +120,7 @@ def new_engine():
 # Closed-form fuel-flow objective (fuel_flow_v4 only)
 # --------------------------------------------------------------------------
 class FuelFlowProfile:
-    """Exact profile of the v1-v4 fuel-flow objective (see module docstring)."""
+    """Exact profile of the v2-v4 fuel-flow objective (see module docstring)."""
 
     name = "fuel_flow_v4"
     INERT = ("eta_combustor", "pressure_loss", "k_pi")   # absent from m_fuel by construction

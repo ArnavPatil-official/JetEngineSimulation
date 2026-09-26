@@ -119,7 +119,7 @@ def run_lto_modes(engine, params: dict, beta: float, xi: float = HEAT_LOSS_XI,
 
 
 def fuel_flow_error(perf: dict) -> float:
-    """v1-v4 objective: mean |relative fuel-flow error| over the three modes."""
+    """v2-v4 objective: mean |relative fuel-flow error| over the three modes."""
     error_sum = 0.0
     for mode, target in ICAO_TARGETS.items():
         sim_ff = perf[mode]['fuel_mass_flow']
