@@ -16,6 +16,13 @@ sensitivity acts on temperatures and thrust only; LTO fuel-flow calibration
 is unaffected by the heat-loss treatment.
 
 Outputs: outputs/heat_loss_sensitivity.csv, outputs/plots/heat_loss_sensitivity.png
+
+--v5 (Phase 6, P6.6): the same sweep at MATCHED take-off thrust (Trent
+1000-AE3, 310.9 kN; v5 calibration outputs/calibration_v5_A2.json; A1 central
+fixed values; phi solved by run_at_thrust). Here fuel flow is an output, so
+heat loss acts on fuel flow and TSFC as well as on temperatures.
+Outputs: outputs/heat_loss_sensitivity_v5.csv,
+outputs/plots/heat_loss_sensitivity_v5.png (write-once).
 """
 
 import sys
@@ -43,12 +50,50 @@ FUEL_COLORS = {"Jet-A1": "#2a78d6", "HEFA-SPK": "#1baf7a",
                "FT-SPK": "#eda100", "ATJ-SPK": "#008300"}
 
 
+def v5_runner():
+    """Engine at the v5 AE3 take-off state; returns run(fuel, xi) at matched thrust."""
+    sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "optimization"))
+    import lto_v5 as v5
+    from integrated_engine import EmissionsEstimator
+    reg, split = v5.load_registration(), v5.load_split()
+    fit = json.loads(v5.V5_FIT.read_text())
+    fixed = reg["fixed_central"]
+    r = v5.load_rows(["02P23RR126"], with_targets=False).set_index("Mode").loc["TAKE-OFF"]
+    with open(os.devnull, "w") as dn, contextlib.redirect_stdout(dn):
+        engine = IntegratedTurbofanEngine()
+        engine.emissions = EmissionsEstimator(nox_fit_exclude_models=set(split["heldout_models"]))
+    engine.compressor.eta_c = fixed["eta_compressor"]
+    engine.turbine_design["eta_polytropic"] = fixed["eta_turbine_polytropic"]
+    engine.design_point.update(v5.mode_state(fit["params"], fixed, r["Pressure Ratio"],
+                                             r["Bypass Ratio"], r["Rated Thrust (kN)"], 1.0))
+
+    def run(fuel, xi):
+        engine.design_point["combustor_heat_loss_fraction"] = xi
+        return engine.run_at_thrust(float(r["Rated Thrust (kN)"]), fuel,
+                                    combustor_efficiency=fixed["eta_b"]["TAKE-OFF"])
+    return run
+
+
 def main():
-    with open(CALIBRATION_JSON) as fh:
-        calib = json.load(fh)
-    best = calib["best_params"]
-    phi = best["phi_to"]
-    eta_b = best["eta_combustor"]
+    v5_mode = "--v5" in sys.argv[1:]
+    out_csv = OUT_CSV.with_name("heat_loss_sensitivity_v5.csv") if v5_mode else OUT_CSV
+    out_plot = OUT_PLOT.with_name("heat_loss_sensitivity_v5.png") if v5_mode else OUT_PLOT
+    if v5_mode:
+        for pth in (out_csv, out_plot):
+            if pth.exists():
+                raise SystemExit(f"{pth} exists; refusing to overwrite")
+        run = v5_runner()
+    else:
+        with open(CALIBRATION_JSON) as fh:
+            calib = json.load(fh)
+        best = calib["best_params"]
+        engine = IntegratedTurbofanEngine()
+        engine.design_point["combustor_pressure_loss"] = best["pressure_loss"]
+
+        def run(fuel, xi):
+            engine.design_point["combustor_heat_loss_fraction"] = xi
+            return engine.run_full_cycle(fuel_blend=fuel, phi=best["phi_to"],
+                                         combustor_efficiency=best["eta_combustor"])
 
     fuels = [
         FUEL_LIBRARY["Jet-A1"],
@@ -57,17 +102,11 @@ def main():
         LocalFuelBlend(ATJ_SPK.name, ATJ_SPK.species),
     ]
 
-    engine = IntegratedTurbofanEngine()
-    engine.design_point["combustor_pressure_loss"] = best["pressure_loss"]
-
     rows = []
     for xi in XI_VALUES:
-        engine.design_point["combustor_heat_loss_fraction"] = xi
         for fuel in fuels:
             with open(os.devnull, "w") as dn, contextlib.redirect_stdout(dn):
-                res = engine.run_full_cycle(
-                    fuel_blend=fuel, phi=phi, combustor_efficiency=eta_b,
-                )
+                res = run(fuel, xi)
             p = res["performance"]
             rows.append({
                 "xi_pct": xi * 100,
@@ -83,7 +122,7 @@ def main():
                   f"ff={rows[-1]['Fuel_Flow_kg_s']:.4f}")
 
     df = pd.DataFrame(rows)
-    df.to_csv(OUT_CSV, index=False)
+    df.to_csv(out_csv, index=False)
 
     # Heat-loss effect vs blend signal
     base = df[df.xi_pct == 0]
@@ -119,12 +158,13 @@ def main():
     for ax in axes:
         ax.grid(True, lw=0.4, alpha=0.4)
     axes[0].legend(frameon=False, fontsize=9)
-    fig.suptitle("Heat-loss sensitivity at calibrated take-off point", y=1.02)
+    fig.suptitle("Heat-loss sensitivity at " + ("matched take-off thrust (v5)" if v5_mode
+                 else "calibrated take-off point"), y=1.02)
     fig.tight_layout()
-    OUT_PLOT.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT_PLOT, dpi=300, bbox_inches="tight")
+    out_plot.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_plot, dpi=300, bbox_inches="tight")
     plt.close(fig)
-    print(f"\nSaved: {OUT_CSV}\n       {OUT_PLOT}")
+    print(f"\nSaved: {out_csv}\n       {out_plot}")
 
 
 if __name__ == "__main__":
