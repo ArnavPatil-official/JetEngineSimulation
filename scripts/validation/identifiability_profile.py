@@ -387,11 +387,22 @@ def run(calibration: Path, params: list[str] | None = None, cycle_checks: bool =
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--calibration", required=True, type=Path)
+    ap.add_argument("--calibration", type=Path, help="frozen v2-v4 calibration JSON")
+    ap.add_argument("--v5", choices=("pilot", "full"),
+                    help="Phase 6 thrust-matched objective: registered profile-likelihood "
+                         "diagnostic on the calibration group (lto_v5.run_profile)")
     ap.add_argument("--params", nargs="*", help="profile only these (default: every fitted parameter)")
     ap.add_argument("--out-tag", default=None, help="output suffix (default from the calibration file name)")
     ap.add_argument("--no-cycle-checks", action="store_true", help="skip the Cantera cross-check (tests only)")
     args = ap.parse_args()
+    if args.v5:
+        import lto_v5
+        prof = lto_v5.run_profile(args.v5)
+        print(json.dumps({k: prof[k] for k in ("stage", "free", "sse_min", "identified",
+                                                "not_identified", "verdicts")}, indent=2))
+        return
+    if args.calibration is None:
+        ap.error("--calibration is required unless --v5 is given")
     tag = args.out_tag if args.out_tag is not None else "_" + args.calibration.stem.rsplit("_", 1)[-1]
 
     out = run(args.calibration, args.params, cycle_checks=not args.no_cycle_checks)

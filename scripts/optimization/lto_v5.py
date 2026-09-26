@@ -432,3 +432,254 @@ def residual_vector(pred_ff: pd.Series, rows: pd.DataFrame, status: pd.Series | 
 
 def weighted_mape(pred_ff: pd.Series, rows: pd.DataFrame, status: pd.Series | None = None) -> float:
     return float(100.0 * np.sum(rows["w"].to_numpy() * np.abs(relative_errors(pred_ff, rows, status))))
+
+
+# --------------------------------------------------------------------------
+# Registered fit and identifiability profile (outputs/phase6/p61_registration.json)
+# --------------------------------------------------------------------------
+REGISTRATION = ROOT / "outputs" / "phase6" / "p61_registration.json"
+CHI2_1_95 = 3.841
+
+
+def load_registration() -> dict:
+    import json
+    reg = json.loads(REGISTRATION.read_text())
+    if reg.get("amendment") != "A1":
+        raise ValueError("active registration is not amendment A1")
+    return reg
+
+
+def calibration_rows(split: dict | None = None) -> pd.DataFrame:
+    split = split or load_split()
+    return attach_groups(load_rows(split["calibration_records"], with_targets=True),
+                         split["calibration_groups"])
+
+
+class Objective:
+    """Weighted relative fuel-flow residuals of the calibration rows; logs every evaluation."""
+
+    def __init__(self, model: V5Model, rows: pd.DataFrame, fixed_fit: dict | None = None):
+        self.model, self.rows = model, rows
+        self.fixed_fit = dict(fixed_fit or {})     # fitted parameters moved to fixed
+        self.log: list[dict] = []
+
+    def params(self, free: list[str], x) -> dict:
+        p = dict(self.fixed_fit)
+        p.update({k: float(v) for k, v in zip(free, x)})
+        return p
+
+    def residuals_params(self, p: dict) -> np.ndarray:
+        pred = self.model.predict(p, self.rows)
+        r = residual_vector(pred["ff"], self.rows, pred["status"])
+        self.log.append(dict(p, sse=float(r @ r), n_unreachable=int((pred["status"] == "unreachable").sum())))
+        return r
+
+    def residuals(self, free: list[str], x) -> np.ndarray:
+        return self.residuals_params(self.params(free, x))
+
+
+def _box(free):
+    lo = np.array([FIT_BOUNDS[k][0] for k in free])
+    hi = np.array([FIT_BOUNDS[k][1] for k in free])
+    return lo, hi
+
+
+def polish(obj: Objective, free: list[str], x0, max_nfev: int):
+    """Registered local step: scipy least_squares (trf, bounds, x_scale = box widths, diff_step 1e-4)."""
+    from scipy.optimize import least_squares
+    lo, hi = _box(free)
+    x0 = np.clip(np.asarray(x0, float), lo, hi)
+    return least_squares(lambda x: obj.residuals(free, x), x0, bounds=(lo, hi), method="trf",
+                         x_scale=hi - lo, diff_step=1e-4, max_nfev=max_nfev)
+
+
+def fit(obj: Objective, free: list[str], n_trials: int, polish_max_nfev: int, seed: int = 42) -> dict:
+    """Registered fit: Optuna TPE (seed) over the box in FIT_ORDER, then least_squares polish."""
+    import optuna
+    optuna.logging.set_verbosity(optuna.logging.ERROR)
+    free = [k for k in FIT_ORDER if k in free]
+
+    def objective(trial):
+        x = [trial.suggest_float(k, *FIT_BOUNDS[k]) for k in free]
+        r = obj.residuals(free, x)
+        return float(r @ r)
+
+    study = optuna.create_study(direction="minimize", sampler=optuna.samplers.TPESampler(seed=seed))
+    study.optimize(objective, n_trials=n_trials)
+    x_best = [study.best_params[k] for k in free]
+    res = polish(obj, free, x_best, polish_max_nfev)
+    sse_polished = float(res.fun @ res.fun)
+    use_polished = sse_polished <= study.best_value
+    x_opt = res.x if use_polished else np.array(x_best)
+    lo, hi = _box(free)
+    js = res.jac * (hi - lo)
+    return {
+        "free": free,
+        "best_trial": {"params": study.best_params, "sse": study.best_value,
+                       "number": study.best_trial.number},
+        "polish": {"status": int(res.status), "message": res.message, "nfev": int(res.nfev),
+                   "sse": sse_polished, "accepted": bool(use_polished)},
+        "params": obj.params(free, x_opt),
+        "sse": min(sse_polished, study.best_value),
+        "jtj_condition_box_scaled": float(np.linalg.cond(js.T @ js)),
+        "n_evaluations": len(obj.log),
+    }
+
+
+def profile(obj: Objective, free: list[str], opt: dict, grid_points: int, inner_max_nfev: int,
+            n_eff: int, progress=None) -> dict:
+    """Registered profile likelihood: each fitted parameter on a uniform grid over its box,
+    the others re-fit (least_squares, warm-started from the neighbouring grid point);
+    D = n_eff ln(SSE_profile / SSE_min)."""
+    rows = []
+    for name in free:
+        others = [k for k in free if k != name]
+        grid = np.linspace(*FIT_BOUNDS[name], grid_points)
+        start = int(np.argmin(np.abs(grid - opt["params"][name])))
+        for direction in (range(start, grid_points), range(start - 1, -1, -1)):
+            x_prev = [opt["params"][k] for k in others]
+            for i in direction:
+                obj.fixed_fit[name] = float(grid[i])
+                res = polish(obj, others, x_prev, inner_max_nfev)
+                x_prev = res.x
+                rows.append(dict(param=name, i=i, value=float(grid[i]), sse=float(res.fun @ res.fun),
+                                 nfev=int(res.nfev), status=int(res.status),
+                                 **{f"fit_{k}": float(v) for k, v in zip(others, res.x)}))
+                if progress:
+                    progress(rows[-1])
+        del obj.fixed_fit[name]
+    df = pd.DataFrame(rows).sort_values(["param", "i"]).reset_index(drop=True)
+    sse_min = min(opt["sse"], float(df["sse"].min()))
+    df["D"] = n_eff * np.log(df["sse"] / sse_min)
+    verdicts = {}
+    for name in free:
+        g = df[df["param"] == name].sort_values("value")
+        v, d = g["value"].to_numpy(), g["D"].to_numpy()
+        lo_b, hi_b = FIT_BOUNDS[name]
+        edges_ok = bool(d[0] >= CHI2_1_95 and d[-1] >= CHI2_1_95)
+        inside = np.where(d < CHI2_1_95)[0]
+        if len(inside):
+            i0, i1 = inside.min(), inside.max()
+            a = v[i0] if i0 == 0 else np.interp(CHI2_1_95, [d[i0], d[i0 - 1]], [v[i0], v[i0 - 1]])
+            b = v[i1] if i1 == len(v) - 1 else np.interp(CHI2_1_95, [d[i1], d[i1 + 1]], [v[i1], v[i1 + 1]])
+        else:   # grid too coarse to resolve the interval: bracket around the grid minimum
+            j = int(np.argmin(d))
+            a, b = v[max(j - 1, 0)], v[min(j + 1, len(v) - 1)]
+        width_frac = float((b - a) / (hi_b - lo_b))
+        verdicts[name] = {
+            "D_at_lower_edge": float(d[0]), "D_at_upper_edge": float(d[-1]),
+            "interval_95": [float(a), float(b)], "interval_width_frac_of_box": width_frac,
+            "interval_contains_no_grid_point": bool(len(inside) == 0),
+            "grid_argmin": float(v[int(np.argmin(d))]),
+            "IDENTIFIED": bool(edges_ok and width_frac <= 0.5),
+        }
+    return {"sse_min": sse_min, "sse_min_source": "fit" if sse_min == opt["sse"] else "profile",
+            "n_eff": n_eff, "verdicts": verdicts, "table": df}
+
+
+# --------------------------------------------------------------------------
+# Drivers (entry points: calibrate_lto.py --tag v5 [--pilot];
+# identifiability_profile.py --v5 {pilot,full})
+# --------------------------------------------------------------------------
+OUT_DIR = ROOT / "outputs" / "phase6"
+PILOT_FIT = OUT_DIR / "p61_pilot_fit.json"
+PILOT_PROFILE = OUT_DIR / "identifiability_profile_v5_pilot"
+FULL_FIT = ROOT / "outputs" / "calibration_v5.json"
+FULL_PROFILE = ROOT / "outputs" / "identifiability_profile_v5"
+
+
+def _write_new(path: Path, text: str) -> None:
+    with open(path, "x") as fh:    # never overwrite a frozen artifact
+        fh.write(text)
+
+
+def _json(obj) -> str:
+    import json
+    return json.dumps(obj, indent=2, default=lambda o: o.item() if hasattr(o, "item") else str(o)) + "\n"
+
+
+def run_calibration(pilot: bool, free: list[str] | None = None, n_workers: int = 8) -> dict:
+    """Pilot or full v5 fit on the calibration group only (held-out targets never read)."""
+    import datetime as dt
+    reg = load_registration()
+    split = load_split()
+    stage = "pilot" if pilot else "full"
+    out = PILOT_FIT if pilot else FULL_FIT
+    if out.exists():
+        raise SystemExit(f"{out} exists; refusing to overwrite")
+    free = [k for k in FIT_ORDER if k in (free or FIT_ORDER)]
+    if not pilot:
+        import json
+        pp = json.loads((PILOT_PROFILE.with_suffix(".json")).read_text())
+        if free != pp["full_fit_free_set"]:
+            raise SystemExit(f"--free {free} differs from the pilot decision {pp['full_fit_free_set']}")
+    rows = calibration_rows(split)
+    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
+                    n_workers=n_workers)
+    obj = Objective(model, rows)
+    t0 = dt.datetime.now()
+    try:
+        res = fit(obj, free, reg["fit"][stage]["n_trials"], reg["fit"][stage]["polish_max_nfev"])
+        pred = model.predict(res["params"], rows)
+    finally:
+        model.close()
+    rows_out = rows.drop(columns=["CO (g/kg)", "HC (g/kg)", "NOx (g/kg)"]).join(pred)
+    res.update(
+        stage=stage, registration="outputs/phase6/p61_registration.json (A1)",
+        started=t0.isoformat(timespec="seconds"),
+        finished=dt.datetime.now().isoformat(timespec="seconds"),
+        fixed_central=reg["fixed_central"], fit_bounds=FIT_BOUNDS,
+        calibration_weighted_mape_pct=weighted_mape(pred["ff"], rows, pred["status"]),
+        n_rows=len(rows), n_unreachable=int((pred["status"] == "unreachable").sum()),
+        unreachable_rows=rows_out.loc[pred["status"] == "unreachable",
+                                      ["Unique ID", "Model", "Mode", "Target Thrust (kN)", "reason"]
+                                      ].to_dict("records"),
+        m_rated_at_F_REF_kg_s=res["params"].get("W_ref"),
+        note="in-sample calibration fit (calibration group only); not validation",
+    )
+    stem = out.with_suffix("")
+    _write_new(out, _json(res))
+    pd.DataFrame(obj.log).to_csv(f"{stem}_evaluations.csv", index=False)
+    rows_out.to_csv(f"{stem}_rows.csv", index=False)
+    return res
+
+
+def run_profile(stage: str, n_workers: int = 8) -> dict:
+    import json
+    reg = load_registration()
+    split = load_split()
+    fit_path = PILOT_FIT if stage == "pilot" else FULL_FIT
+    out = PILOT_PROFILE if stage == "pilot" else FULL_PROFILE
+    if out.with_suffix(".json").exists():
+        raise SystemExit(f"{out}.json exists; refusing to overwrite")
+    opt = json.loads(fit_path.read_text())
+    free = opt["free"]
+    ident = reg["identifiability"]
+    rows = calibration_rows(split)
+    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
+                    n_workers=n_workers)
+    obj = Objective(model, rows, fixed_fit={k: v for k, v in opt["params"].items() if k not in free})
+    log_path = Path(f"{out}_progress.log")
+
+    def progress(r):
+        with open(log_path, "a") as fh:
+            fh.write(f"{r['param']} i={r['i']} value={r['value']:.6g} sse={r['sse']:.6g} "
+                     f"nfev={r['nfev']}\n")
+    try:
+        prof = profile(obj, free, opt, ident[stage]["grid_points"], ident[stage]["inner_max_nfev"],
+                       ident["n_eff"], progress=progress)
+    finally:
+        model.close()
+    table = prof.pop("table")
+    identified = [k for k in free if prof["verdicts"][k]["IDENTIFIED"]]
+    prof.update(stage=stage, fit=str(fit_path.relative_to(ROOT)), free=free,
+                rule=ident["rule"], threshold=CHI2_1_95,
+                identified=identified,
+                not_identified=[k for k in free if k not in identified],
+                jtj_condition_box_scaled_at_fit=opt["jtj_condition_box_scaled"])
+    if stage == "pilot":
+        prof["full_fit_free_set"] = identified
+        prof["pilot_consequence"] = ident["pilot_consequence"]
+    table.to_csv(f"{out}.csv", index=False)
+    _write_new(out.with_suffix(".json"), _json(prof))
+    return prof
