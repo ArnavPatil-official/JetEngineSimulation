@@ -1,0 +1,163 @@
+$ .venv/bin/python scripts/optimization/blend_matched_thrust_v5.py  # started 2026-09-26T19:20:37-04:00
+    Mode      quantity blend_a blend_b  delta_central  delta_rel_pct  spread_a_MC_p5_p95_width  band_b_P62_JetA1_p5_p95_width  ranking_claimed  paired_P62_sign_agreement_frac  paired_P62_delta_p5  paired_P62_delta_p95
+TAKE-OFF            ff HEFA-50  Jet-A1      -0.000565      -0.023603                  0.000000                       0.034149            False                             1.0            -0.000571             -0.000562
+TAKE-OFF            ff   FT-50  Jet-A1      -0.001767      -0.073790                  0.000000                       0.034149            False                             1.0            -0.001776             -0.001759
+TAKE-OFF            ff  ATJ-50  Jet-A1      -0.003886      -0.162250                  0.000000                       0.034149            False                             1.0            -0.003923             -0.003861
+TAKE-OFF            ff HEFA-50   FT-50       0.001202       0.050225                  0.000000                       0.034149            False                             1.0             0.001197              0.001206
+TAKE-OFF            ff HEFA-50  ATJ-50       0.003320       0.138872                  0.000000                       0.034149            False                             1.0             0.003299              0.003352
+TAKE-OFF            ff   FT-50  ATJ-50       0.002118       0.088603                  0.000000                       0.034149            False                             1.0             0.002098              0.002148
+TAKE-OFF    tsfc_mg_Ns HEFA-50  Jet-A1      -0.001818      -0.023603                  0.000000                       0.109839            False                             1.0            -0.001836             -0.001806
+TAKE-OFF    tsfc_mg_Ns   FT-50  Jet-A1      -0.005684      -0.073790                  0.000000                       0.109839            False                             1.0            -0.005712             -0.005657
+TAKE-OFF    tsfc_mg_Ns  ATJ-50  Jet-A1      -0.012498      -0.162250                  0.000000                       0.109839            False                             1.0            -0.012618             -0.012418
+TAKE-OFF    tsfc_mg_Ns HEFA-50   FT-50       0.003866       0.050225                  0.000000                       0.109839            False                             1.0             0.003851              0.003880
+TAKE-OFF    tsfc_mg_Ns HEFA-50  ATJ-50       0.010680       0.138872                  0.000000                       0.109839            False                             1.0             0.010611              0.010782
+TAKE-OFF    tsfc_mg_Ns   FT-50  ATJ-50       0.006814       0.088603                  0.000000                       0.109839            False                             1.0             0.006750              0.006908
+TAKE-OFF            T4 HEFA-50  Jet-A1      -0.063807      -0.003713                  0.000000                     128.057873            False                             1.0            -0.074364             -0.057153
+TAKE-OFF            T4   FT-50  Jet-A1      -0.133195      -0.007751                  0.000000                     128.057873            False                             1.0            -0.155748             -0.118978
+TAKE-OFF            T4  ATJ-50  Jet-A1      -0.438504      -0.025517                  0.000000                     128.057873            False                             1.0            -0.511042             -0.392780
+TAKE-OFF            T4 HEFA-50   FT-50       0.069388       0.004038                  0.000000                     128.057873            False                             1.0             0.061816              0.081385
+TAKE-OFF            T4 HEFA-50  ATJ-50       0.374697       0.021810                  0.000000                     128.057873            False                             1.0             0.335628              0.436678
+TAKE-OFF            T4   FT-50  ATJ-50       0.305309       0.017771                  0.000000                     128.057873            False                             1.0             0.273802              0.355294
+TAKE-OFF  nox_corr_g_s HEFA-50  Jet-A1      -0.054451      -0.046156                  0.000000                       3.287849            False                             1.0            -0.055176             -0.053699
+TAKE-OFF  nox_corr_g_s   FT-50  Jet-A1      -0.170193      -0.144267                  0.000000                       3.287849            False                             1.0            -0.171757             -0.168013
+TAKE-OFF  nox_corr_g_s  ATJ-50  Jet-A1      -0.374063      -0.317080                  0.000000                       3.287849            False                             1.0            -0.379036             -0.368895
+TAKE-OFF  nox_corr_g_s HEFA-50   FT-50       0.115742       0.098252                  0.000000                       3.287849            False                             1.0             0.114436              0.116831
+TAKE-OFF  nox_corr_g_s HEFA-50  ATJ-50       0.319612       0.271785                  0.000000                       3.287849            False                             1.0             0.315196              0.323860
+TAKE-OFF  nox_corr_g_s   FT-50  ATJ-50       0.203870       0.173363                  0.000000                       3.287849            False                             1.0             0.200825              0.207297
+TAKE-OFF lifecycle_g_s HEFA-50  Jet-A1   -3216.595766     -33.942397               2192.461013                     135.131700             True                             1.0         -3237.280627          -3191.427841
+TAKE-OFF lifecycle_g_s   FT-50  Jet-A1   -4331.635916     -45.708606                908.766653                     135.131700             True                             1.0         -4359.486151          -4297.753541
+TAKE-OFF lifecycle_g_s  ATJ-50  Jet-A1   -3184.799058     -33.606870               2372.280980                     135.131700             True                             1.0         -3205.198487          -3159.882791
+TAKE-OFF lifecycle_g_s HEFA-50   FT-50    1115.040149      21.672327               2408.573580                     135.131700            False                             1.0          1106.325700           1122.205525
+TAKE-OFF lifecycle_g_s HEFA-50  ATJ-50     -31.796708      -0.505365               3308.733936                     135.131700            False                             1.0           -32.048316            -31.505042
+TAKE-OFF lifecycle_g_s   FT-50  ATJ-50   -1146.836858     -18.227392               2550.369502                     135.131700            False                             1.0         -1154.207444          -1137.870749
+APPROACH            ff HEFA-50  Jet-A1      -0.000132      -0.020369                  0.000000                       0.003671            False                             1.0            -0.000133             -0.000132
+APPROACH            ff   FT-50  Jet-A1      -0.000450      -0.069598                  0.000000                       0.003671            False                             1.0            -0.000452             -0.000450
+APPROACH            ff  ATJ-50  Jet-A1      -0.000906      -0.140048                  0.000000                       0.003671            False                             1.0            -0.000912             -0.000905
+APPROACH            ff HEFA-50   FT-50       0.000318       0.049263                  0.000000                       0.003671            False                             1.0             0.000318              0.000320
+APPROACH            ff HEFA-50  ATJ-50       0.000774       0.119847                  0.000000                       0.003671            False                             1.0             0.000773              0.000779
+APPROACH            ff   FT-50  ATJ-50       0.000456       0.070549                  0.000000                       0.003671            False                             1.0             0.000454              0.000460
+APPROACH    tsfc_mg_Ns HEFA-50  Jet-A1      -0.001413      -0.020369                  0.000000                       0.039360            False                             1.0            -0.001422             -0.001411
+APPROACH    tsfc_mg_Ns   FT-50  Jet-A1      -0.004827      -0.069598                  0.000000                       0.039360            False                             1.0            -0.004848             -0.004825
+APPROACH    tsfc_mg_Ns  ATJ-50  Jet-A1      -0.009714      -0.140048                  0.000000                       0.039360            False                             1.0            -0.009775             -0.009699
+APPROACH    tsfc_mg_Ns HEFA-50   FT-50       0.003415       0.049263                  0.000000                       0.039360            False                             1.0             0.003411              0.003427
+APPROACH    tsfc_mg_Ns HEFA-50  ATJ-50       0.008301       0.119847                  0.000000                       0.039360            False                             1.0             0.008288              0.008354
+APPROACH    tsfc_mg_Ns   FT-50  ATJ-50       0.004887       0.070549                  0.000000                       0.039360            False                             1.0             0.004867              0.004930
+APPROACH            T4 HEFA-50  Jet-A1      -0.016122      -0.001628                  0.000000                     104.046025            False                             1.0            -0.020374             -0.014034
+APPROACH            T4   FT-50  Jet-A1      -0.033538      -0.003387                  0.000000                     104.046025            False                             1.0            -0.042411             -0.029179
+APPROACH            T4  ATJ-50  Jet-A1      -0.110835      -0.011194                  0.000000                     104.046025            False                             1.0            -0.140062             -0.096479
+APPROACH            T4 HEFA-50   FT-50       0.017416       0.001759                  0.000000                     104.046025            False                             1.0             0.015146              0.022043
+APPROACH            T4 HEFA-50  ATJ-50       0.094713       0.009567                  0.000000                     104.046025            False                             1.0             0.082445              0.119688
+APPROACH            T4   FT-50  ATJ-50       0.077297       0.007808                  0.000000                     104.046025            False                             1.0             0.067300              0.097652
+APPROACH  nox_corr_g_s HEFA-50  Jet-A1      -0.002535      -0.039834                  0.000000                       0.077362            False                             1.0            -0.002572             -0.002531
+APPROACH  nox_corr_g_s   FT-50  Jet-A1      -0.008659      -0.136073                  0.000000                       0.077362            False                             1.0            -0.008782             -0.008659
+APPROACH  nox_corr_g_s  ATJ-50  Jet-A1      -0.017419      -0.273720                  0.000000                       0.077362            False                             1.0            -0.017674             -0.017391
+APPROACH  nox_corr_g_s HEFA-50   FT-50       0.006124       0.096370                  0.000000                       0.077362            False                             1.0             0.006122              0.006209
+APPROACH  nox_corr_g_s HEFA-50  ATJ-50       0.014884       0.234529                  0.000000                       0.077362            False                             1.0             0.014860              0.015102
+APPROACH  nox_corr_g_s   FT-50  ATJ-50       0.008760       0.138026                  0.000000                       0.077362            False                             1.0             0.008728              0.008912
+APPROACH lifecycle_g_s HEFA-50  Jet-A1    -868.870910     -33.940261                592.286772                      14.526852             True                             1.0          -872.650916           -867.721341
+APPROACH lifecycle_g_s   FT-50  Jet-A1   -1170.082304     -45.706328                245.502948                      14.526852             True                             1.0         -1175.172810          -1168.534711
+APPROACH lifecycle_g_s  ATJ-50  Jet-A1    -859.958127     -33.592105                640.986380                      14.526852             True                             1.0          -863.700142           -858.826322
+APPROACH lifecycle_g_s HEFA-50   FT-50     301.211394      21.671157                650.670843                      14.526852            False                             1.0           300.813371            302.521894
+APPROACH lifecycle_g_s HEFA-50  ATJ-50      -8.912782      -0.524268                893.911474                      14.526852            False                             1.0            -8.956807             -8.893437
+APPROACH lifecycle_g_s   FT-50  ATJ-50    -310.124176     -18.242142                689.087998                      14.526852            False                             1.0          -311.472668           -309.708389
+    IDLE            ff HEFA-50  Jet-A1      -0.000046      -0.018933                  0.000000                       0.002449            False                             1.0            -0.000046             -0.000046
+    IDLE            ff   FT-50  Jet-A1      -0.000165      -0.067978                  0.000000                       0.002449            False                             1.0            -0.000166             -0.000165
+    IDLE            ff  ATJ-50  Jet-A1      -0.000316      -0.130186                  0.000000                       0.002449            False                             1.0            -0.000319             -0.000315
+    IDLE            ff HEFA-50   FT-50       0.000119       0.049079                  0.000000                       0.002449            False                             1.0             0.000119              0.000120
+    IDLE            ff HEFA-50  ATJ-50       0.000270       0.111398                  0.000000                       0.002449            False                             1.0             0.000269              0.000273
+    IDLE            ff   FT-50  ATJ-50       0.000151       0.062289                  0.000000                       0.002449            False                             1.0             0.000151              0.000153
+    IDLE    tsfc_mg_Ns HEFA-50  Jet-A1      -0.002114      -0.018933                  0.000000                       0.112549            False                             1.0            -0.002131             -0.002107
+    IDLE    tsfc_mg_Ns   FT-50  Jet-A1      -0.007590      -0.067978                  0.000000                       0.112549            False                             1.0            -0.007646             -0.007562
+    IDLE    tsfc_mg_Ns  ATJ-50  Jet-A1      -0.014536      -0.130186                  0.000000                       0.112549            False                             1.0            -0.014653             -0.014489
+    IDLE    tsfc_mg_Ns HEFA-50   FT-50       0.005476       0.049079                  0.000000                       0.112549            False                             1.0             0.005454              0.005514
+    IDLE    tsfc_mg_Ns HEFA-50  ATJ-50       0.012422       0.111398                  0.000000                       0.112549            False                             1.0             0.012382              0.012522
+    IDLE    tsfc_mg_Ns   FT-50  ATJ-50       0.006946       0.062289                  0.000000                       0.112549            False                             1.0             0.006927              0.007008
+    IDLE            T4 HEFA-50  Jet-A1      -0.007663      -0.001145                  0.000000                     110.887377            False                             1.0            -0.010711             -0.006368
+    IDLE            T4   FT-50  Jet-A1      -0.016055      -0.002400                  0.000000                     110.887377            False                             1.0            -0.022330             -0.013377
+    IDLE            T4  ATJ-50  Jet-A1      -0.052687      -0.007875                  0.000000                     110.887377            False                             1.0            -0.073644             -0.043785
+    IDLE            T4 HEFA-50   FT-50       0.008392       0.001254                  0.000000                     110.887377            False                             1.0             0.007008              0.011619
+    IDLE            T4 HEFA-50  ATJ-50       0.045024       0.006730                  0.000000                     110.887377            False                             1.0             0.037417              0.062933
+    IDLE            T4   FT-50  ATJ-50       0.036632       0.005476                  0.000000                     110.887377            False                             1.0             0.030409              0.051314
+    IDLE  nox_corr_g_s HEFA-50  Jet-A1      -0.000246      -0.037026                  0.000000                       0.018922            False                             1.0            -0.000253             -0.000245
+    IDLE  nox_corr_g_s   FT-50  Jet-A1      -0.000885      -0.132908                  0.000000                       0.018922            False                             1.0            -0.000906             -0.000880
+    IDLE  nox_corr_g_s  ATJ-50  Jet-A1      -0.001694      -0.254457                  0.000000                       0.018922            False                             1.0            -0.001736             -0.001685
+    IDLE  nox_corr_g_s HEFA-50   FT-50       0.000638       0.096010                  0.000000                       0.018922            False                             1.0             0.000635              0.000654
+    IDLE  nox_corr_g_s HEFA-50  ATJ-50       0.001448       0.217986                  0.000000                       0.018922            False                             1.0             0.001440              0.001484
+    IDLE  nox_corr_g_s   FT-50  ATJ-50       0.000809       0.121860                  0.000000                       0.018922            False                             1.0             0.000805              0.000830
+    IDLE lifecycle_g_s HEFA-50  Jet-A1    -326.345965     -33.939312                222.470997                       9.692600             True                             1.0          -328.346890           -325.057124
+    IDLE lifecycle_g_s   FT-50  Jet-A1    -439.484115     -45.705448                 92.214429                       9.692600             True                             1.0          -442.178794           -437.748394
+    IDLE lifecycle_g_s  ATJ-50  Jet-A1    -322.944311     -33.585547                240.783554                       9.692600             True                             1.0          -324.925920           -321.669474
+    IDLE lifecycle_g_s HEFA-50   FT-50     113.138150      21.670933                244.400989                       9.692600            False                             1.0           112.691269            113.831904
+    IDLE lifecycle_g_s HEFA-50  ATJ-50      -3.401653      -0.532663                335.776518                       9.692600            False                             1.0            -3.421004             -3.387651
+    IDLE lifecycle_g_s   FT-50  ATJ-50    -116.539803     -18.248891                258.849677                       9.692600            False                             1.0          -117.252874           -116.078920
+{
+  "n_design_points": 260,
+  "n_unreachable": 0,
+  "n_unreachable_p62": 0,
+  "rankings_claimed": [
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.942397259232045
+    },
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.70860553052888
+    },
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.60686970518664
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.94026079165476
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.706327707424045
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.59210532808723
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.93931198886807
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.705447902860165
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.58554700255077
+    }
+  ]
+}
+exit 0 2026-09-26T19:24:03-04:00

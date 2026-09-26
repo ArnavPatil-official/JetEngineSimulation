@@ -1,0 +1,9 @@
+$ .venv/bin/python scripts/analysis/variance_decomposition.py --v5 --seed 42 --n-mc 1000  # 2026-09-26T19:24:23-04:00
+               Objective    R2  rel_range_pct  p_HEFA  p_FT  p_ATJ  lcef_draw_HEFA  lcef_draw_FT  lcef_draw_ATJ
+                      ff 0.997          0.134   0.005 0.148  0.845           0.000         0.001          0.001
+              tsfc_mg_Ns 0.997          0.134   0.005 0.148  0.845           0.000         0.001          0.001
+                      T4 0.997          0.020   0.007 0.064  0.927           0.000         0.000          0.001
+            nox_corr_g_s 0.997          0.262   0.005 0.147  0.845           0.000         0.001          0.001
+lifecycle_g_s_point_draw 0.989         47.475   0.148 0.663  0.159           0.012         0.006          0.011
+Central Pareto members: 5; stable in >= 50 % of 1000 draws: 80.0 % -> blend-selection statements may be stated with scenario bands
+exit 0

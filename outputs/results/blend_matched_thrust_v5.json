@@ -1,0 +1,173 @@
+{
+  "registration": "outputs/phase6/p63_registration.json",
+  "calibration": "outputs/calibration_v5_A2.json",
+  "n_design_points": 260,
+  "n_rows": 780,
+  "n_unreachable": 0,
+  "n_p62_draws": 64,
+  "n_unreachable_p62": 0,
+  "reference_central": {
+    "Jet-A1|TAKE-OFF": {
+      "ff": 2.3948315605467143,
+      "tsfc_mg_Ns": 7.702899840935895,
+      "T4": 1718.4631816460883,
+      "nox_corr_g_s": 117.9713008196383,
+      "lifecycle_g_s": 9476.631075207493,
+      "phi": 0.34883234743541675
+    },
+    "Jet-A1|APPROACH": {
+      "ff": 0.6469356454881906,
+      "tsfc_mg_Ns": 6.936160024533016,
+      "T4": 990.0827866640675,
+      "nox_corr_g_s": 6.363751016548351,
+      "lifecycle_g_s": 2560.000687602938,
+      "phi": 0.15504861687188037
+    },
+    "Jet-A1|IDLE": {
+      "ff": 0.2429943701472889,
+      "tsfc_mg_Ns": 11.165481328276881,
+      "T4": 669.0575748608035,
+      "nox_corr_g_s": 0.6657441901436394,
+      "lifecycle_g_s": 961.5573960084996,
+      "phi": 0.1063189591218748
+    },
+    "HEFA-50|TAKE-OFF": {
+      "ff": 2.394266318656818,
+      "tsfc_mg_Ns": 7.701081758305212,
+      "T4": 1718.399375019867,
+      "nox_corr_g_s": 117.91684955716329,
+      "lifecycle_g_s": 6260.0353088687325,
+      "phi": 0.3488893526546244
+    },
+    "HEFA-50|APPROACH": {
+      "ff": 0.6468038705974225,
+      "tsfc_mg_Ns": 6.934747191995511,
+      "T4": 990.066664781655,
+      "nox_corr_g_s": 6.361216099843022,
+      "lifecycle_g_s": 1691.1297779623458,
+      "phi": 0.1550789699671535
+    },
+    "HEFA-50|IDLE": {
+      "ff": 0.24294836377877166,
+      "tsfc_mg_Ns": 11.16336735646616,
+      "T4": 669.0499120129198,
+      "nox_corr_g_s": 0.6654976934842027,
+      "lifecycle_g_s": 635.2114314251393,
+      "phi": 0.10634129999165066
+    },
+    "FT-50|TAKE-OFF": {
+      "ff": 2.39306441347419,
+      "tsfc_mg_Ns": 7.697215868364311,
+      "T4": 1718.3299870228564,
+      "nox_corr_g_s": 117.80110765202134,
+      "lifecycle_g_s": 5144.995159457383,
+      "phi": 0.34889617167272796
+    },
+    "FT-50|APPROACH": {
+      "ff": 0.6464853939279969,
+      "tsfc_mg_Ns": 6.931332624938344,
+      "T4": 990.0492486133387,
+      "nox_corr_g_s": 6.355091691150031,
+      "lifecycle_g_s": 1389.9183840148303,
+      "phi": 0.15508349173235506
+    },
+    "FT-50|IDLE": {
+      "ff": 0.24282918681768456,
+      "tsfc_mg_Ns": 11.15789122904404,
+      "T4": 669.0415196930005,
+      "nox_corr_g_s": 0.6648593649367326,
+      "lifecycle_g_s": 522.073281319736,
+      "phi": 0.10634459652959949
+    },
+    "ATJ-50|TAKE-OFF": {
+      "ff": 2.390945953249672,
+      "tsfc_mg_Ns": 7.690401908169669,
+      "T4": 1718.0246779999097,
+      "nox_corr_g_s": 117.59723792764838,
+      "lifecycle_g_s": 6291.832017321283,
+      "phi": 0.3492242127278442
+    },
+    "ATJ-50|APPROACH": {
+      "ff": 0.6460296251598533,
+      "tsfc_mg_Ns": 6.926446072261214,
+      "T4": 989.9719520190363,
+      "nox_corr_g_s": 6.346332126392354,
+      "lifecycle_g_s": 1700.0425602236016,
+      "phi": 0.15525731087188244
+    },
+    "ATJ-50|IDLE": {
+      "ff": 0.24267802551443873,
+      "tsfc_mg_Ns": 11.150945435575995,
+      "T4": 669.0048879247281,
+      "nox_corr_g_s": 0.6640501544131329,
+      "lifecycle_g_s": 638.6130848155617,
+      "phi": 0.10647257745857376
+    }
+  },
+  "rankings_claimed": [
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.942397259232045
+    },
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.70860553052888
+    },
+    {
+      "Mode": "TAKE-OFF",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.60686970518664
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.94026079165476
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.706327707424045
+    },
+    {
+      "Mode": "APPROACH",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.59210532808723
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "HEFA-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.93931198886807
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "FT-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -45.705447902860165
+    },
+    {
+      "Mode": "IDLE",
+      "quantity": "lifecycle_g_s",
+      "blend_a": "ATJ-50",
+      "blend_b": "Jet-A1",
+      "delta_rel_pct": -33.58554700255077
+    }
+  ],
+  "note": "NOx is the ICAO-derived correlation (OPR, fuel flow); blend NOx differences follow fuel flow only and are not a combustion-chemistry result."
+}
