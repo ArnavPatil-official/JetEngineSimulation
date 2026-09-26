@@ -26,8 +26,16 @@ with exit code 0. Evidence is, in order of preference:
   only if the log also names the checkpoint as saved and its "best val"
   matches the checkpoint. The report labels which kind each run has.
 
-Anything else — missing checkpoint, missing evidence, non-zero exit — makes
-the report refuse (non-zero exit). A half-run terminal attempt cannot be reported.
+Anything else — missing checkpoint, missing evidence, non-zero exit, or a
+checkpoint whose recorded attempt/seed is not the one registered at its path —
+makes the report refuse (non-zero exit) before either output is written.
+
+The scored selection is also closed over terminal attempts: naming any one run
+of a terminal attempt selects all of its registered runs (every seed, physics-on
+and data-only, in registration order), so a subset can never be scored as the
+terminal outcome. Duplicate paths, and checkpoints that claim a terminal attempt
+from outside its registered paths, are refused. Earlier attempts are reported
+exactly as selected. A half-run terminal attempt cannot be reported.
 
 Usage::
 
@@ -98,6 +106,8 @@ def completion_evidence(checkpoint: Path, log: Path) -> dict:
         ev.update(kind="launch-guard .done marker", exit_code=rec.get("exit_code"))
         if rec.get("exit_code") != 0:
             ev["detail"] = f"exit code {rec.get('exit_code')}"
+        elif rec.get("checkpoint") != ev["checkpoint"]:
+            ev["detail"] = f"marker names checkpoint {rec.get('checkpoint')!r} (mismatched identity)"
         elif rec.get("checkpoint_sha256") != sha:
             ev["detail"] = "marker SHA-256 does not match the checkpoint"
         else:
@@ -129,6 +139,43 @@ def completion_evidence(checkpoint: Path, log: Path) -> dict:
     return ev
 
 
+def _terminal_runs(a: dict) -> list[tuple[int, str, Path]]:
+    """Every registered run of a terminal attempt, in registration order."""
+    return [(s, k, (REPO_ROOT / a[k].format(seed=s)).resolve())
+            for s in a["seeds"] for k in ("out", "out_dataonly")]
+
+
+def resolve_selection(paths: list[Path]) -> list[Path]:
+    """
+    The scored selection, with every terminal attempt expanded to its complete
+    registered set (inserted where its first run appears, in registration
+    order). Refuses (SystemExit) duplicates and checkpoints that claim a
+    terminal attempt without being one of its registered paths.
+    """
+    resolved = [p.resolve() for p in paths]
+    dups = sorted({str(p) for p in resolved if resolved.count(p) > 1})
+    if dups:
+        raise SystemExit("REFUSING: checkpoint(s) selected more than once:\n" + "\n".join(f"  {d}" for d in dups))
+    owner = {}   # registered terminal run path -> attempt number
+    for n, a in ATTEMPTS.items():
+        if a.get("terminal"):
+            for _s, _k, rp in _terminal_runs(a):
+                owner[rp] = n
+    out, expanded = [], set()
+    for p in resolved:
+        n = owner.get(p)
+        if n is None:
+            att = (torch.load(p, map_location="cpu", weights_only=False).get("attempt") or {}) if p.exists() else {}
+            if att.get("terminal"):
+                raise SystemExit(f"REFUSING: {p} records terminal attempt {att.get('id')!r} but is not one of "
+                                 "that attempt's registered checkpoint paths (mismatched identity)")
+            out.append(p)
+        elif n not in expanded:
+            expanded.add(n)
+            out.extend(rp for _s, _k, rp in _terminal_runs(ATTEMPTS[n]))
+    return out
+
+
 def terminal_guard(paths: list[Path]) -> list[dict]:
     """Refuse (SystemExit 2) unless every registered run of each terminal attempt completed with exit 0."""
     families = set()
@@ -144,13 +191,19 @@ def terminal_guard(paths: list[Path]) -> list[dict]:
                 families.add(a["id"])
     evidence = []
     for n, a in ATTEMPTS.items():
-        if a["id"] not in families:
+        if not a.get("terminal") or a["id"] not in families:
             continue
         for s in a["seeds"]:
             for k in ("out", "out_dataonly"):
                 ev = completion_evidence(REPO_ROOT / a[k].format(seed=s),
                                          default_log_path(n, s, k == "out_dataonly"))
                 ev.update(attempt=a["id"] + ("-dataonly" if k == "out_dataonly" else ""), seed=s)
+                if ev["ok"]:
+                    ck = torch.load(REPO_ROOT / a[k].format(seed=s), map_location="cpu", weights_only=False)
+                    got = ((ck.get("attempt") or {}).get("id"), ck.get("seed"))
+                    if got != (ev["attempt"], s):
+                        ev.update(ok=False, detail=f"checkpoint records attempt/seed {got}, registered "
+                                                   f"{(ev['attempt'], s)} (mismatched identity)")
                 evidence.append(ev)
     bad = [e for e in evidence if not e["ok"]]
     if bad:
@@ -193,6 +246,7 @@ def main() -> None:
     args = ap.parse_args()
     paths = [(REPO_ROOT / p) if not Path(p).is_absolute() else Path(p)
              for p in (args.checkpoints or REGISTERED)]
+    paths = resolve_selection(paths)
     evidence = terminal_guard(paths)
     rows = [score(p) for p in paths]
     df = pd.DataFrame(rows)
