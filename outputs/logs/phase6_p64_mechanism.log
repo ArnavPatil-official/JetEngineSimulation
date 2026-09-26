@@ -1,0 +1,39 @@
+$ .venv/bin/python scripts/validation/mechanism_sensitivity.py  # 2026-09-26T19:24:34-04:00
+     profile                  mechanism fuel_species  target_thrust_kN  thrust_kN      phi  fuel_flow_kg_s  tsfc_mg_Ns        T4_K         cp4   gamma4    X_CO2    X_H2O     X_O2     X_N2     X_CO         X_H2     X_OH    X_NO  fuel_flow_kg_s_rel_diff_vs_CRECK_pct  tsfc_mg_Ns_rel_diff_vs_CRECK_pct  T4_K_rel_diff_vs_CRECK_pct
+CRECK C1-C16 data/creck_c1c16_full.yaml      NC12H26             310.9      310.9 0.348832        2.394832    7.702900 1718.463182 1300.906666 1.285422 0.046339 0.050143 0.133331 0.770063 0.000002 5.202802e-07 0.000117 0.00000                              0.000000                          0.000000                    0.000000
+   HyChem A1          data/A1highT.yaml    POSF10264             310.9      310.9 0.352227        2.455890    7.899292 1719.709156 1299.661567 1.285172 0.048141 0.048084 0.132777 0.770877 0.000002 5.064002e-07 0.000115 0.00000                              2.549588                          2.549588                    0.072505
+   HyChem A2            data/A2NOx.yaml    POSF10325             310.9      310.9 0.355200        2.476619    7.965967 1719.134024 1300.096927 1.285044 0.048538 0.048481 0.130870 0.769481 0.000002 5.112817e-07 0.000114 0.00247                              3.415170                          3.415170                    0.039037
+{
+  "condition": "AE3 take-off, matched thrust 310.9 kN, v5 central fixed values, single-zone equilibrium combustor",
+  "max_abs_rel_diff_pct": {
+    "fuel_flow_kg_s": 3.4151702426448436,
+    "tsfc_mg_Ns": 3.415170242647289,
+    "T4_K": 0.07250514673185529
+  },
+  "A1_vs_A2_fuel_flow_rel_diff_pct": 0.8440620621308141,
+  "p62_bands": {
+    "dp_ff_kg_s": {
+      "p5": 2.3760930881454603,
+      "p95": 2.4102421076199354,
+      "min": 2.368162402587955,
+      "max": 2.4151388688910616,
+      "n": 64
+    },
+    "dp_tsfc_mg_Ns": {
+      "p5": 7.642628138132731,
+      "p95": 7.752467377356395,
+      "min": 7.6171193392986565,
+      "max": 7.768217654844206,
+      "n": 64
+    },
+    "dp_T4_K": {
+      "p5": 1667.1081159620103,
+      "p95": 1795.165989157426,
+      "min": 1646.9768565277482,
+      "max": 1817.2795714404042,
+      "n": 64
+    }
+  },
+  "reading": "differences below the P6.2 bands are unresolved at that uncertainty level, not zero"
+}
+exit 0

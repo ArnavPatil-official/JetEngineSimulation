@@ -22,7 +22,7 @@ check on a second machine) has not been done or verified from this repo.
 | R1.5 | L129: genetic algorithms predate AI | n/a | reword (text only) | external: pending |
 | R1.6 | L131 "combing" | n/a | "combining" | external: pending |
 | R1.7 | L147–149 vague | n/a | restate objectives as the rows of `docs/model_map.md` | external: pending |
-| R1.8 | HyChem not "valid only for Jet A-1"; A-2 nominal | closed (P6.4) | E9: mechanism choice changes fuel flow/TSFC/T4 by less than the V8 bands (unresolved at that level, not zero); correct the A-1/A-2 description | external: pending |
+| R1.8 | HyChem not "valid only for Jet A-1"; A-2 nominal | closed (P6.4) — **the question stays in the text** | E9: at fixed calibration, HyChem A1/A2 need 2.5 / 3.4 % more fuel than CRECK n-dodecane (above the V8 band), mostly because the n-dodecane surrogate's heating value is ~2 % higher; T4 and A1-vs-A2 differences are within the band. Correct the A-1/A-2 description and state that the surrogate's heating value, not rate chemistry, sets this sensitivity | external: pending |
 | R1.9 | Tip leakage main compressor loss; stall avoided by design | closed (code) | V7 η_c row (single lumped isentropic efficiency; no loss breakdown claimed) | external: pending |
 | R1.10 | Structural heat loss vs inefficiency | closed (`847857c`) | `scripts/validation/heat_loss_provenance.md`; E4 for the size of the effect | external: pending |
 | R1.11 | "Turbine inefficiency", not "blade drag" | closed (code) | V7 turbine η_poly row | external: pending |

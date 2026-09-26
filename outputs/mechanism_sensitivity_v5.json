@@ -1,0 +1,33 @@
+{
+  "condition": "AE3 take-off, matched thrust 310.9 kN, v5 central fixed values, single-zone equilibrium combustor",
+  "max_abs_rel_diff_pct": {
+    "fuel_flow_kg_s": 3.4151702426448436,
+    "tsfc_mg_Ns": 3.415170242647289,
+    "T4_K": 0.07250514673185529
+  },
+  "A1_vs_A2_fuel_flow_rel_diff_pct": 0.8440620621308141,
+  "p62_bands": {
+    "dp_ff_kg_s": {
+      "p5": 2.3760930881454603,
+      "p95": 2.4102421076199354,
+      "min": 2.368162402587955,
+      "max": 2.4151388688910616,
+      "n": 64
+    },
+    "dp_tsfc_mg_Ns": {
+      "p5": 7.642628138132731,
+      "p95": 7.752467377356395,
+      "min": 7.6171193392986565,
+      "max": 7.768217654844206,
+      "n": 64
+    },
+    "dp_T4_K": {
+      "p5": 1667.1081159620103,
+      "p95": 1795.165989157426,
+      "min": 1646.9768565277482,
+      "max": 1817.2795714404042,
+      "n": 64
+    }
+  },
+  "reading": "differences below the P6.2 bands are unresolved at that uncertainty level, not zero"
+}

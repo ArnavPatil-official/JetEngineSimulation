@@ -1,0 +1,14 @@
+# command: .venv/bin/python /tmp/p64_lhv.py  (script body below; P6.4 attribution of the mechanism-sensitivity fuel-flow difference)
+#   import warnings; warnings.filterwarnings("ignore")
+#   import cantera as ct
+#   for mech, sp in [("data/creck_c1c16_full.yaml","NC12H26"),("data/A1highT.yaml","POSF10264"),("data/A2NOx.yaml","POSF10325")]:
+#       g=ct.Solution(mech); s=g.species(sp); c=s.composition.get("C",0); h=s.composition.get("H",0)
+#       def H(x):
+#           g.TPX=298.15, ct.one_atm, f"{x}:1"; return g.enthalpy_mole
+#       dh=H(sp)+(c+h/4)*H("O2")-c*H("CO2")-h/2*H("H2O")
+#       mw=g.molecular_weights[g.species_index(sp)]
+#       print(f"{mech}: {sp} C{c:g}H{h:g}  MW {mw:.2f}  LHV(gas, H2O vap, 298 K) {dh/mw/1e6:.3f} MJ/kg")
+data/creck_c1c16_full.yaml: NC12H26 C12H26  MW 170.34  LHV(gas, H2O vap, 298 K) 44.462 MJ/kg
+data/A1highT.yaml: POSF10264 C11H22  MW 154.30  LHV(gas, H2O vap, 298 K) 43.528 MJ/kg
+data/A2NOx.yaml: POSF10325 C11H22  MW 154.30  LHV(gas, H2O vap, 298 K) 43.480 MJ/kg
+LHV ratio CRECK/A1 = 1.0215, CRECK/A2 = 1.0226; matched-thrust fuel-flow ratio A1/CRECK = 1.0255, A2/CRECK = 1.0342 (outputs/mechanism_sensitivity_v5.csv). Remainder (~0.4 % A1, ~1.2 % A2) = product thermo; A2NOx equilibrium X_NO = 0.00247 (N chemistry absent from CRECK).
