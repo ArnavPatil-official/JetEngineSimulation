@@ -51,6 +51,22 @@ Note on E3–E5: these were generated at the v3/PINN-default state as the
 *evidence that drove the Phase 3 decisions*; they are cited as such
 (decision evidence), never as production-configuration results.
 
+## PINN record (Phase 6 P6.5 — closed; no further training)
+
+All rows are **negative or partial results**. They close the PINN claims for the
+title (decision 3), and none of them is a production number.
+
+| # | Content | Generating script | Output file(s) | Seed |
+|---|---|---|---|---|
+| P1 | Sajben P4.3 attempt 1 (ReLU, physics w 0.05 with warm-up): worse-wall Cp shape-L2 **0.258**, single seed, within 0.008 of a band boundary, band not claimed | `scripts/validation/train_sajben.py` → `scripts/validation/sajben_report_p43.py` | `outputs/sajben_retrain_v5.md` (row `le_pinn_sajben_v5.pt`) | 42 |
+| P2 | Sajben P4.3 attempt 2: **0.245**, single seed, within 0.005 of a boundary, band not claimed | same | `outputs/sajben_retrain_v5.md` (row `le_pinn_sajben_v5_a2.pt`) | 42 |
+| P3 | Sajben P4.3 attempt 3 (tanh, μ from data, physics w 0.05), terminal: **0.159 ± 0.016** (seeds 42/43/44) = **PARTIAL** vs gate 0.10. Matched data-only ablation 0.115 ± 0.038. Physics-on is worse by **0.044**, beyond the seed spread of 0.038: a negative result about this residual formulation | same | `outputs/sajben_retrain_v5.md` (multi-seed section, completion evidence) | 42, 43, 44 |
+| P4 | Turbine surrogate attempt 1 (P4.4): held-out max \|Δp5\|/p5 **28.25 %**; take-off thrust −5.07 % vs analytic. **Gate (1 %) missed** | `scripts/validation/train_turbine_surrogate.py` | `outputs/turbine_surrogate_v5.md`, `turbine_surrogate_fidelity_v5.csv`, `turbine_surrogate_cycle_check_v5.csv` | 42 |
+| P5 | Turbine surrogate attempt 2: held-out max \|Δp5\|/p5 **6.39 %**; take-off thrust +0.165 %. **Gate missed** (p5 > 1 %). Turbine PINN retired, production analytic | same | `outputs/turbine_surrogate_v5_a2.md`, `*_v5_a2.csv` | 42 |
+| P6 | Physics-residual defect: under ReLU every second derivative is exactly zero, so the Laplacian residual enforced Euler. There are no Reynolds-stress terms and μ_eff is molecular | direct measurement (recorded in the document) | `outputs/physics_residual_defect.md` | — |
+| P7 | P4.1 Sajben data audit: quasi-1D broadcast training set; analytic ceiling **0.154**; converged SA-RANS solution scores **0.089 / 0.084** (upper / lower wall) against experiment | `scripts/validation/sajben_data_audit.py` | `outputs/sajben_data_audit.md`, `outputs/sajben_data_audit_ceiling.csv` | — |
+| P8 | Reimplementation audit against Ma et al. (AST 168 (2026) 111002): what matches; differences (a) residual form, (b) current-loss weights, (c) in-range CFD hold-out vs external experiment; which result each bears on; future-work note | hand-written from the paper and the code | `docs/le_pinn_vs_ma2025.md` | — |
+
 ## Provenance note on the retracted R² = 0.9969 Highlight
 
 Confirmed by `scripts/validation/nox_holdout_validation.py`: the withdrawn
