@@ -1,0 +1,112 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-9.0.2, pluggy-1.6.0 -- /Users/arnavpatil/Documents/JetEngineSimulation/.venv/bin/python
+rootdir: /Users/arnavpatil/Documents/JetEngineSimulation
+collecting ... collected 7 items
+
+tests/test_static_thrust_accounting.py::test_static_momentum_equation FAILED [ 14%]
+tests/test_static_thrust_accounting.py::test_thrust_independent_of_internal_inlet_velocity FAILED [ 28%]
+tests/test_static_thrust_accounting.py::test_effective_exit_area_is_continuity_diagnostic FAILED [ 42%]
+tests/test_static_thrust_accounting.py::test_core_plus_bypass_use_freestream_momentum FAILED [ 57%]
+tests/test_static_thrust_accounting.py::test_frozen_v4_takeoff_thrust FAILED [ 71%]
+tests/test_static_thrust_accounting.py::test_thrust_change_is_exactly_the_removed_internal_momentum FAILED [ 85%]
+tests/test_static_thrust_accounting.py::test_thermal_fuel_and_emissions_inputs_unchanged PASSED [100%]
+
+=================================== FAILURES ===================================
+________________________ test_static_momentum_equation _________________________
+
+engine = <integrated_engine.IntegratedTurbofanEngine object at 0x1455f3320>
+
+    def test_static_momentum_equation(engine):
+        m_dot = 82.0
+        with contextlib.redirect_stdout(io.StringIO()):
+            out = engine.run_nozzle(_nozzle_state(200.0), m_dot)
+>       assert out["thrust_momentum"] == pytest.approx(m_dot * out["u"], rel=1e-12)
+E       assert np.float64(55267.417221117044) == 71667.41722111704 ± 7.2e-08
+E         
+E         comparison failed
+E         Obtained: 55267.417221117044
+E         Expected: 71667.41722111704 ± 7.2e-08
+
+tests/test_static_thrust_accounting.py:86: AssertionError
+______________ test_thrust_independent_of_internal_inlet_velocity ______________
+
+engine = <integrated_engine.IntegratedTurbofanEngine object at 0x1455f3320>
+
+    def test_thrust_independent_of_internal_inlet_velocity(engine):
+        """At a fixed nozzle total state, the internal inlet velocity must not enter static thrust."""
+        with contextlib.redirect_stdout(io.StringIO()):
+            outs = [engine.run_nozzle(_nozzle_state(u), 82.0) for u in (0.0, 150.0, 300.0)]
+        for o in outs[1:]:
+            for key in ("u", "T", "p", "rho", "thrust_total", "thrust_momentum", "thrust_pressure"):
+>               assert o[key] == outs[0][key], key
+E               AssertionError: thrust_total
+E               assert np.float64(59367.417221117044) == np.float64(71667.41722111704)
+
+tests/test_static_thrust_accounting.py:97: AssertionError
+______________ test_effective_exit_area_is_continuity_diagnostic _______________
+
+engine = <integrated_engine.IntegratedTurbofanEngine object at 0x1455f3320>
+
+    def test_effective_exit_area_is_continuity_diagnostic(engine):
+        m_dot = 82.0
+        with contextlib.redirect_stdout(io.StringIO()):
+            out = engine.run_nozzle(_nozzle_state(200.0), m_dot)
+>       assert out["A_exit_effective"] == pytest.approx(m_dot / (out["rho"] * out["u"]), rel=1e-12)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'A_exit_effective'
+
+tests/test_static_thrust_accounting.py:104: KeyError
+________________ test_core_plus_bypass_use_freestream_momentum _________________
+
+takeoff = {'combustor': {'R_out': np.float64(289.08818568298665), 'T_out': np.float64(1894.8836005359406), 'Y_out': array([0.000...xit': 324.0089587126498, 'dT': 35.858958712649844, 'p_exit': 146921.25, 'thrust_bypass': 186218.54013726415, ...}, ...}
+
+    def test_core_plus_bypass_use_freestream_momentum(takeoff):
+        perf, nozz, fan = takeoff["performance"], takeoff["nozzle"], takeoff["fan"]
+        m_core = perf["total_mass_flow"]
+>       assert nozz["thrust_total"] == pytest.approx(m_core * nozz["u"] + nozz["thrust_pressure"], rel=1e-12)
+E       assert np.float64(55391.454506992275) == 71891.83550942212 ± 7.2e-08
+E         
+E         comparison failed
+E         Obtained: 55391.454506992275
+E         Expected: 71891.83550942212 ± 7.2e-08
+
+tests/test_static_thrust_accounting.py:113: AssertionError
+________________________ test_frozen_v4_takeoff_thrust _________________________
+
+takeoff = {'combustor': {'R_out': np.float64(289.08818568298665), 'T_out': np.float64(1894.8836005359406), 'Y_out': array([0.000...xit': 324.0089587126498, 'dT': 35.858958712649844, 'p_exit': 146921.25, 'thrust_bypass': 186218.54013726415, ...}, ...}
+
+    def test_frozen_v4_takeoff_thrust(takeoff):
+        perf = takeoff["performance"]
+>       assert perf["thrust_core_kN"] == pytest.approx(POST_CORE_KN, abs=1e-3)
+E       assert np.float64(55.391454506992275) == 71.8918355 ± 0.001
+E         
+E         comparison failed
+E         Obtained: 55.391454506992275
+E         Expected: 71.8918355 ± 0.001
+
+tests/test_static_thrust_accounting.py:120: AssertionError
+_________ test_thrust_change_is_exactly_the_removed_internal_momentum __________
+
+takeoff = {'combustor': {'R_out': np.float64(289.08818568298665), 'T_out': np.float64(1894.8836005359406), 'Y_out': array([0.000...xit': 324.0089587126498, 'dT': 35.858958712649844, 'p_exit': 146921.25, 'thrust_bypass': 186218.54013726415, ...}, ...}
+
+    def test_thrust_change_is_exactly_the_removed_internal_momentum(takeoff):
+        pre = json.loads(PRE_REPAIR.read_text())["base"]
+        perf = takeoff["performance"]
+        removed = perf["total_mass_flow"] * takeoff["turbine"]["u"] / 1e3
+        assert removed == pytest.approx(pre["subtracted_inlet_momentum_kN"], rel=1e-12)
+>       assert perf["thrust_kN"] - pre["thrust_kN"] == pytest.approx(removed, rel=1e-9)
+E       assert np.float64(0.0) == 16.500381002429844 ± 1.7e-08
+E         
+E         comparison failed
+E         Obtained: 0.0
+E         Expected: 16.500381002429844 ± 1.7e-08
+
+tests/test_static_thrust_accounting.py:130: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_static_thrust_accounting.py::test_static_momentum_equation
+FAILED tests/test_static_thrust_accounting.py::test_thrust_independent_of_internal_inlet_velocity
+FAILED tests/test_static_thrust_accounting.py::test_effective_exit_area_is_continuity_diagnostic
+FAILED tests/test_static_thrust_accounting.py::test_core_plus_bypass_use_freestream_momentum
+FAILED tests/test_static_thrust_accounting.py::test_frozen_v4_takeoff_thrust
+FAILED tests/test_static_thrust_accounting.py::test_thrust_change_is_exactly_the_removed_internal_momentum
+========================= 6 failed, 1 passed in 6.59s ==========================
