@@ -1,9 +1,16 @@
 """
-Integrated Turbofan Engine Simulation with Hybrid Grey-Box Modeling.
+Integrated Turbofan Engine Simulation — thermodynamic reduced-order cycle.
 
-This module implements a complete jet engine cycle using:
-- Cantera: Chemical kinetics and thermodynamic equilibrium (compressor, combustor)
-- PINNs: Physics-informed neural networks for flow physics (turbine, nozzle)
+Production path (Phase 6, P6.4): equilibrium thermodynamics only.
+- Compressor: Cantera ideal-gas air properties, isentropic efficiency.
+- Combustor: adiabatic chemical EQUILIBRIUM (Cantera equilibrate('HP')) at the
+  combustor-inlet state, temperature rise scaled by eta_b (1 - xi). No
+  reaction kinetics are integrated; the mechanism supplies species thermo.
+- Turbine and nozzle: analytic (work-matched polytropic turbine, isentropic
+  nozzle). The PINN turbine/nozzle surrogates are ablation-only flags; they
+  failed their gates and are not production.
+Kinetics appear only in the Zeldovich thermal-NO evidence path
+(simulation/nox_chemistry.py, manifest E3), never in reported cycle numbers.
 
 The simulation supports multiple fuel blends including Sustainable Aviation Fuels (SAF)
 and provides fuel-dependent performance predictions.
@@ -56,7 +63,7 @@ except ImportError as e:
 
 class LocalFuelBlend:
     """
-    Represents a fuel blend as a mixture of surrogate species for chemical kinetics modeling.
+    Represents a fuel blend as a mixture of surrogate species (species thermo for the equilibrium combustor).
 
     Each fuel is represented by n-alkane surrogates compatible with the CRECK C1-C16 mechanism:
     - Jet-A1 surrogate: n-dodecane (NC12H26) - represents typical kerosene
@@ -634,17 +641,16 @@ class ThrustTargetUnreachable(ValueError):
 
 class IntegratedTurbofanEngine:
     """
-    Integrated turbofan engine simulation using hybrid Cantera-PINN modeling.
+    Integrated turbofan engine simulation: thermodynamic reduced-order cycle.
 
-    This class orchestrates the complete Brayton cycle simulation by combining:
-    - Cantera: High-fidelity chemical kinetics for compression and combustion
-    - PINNs: Machine learning models for expansion and acceleration physics
-
-    Engine Component Models:
-        1. Compressor: Cantera-based isentropic compression with efficiency losses
-        2. Combustor: Cantera chemical equilibrium solver with fuel-specific thermodynamics
-        3. Turbine: PINN-based expansion model (predicts pressure, temperature, velocity drop)
-        4. Nozzle: Analytical isentropic expansion with fuel-dependent gamma
+    Production configuration (equilibrium thermodynamics, no kinetics):
+        1. Compressor: isentropic compression of Cantera air with efficiency losses
+        2. Combustor: adiabatic chemical equilibrium (equilibrate('HP')) at the
+           combustor-inlet state, temperature rise scaled by eta_b (1 - xi)
+        3. Turbine: analytic work-matched polytropic expansion (default); the
+           PINN surrogate is an ablation flag only (retired, P4.4)
+        4. Nozzle: analytic isentropic expansion with fuel-dependent gamma
+           (default); the LE-PINN is an ablation flag only (P4.3 partial)
 
     Key Capability:
         The model uses fuel-dependent thermodynamic properties (cp, R, gamma) extracted from

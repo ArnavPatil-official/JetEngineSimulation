@@ -8,8 +8,8 @@ them in a format suitable for PINN training and inference.
 
 Key Capability:
 The functions here enable the hybrid modeling approach by propagating real,
-fuel-specific thermodynamic properties (cp, R, gamma) from chemical kinetics
-calculations into flow physics predictions. This breaks the constant-property
+fuel-specific thermodynamic properties (cp, R, gamma) from chemical-equilibrium
+calculations (no kinetics) into flow physics predictions. This breaks the constant-property
 assumption and allows the model to capture how fuel chemistry affects expansion
 and acceleration processes.
 """

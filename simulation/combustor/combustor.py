@@ -37,7 +37,8 @@ class Combustor:
 
     def __init__(self, mechanism_file: str):
         """
-        Initialize combustor with a chemical kinetics mechanism.
+        Initialize combustor with a Cantera mechanism file (used for its species
+        thermodynamics only: the combustor solves equilibrium, not kinetics).
 
         Args:
             mechanism_file: Path to Cantera-compatible mechanism YAML file
