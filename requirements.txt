@@ -1,34 +1,40 @@
+# Pinned to the Phase 6 (v5) environment: Python 3.12.4, macOS arm64, 2026-09-26.
+# Reproduce with a fresh virtualenv:  python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
+#
+# torch: the pipeline needs CPU only (all v5 checkpoints record device "cpu").
+#   macOS (arm64): the default PyPI wheel below is the working install.
+#   Linux/Windows: install the CPU build first to avoid the CUDA download,
+#     .venv/bin/pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
+#   then install the rest of this file.
+
 # Core Scientific Computing
-numpy>=1.24.0
-pandas>=2.0.0
-scipy>=1.10.0
+numpy==2.3.5
+pandas==2.3.3
+scipy==1.16.3
 
 # Machine Learning & Deep Learning
-torch>=2.0.0
-scikit-learn>=1.3.0
+torch==2.9.1
+scikit-learn==1.8.0
 
 # Chemical Kinetics & Thermodynamics
-cantera>=3.0.0
+cantera==3.2.0
 
 # Configuration / data files (CORSIA LCA values, mechanism profiles)
-PyYAML>=6.0
+PyYAML==6.0.3
 
 # Optimization
-optuna>=3.0.0
+optuna==4.6.0
 
 # Visualization
-matplotlib>=3.7.0
-seaborn>=0.12.0
+matplotlib==3.10.7
+seaborn==0.13.2
+plotly==6.6.0
 
 # PDF Report Generation
-fpdf2>=2.7.0
+fpdf2==2.8.5
 
 # Testing
-pytest>=7.4.0
+pytest==9.0.2
 
-# Dashboard
-streamlit>=1.32.0
-plotly>=5.18.0
-
-# Utilities
-pathlib2>=2.3.7; python_version < '3.4'
+# Dashboard (archive/code/dashboard.py only; not used by the manifest pipeline)
+streamlit==1.55.0
