@@ -51,6 +51,23 @@ class Combustor:
             ct.Solution(mechanism_file)
         except Exception as e:
             raise RuntimeError(f"Failed to load Cantera mechanism '{mechanism_file}': {e}")
+        self._solutions = None
+
+    def _fresh_solutions(self):
+        """Two reusable Solutions, reset to their as-constructed state on every call.
+
+        Parsing the mechanism dominated the run time (~0.75 s per Solution for
+        CRECK). Restoring the pristine state before each use makes the result
+        bit-identical to constructing new Solutions (checked on 24 T/p/phi/fuel
+        cases in random order, Phase 6); without the reset, equilibrate('HP')
+        depends on the previous state at the ~1e-7 level.
+        """
+        if self._solutions is None:
+            gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+            self._solutions = [(g, g.state.copy()) for g in gases]
+        for gas, state in self._solutions:
+            gas.state = state
+        return self._solutions[0][0], self._solutions[1][0]
 
     @staticmethod
     def estimate_efficiency(phi: float, fuel_blend=None) -> float:
@@ -132,7 +149,7 @@ class Combustor:
                 )
 
         # Set up fuel-air mixture at inlet conditions
-        gas_eq = ct.Solution(self.mechanism_file)
+        gas_eq, gas_out = self._fresh_solutions()
         gas_eq.TP = T_in, p_in
         gas_eq.set_equivalence_ratio(phi, fuel=fuel_string, oxidizer="O2:1.0, N2:3.76")
 
@@ -152,7 +169,6 @@ class Combustor:
         T_out = T_in + efficiency * (1.0 - heat_loss_fraction) * (T_ideal - T_in)
 
         # Set outlet state with equilibrium composition at efficiency-corrected temperature
-        gas_out = ct.Solution(self.mechanism_file)
         gas_out.TPY = T_out, p_in, Y_ideal
 
         # Extract fuel-dependent thermodynamic properties from product mixture

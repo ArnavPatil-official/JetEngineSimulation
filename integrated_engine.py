@@ -792,8 +792,15 @@ class IntegratedTurbofanEngine:
         Returns:
             f: Fuel-air ratio (mass fuel / mass air)
         """
-        # Create temporary gas for stoichiometry calculation
-        temp_gas = ct.Solution(self.mechanism_file)
+        # Temporary gas for stoichiometry: one Solution per mechanism, reset to
+        # its as-constructed state each call (bit-identical to a new Solution;
+        # see Combustor._fresh_solutions)
+        cache = self.__dict__.setdefault('_far_gas_cache', {})
+        if self.mechanism_file not in cache:
+            g = ct.Solution(self.mechanism_file)
+            cache[self.mechanism_file] = (g, g.state.copy())
+        temp_gas, pristine = cache[self.mechanism_file]
+        temp_gas.state = pristine
         temp_gas.TP = 300.0, 101325.0  # Reference state
 
         # Set mixture at specified equivalence ratio
