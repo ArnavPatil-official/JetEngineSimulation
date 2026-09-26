@@ -1907,7 +1907,7 @@ def finetune_on_cfd_data(
         raise ValueError(
             "Pretrained checkpoint is collapsed: its normalised outputs are constant over the "
             f"training inputs (spread {['%.1e' % v for v in health_init['output_spread']]}, "
-            f"alive ReLU units per layer {health_init['alive_units']}). Gradient descent cannot "
+            f"alive {model.activation} units per layer {health_init['alive_units']}). Gradient descent cannot "
             "recover a dead network and any score of its output is the score of noise. "
             "Retrain from scratch, or pass allow_collapsed_init=True to override."
         )
@@ -1958,7 +1958,7 @@ def finetune_on_cfd_data(
         print(f"  Train/Val: {n_train} / {n_val}   Epochs: {n_epochs}   LR: {lr}")
         print(f"  Physics weight: {physics_loss_weight}")
         print(f"  Normalisers: {normalizer_source}")
-        print(f"  Init: val loss {val_loss_init:.3e}; alive ReLU units/layer "
+        print(f"  Init: val loss {val_loss_init:.3e}; alive {model.activation} units/layer "
               f"{health_init['alive_units']}; output spread "
               f"{['%.2e' % v for v in health_init['output_spread']]}"
               + ("  ** COLLAPSED **" if health_init["collapsed"] else ""))
