@@ -1,0 +1,16 @@
+============================================================
+CLAUDE DISPATCHER
+============================================================
+Plan:       /Users/arnavpatil/Documents/JetEngineSimulation/docs/plan_phase6_review.md
+Score:      4/10
+Tier:       opus
+Model:      opus
+Reasons:
+  - Spans 6 subsystems: combustor, nozzle, turbine, compressor, emissions, pinn
+  - Contains debugging/investigation language
+  - Heavy test burden
+  - Model overridden to opus
+============================================================
+
+[EXECUTING] claude --model opus --print --dangerously-skip-permissions -p Read the plan at docs/plan_phase6_review.md and execute it completely. Follow every instruction in the plan. Run validation commands after each phase. If blocked, stop and explain clearly. Do not deviate from the plan.
+

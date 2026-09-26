@@ -1,0 +1,94 @@
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+{
+  "stage": "pilot",
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "sse_min": 0.0004597062393357735,
+  "identified": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "not_identified": [],
+  "verdicts": {
+    "W_ref": {
+      "D_at_lower_edge": 183.40011464088514,
+      "D_at_upper_edge": 178.04973693658127,
+      "interval_95": [
+        90.0,
+        110.0
+      ],
+      "interval_width_frac_of_box": 0.25,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 100.0,
+      "IDENTIFIED": true
+    },
+    "a_thrust": {
+      "D_at_lower_edge": 140.55187111562512,
+      "D_at_upper_edge": 99.0055623592851,
+      "interval_95": [
+        0.75,
+        1.25
+      ],
+      "interval_width_frac_of_box": 0.25,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 1.0,
+      "IDENTIFIED": true
+    },
+    "k_pi": {
+      "D_at_lower_edge": 83.05569740161698,
+      "D_at_upper_edge": 51.855587660602986,
+      "interval_95": [
+        1.3234954532635648,
+        1.348125288638207
+      ],
+      "interval_width_frac_of_box": 0.018946027211263185,
+      "interval_contains_no_grid_point": false,
+      "grid_argmin": 1.3375,
+      "IDENTIFIED": true
+    },
+    "k_mdot": {
+      "D_at_lower_edge": 178.57834743493132,
+      "D_at_upper_edge": 196.92264994680286,
+      "interval_95": [
+        0.2,
+        0.525
+      ],
+      "interval_width_frac_of_box": 0.25,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 0.36250000000000004,
+      "IDENTIFIED": true
+    }
+  }
+}
