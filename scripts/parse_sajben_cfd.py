@@ -315,9 +315,11 @@ def _pack_case(
     mu_2d  = np.repeat(mu_axial,  nj)
     # Estimate transverse velocity from planar continuity (∂(ρu)/∂x + ∂(ρv)/∂y = 0)
     v_2d   = _estimate_transverse_velocity(x_flat, y_flat, rho_2d, u_2d, ni, nj)
-    # Reynolds stresses (cols 5-7) are unused in data loss — mark as NaN sentinel
-    # finetune_on_cfd_data only uses targets[:, :5]; NaN rows for cols 5-7 are safe
-    nan_col = np.full(ni * nj, np.nan)
+    # Reynolds stresses (cols 5-7): no turbulence data exist, so they are zeros
+    # (the documented layout). Not used by any loss: finetune_on_cfd_data reads
+    # targets[:, :5]. P6.8: was NaN; the committed master_shock_dataset.pt predates
+    # this change and differs from a regeneration only in these three columns.
+    zero_col = np.zeros(ni * nj)
 
     inputs = np.column_stack([
         x_flat, y_flat,
@@ -329,7 +331,7 @@ def _pack_case(
 
     targets = np.column_stack([
         rho_2d, u_2d, v_2d, P_2d, T_2d,
-        nan_col, nan_col, nan_col, mu_2d,
+        zero_col, zero_col, zero_col, mu_2d,
     ]).astype(np.float32)
 
     return inputs, targets
@@ -495,7 +497,7 @@ def generate_sajben_dataset(
     targets_all = np.concatenate(all_targets, axis=0)
     weights_all = np.concatenate(all_weights, axis=0)
 
-    # Cols 5-7 (Reynolds stresses) are NaN sentinels — exclude from finiteness check
+    # Cols 5-7 (Reynolds-stress slots, zeros) carry no data — excluded from the check
     phys_cols = list(range(5)) + [8]  # [ρ, u, v, P, T, μ_eff]
     valid = (
         np.isfinite(inputs_all).all(axis=1)

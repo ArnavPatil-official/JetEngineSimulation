@@ -1655,9 +1655,11 @@ def finetune_on_cfd_data(
     Fine-tune the LE-PINN on real CFD data from ``master_shock_dataset.pt``.
 
     The dataset provides inputs ``(N, 6) = [x, y, A5, A6, P_in, T_in]`` and
-    targets ``(N, 9) = [rho, u, v, P, T, 0, 0, 0, 0]``.  Only the first 5
-    target columns are used for the data loss; columns 5–8 are zero-padded and
-    ignored.
+    targets ``(N, 9) = [rho, u, v, P, T, u'u', v'v', u'v', mu_eff]``.  Only the
+    first 5 target columns are used for the data loss. Columns 5–7 (Reynolds-
+    stress slots) carry no data: zeros from ``parse_sajben_cfd.py`` since P6.8,
+    NaN in the committed ``master_shock_dataset.pt``; either way they are
+    ignored. Column 8 is the Sutherland molecular viscosity.
 
     Warnings from physics / BC loss computation are **non-fatal** — they are
     emitted via :func:`warnings.warn` and the failed term is set to zero for

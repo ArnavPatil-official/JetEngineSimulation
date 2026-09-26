@@ -42,10 +42,6 @@ from typing import Dict, Any
 # Force float32 globally
 torch.set_default_dtype(torch.float32)
 
-print("="*70)
-print("TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY")
-print("="*70)
-
 # ============================================================================
 # THERMO REFERENCE VALUES (for fixed-reference normalization)
 # ============================================================================
@@ -922,4 +918,7 @@ def run_turbine_pinn(
 
 
 if __name__ == "__main__":
+    print("="*70)
+    print("TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY")
+    print("="*70)
     main()

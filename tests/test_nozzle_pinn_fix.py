@@ -12,7 +12,12 @@ Tests:
 4. Verify exit velocity > inlet velocity
 5. Check TSFC and efficiency are finite
 
-Run with: python test_nozzle_pinn_fix.py
+Run with: python -m pytest tests/test_nozzle_pinn_fix.py
+(P6.8: checks are asserts and the checkpoint path is absolute; the earlier
+bool returns made pytest count a missing checkpoint as a pass.) With the
+shipped models/nozzle_pinn.pt the PINN fails run_nozzle_pinn's physics gates
+in every case here, so these checks exercise the analytic fallback of the
+wrapper, not PINN accuracy (the nozzle PINN is retired from production, P3.1).
 """
 
 import sys
@@ -20,9 +25,12 @@ from pathlib import Path
 import numpy as np
 
 # Add simulation modules to path
-sys.path.insert(0, str(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 from simulation.nozzle.nozzle import run_nozzle_pinn
+
+MODEL_PATH = str(ROOT / "models" / "nozzle_pinn.pt")
 
 
 def test_nozzle_pinn_positive_thrust():
@@ -76,21 +84,17 @@ def test_nozzle_pinn_positive_thrust():
 
     # Run nozzle PINN
     print("\nRunning nozzle PINN...")
-    try:
-        result = run_nozzle_pinn(
-            model_path='nozzle_pinn.pt',
-            inlet_state=turbine_exit,
-            ambient_p=ambient_p,
-            A_in=A_in,
-            A_exit=A_exit,
-            length=length,
-            thermo_props=thermo_props,
-            m_dot=m_dot,
-            device='cpu'
-        )
-    except Exception as e:
-        print(f"\n❌ TEST FAILED: Nozzle PINN raised exception: {e}")
-        return False
+    result = run_nozzle_pinn(
+        model_path=MODEL_PATH,
+        inlet_state=turbine_exit,
+        ambient_p=ambient_p,
+        A_in=A_in,
+        A_exit=A_exit,
+        length=length,
+        thermo_props=thermo_props,
+        m_dot=m_dot,
+        device='cpu'
+    )
 
     # Extract results
     thrust_total = result['thrust_total']
@@ -110,26 +114,17 @@ def test_nozzle_pinn_positive_thrust():
     print("\nValidation Checks:")
 
     # Check 1: Positive total thrust
-    if thrust_total <= 0:
-        print(f"  ❌ FAILED: Thrust is non-positive ({thrust_total/1e3:.2f} kN)")
-        return False
-    else:
-        print(f"  ✓ Thrust is positive: {thrust_total/1e3:.2f} kN")
+    assert thrust_total > 0, f"Thrust is non-positive ({thrust_total/1e3:.2f} kN)"
+    print(f"  ✓ Thrust is positive: {thrust_total/1e3:.2f} kN")
 
     # Check 2: Exit velocity exceeds inlet velocity (nozzle accelerates flow)
-    if u_exit <= turbine_exit['u']:
-        print(f"  ❌ FAILED: Exit velocity ({u_exit:.1f} m/s) <= inlet ({turbine_exit['u']:.1f} m/s)")
-        return False
-    else:
-        delta_u = u_exit - turbine_exit['u']
-        print(f"  ✓ Flow accelerated: Δu = {delta_u:.1f} m/s")
+    assert u_exit > turbine_exit['u'], f"Exit velocity ({u_exit:.1f} m/s) <= inlet ({turbine_exit['u']:.1f} m/s)"
+    delta_u = u_exit - turbine_exit['u']
+    print(f"  ✓ Flow accelerated: Δu = {delta_u:.1f} m/s")
 
     # Check 3: Momentum thrust should be positive (main thrust component)
-    if thrust_momentum <= 0:
-        print(f"  ❌ FAILED: Momentum thrust is non-positive ({thrust_momentum/1e3:.2f} kN)")
-        return False
-    else:
-        print(f"  ✓ Momentum thrust positive: {thrust_momentum/1e3:.2f} kN")
+    assert thrust_momentum > 0, f"Momentum thrust is non-positive ({thrust_momentum/1e3:.2f} kN)"
+    print(f"  ✓ Momentum thrust positive: {thrust_momentum/1e3:.2f} kN")
 
     # Check 4: Exit temperature should be lower than inlet (expansion cools)
     if T_exit >= turbine_exit['T']:
@@ -143,11 +138,8 @@ def test_nozzle_pinn_positive_thrust():
     tsfc = (fuel_flow * 3600) / thrust_total  # kg/(N·hr)
     tsfc_mg_per_Ns = tsfc * 1000  # mg/(N·s)
 
-    if not np.isfinite(tsfc_mg_per_Ns):
-        print(f"  ❌ FAILED: TSFC is not finite")
-        return False
-    else:
-        print(f"  ✓ TSFC is finite: {tsfc_mg_per_Ns:.2f} mg/(N·s)")
+    assert np.isfinite(tsfc_mg_per_Ns), f"TSFC is not finite"
+    print(f"  ✓ TSFC is finite: {tsfc_mg_per_Ns:.2f} mg/(N·s)")
 
     # Check 6: Calculate thermal efficiency (should be finite and reasonable)
     LHV = 43e6  # J/kg - lower heating value of jet fuel
@@ -155,17 +147,12 @@ def test_nozzle_pinn_positive_thrust():
     thrust_power = thrust_total * u_exit  # Approximate propulsive power
     eta_thermal = thrust_power / fuel_power
 
-    if not np.isfinite(eta_thermal) or eta_thermal <= 0:
-        print(f"  ❌ FAILED: Thermal efficiency is not finite or positive")
-        return False
-    else:
-        print(f"  ✓ Thermal efficiency is finite: {eta_thermal*100:.2f}%")
+    assert np.isfinite(eta_thermal) and eta_thermal > 0, f"Thermal efficiency is not finite or positive"
+    print(f"  ✓ Thermal efficiency is finite: {eta_thermal*100:.2f}%")
 
     print("\n" + "="*70)
     print("✅ ALL TESTS PASSED - Nozzle PINN produces positive thrust")
     print("="*70)
-
-    return True
 
 
 def test_nozzle_scaling_robustness():
@@ -201,8 +188,6 @@ def test_nozzle_scaling_robustness():
     ambient_p = 101325.0
     m_dot = 82.6
 
-    all_passed = True
-
     for case in test_cases:
         print(f"\nTesting: {case['name']}")
         print(f"  Inlet: u={case['u']:.1f} m/s, T={case['T']:.1f} K")
@@ -210,38 +195,23 @@ def test_nozzle_scaling_robustness():
         inlet_state = {k: case[k] for k in ['rho', 'u', 'p', 'T']}
         thermo_props = {k: case[k] for k in ['cp', 'R', 'gamma']}
 
-        try:
-            result = run_nozzle_pinn(
-                model_path='nozzle_pinn.pt',
-                inlet_state=inlet_state,
-                ambient_p=ambient_p,
-                A_in=0.375,
-                A_exit=0.340,
-                length=1.0,
-                thermo_props=thermo_props,
-                m_dot=m_dot,
-                device='cpu'
-            )
+        result = run_nozzle_pinn(
+            model_path=MODEL_PATH,
+            inlet_state=inlet_state,
+            ambient_p=ambient_p,
+            A_in=0.375,
+            A_exit=0.340,
+            length=1.0,
+            thermo_props=thermo_props,
+            m_dot=m_dot,
+            device='cpu'
+        )
 
-            thrust = result['thrust_total']
-            u_exit = result['exit_state']['u']
+        thrust = result['thrust_total']
+        u_exit = result['exit_state']['u']
 
-            if thrust > 0 and u_exit > inlet_state['u']:
-                print(f"  ✓ PASS: Thrust={thrust/1e3:.2f} kN, u_exit={u_exit:.1f} m/s")
-            else:
-                print(f"  ❌ FAIL: Thrust={thrust/1e3:.2f} kN, u_exit={u_exit:.1f} m/s")
-                all_passed = False
-
-        except Exception as e:
-            print(f"  ❌ FAIL: Exception raised: {e}")
-            all_passed = False
-
-    if all_passed:
-        print("\n✅ ALL SCALING TESTS PASSED")
-    else:
-        print("\n❌ SOME SCALING TESTS FAILED")
-
-    return all_passed
+        print(f"  Thrust={thrust/1e3:.2f} kN, u_exit={u_exit:.1f} m/s")
+        assert thrust > 0 and u_exit > inlet_state['u'], case['name']
 
 
 if __name__ == "__main__":
@@ -253,20 +223,6 @@ if __name__ == "__main__":
     print("Fix: Added runtime_scales['u'] = max(checkpoint_scale, 1.5 * inlet_u)")
     print("="*70)
 
-    # Run tests
-    test1_passed = test_nozzle_pinn_positive_thrust()
-    test2_passed = test_nozzle_scaling_robustness()
-
-    # Summary
-    print("\n" + "="*70)
-    print("TEST SUMMARY")
-    print("="*70)
-    print(f"  Test 1 (Positive Thrust):    {'✅ PASS' if test1_passed else '❌ FAIL'}")
-    print(f"  Test 2 (Scaling Robustness): {'✅ PASS' if test2_passed else '❌ FAIL'}")
-
-    if test1_passed and test2_passed:
-        print("\n✅ ALL TESTS PASSED - Fix verified!")
-        sys.exit(0)
-    else:
-        print("\n❌ SOME TESTS FAILED - Investigation needed")
-        sys.exit(1)
+    test_nozzle_pinn_positive_thrust()
+    test_nozzle_scaling_robustness()
+    print("\n✅ ALL TESTS PASSED")
