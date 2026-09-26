@@ -251,7 +251,7 @@ airflow scales. The repair is Phase 5 P5.2 (calibration v5).
 core airflow to `base_airflow × thrust_ratio`, where `thrust_ratio` is that
 engine's ICAO rated thrust over AE3's. With φ fixed per mode, fuel flow is
 φ·f_st·β·ṁ_core·x^k_mdot, so OPR and BPR never enter the prediction. On the
-frozen `outputs/holdout_icao_validation_v4.csv` (unchanged):
+frozen `outputs/holdout_icao_validation_v4.csv` (unchanged; archived in P6.6 to `outputs/archive/pre_phase6/`):
 
 - Predicted fuel flow ÷ thrust ratio is constant to ~1e-16 within each mode
   (take-off 2.318207, approach 0.618863, idle 0.242230 kg/s; 59 rows each).
@@ -267,3 +267,39 @@ data, not of the cycle model. It is **superseded** as validation evidence by
 the Phase 6 P6.1 thrust-matched held-out test. Pinned by
 `tests/test_holdout_informativeness.py` (the two v4 tests keep the historical
 diagnosis; the v5 test requires the new predictions to depend on the cycle).
+
+
+## Phase 6 P6.2 — fixed parameters under the range rule (v5)
+
+Decision 2 (approved 2026-09-26): a fixed engine parameter needs a cited range,
+a central value inside it, and its effect reported as a band. Registration A1
+(`docs/phase6_p61_registration.md` §3, `outputs/phase6/p61_registration.json`)
+holds the sources with page/table references and PDF hashes. β (burner air
+fraction) had no citable range for the implemented quantity and was **dropped**
+(single-zone combustor); ξ = 0 by the structural argument. Surrogate
+compositions stay **H/C-matched illustrative binaries**; their LHVs are computed
+from CRECK thermo (`simulation/fuels.py` LHV_METHOD, tested).
+
+One-at-a-time endpoints (other parameters central, calibration **re-fit**),
+from `outputs/p62_bands_v5.json` (`scripts/validation/p62_parameter_bands.py`).
+Columns give the value at the low / high end of each range.
+
+| Parameter | Central | Range | Source | Held-out MAPE % | TO TSFC mg/(N·s) | TO T4 K | fitted W_ref kg/s |
+|---|---|---|---|---|---|---|---|
+| Combustor pressure loss | 0.045 | 0.04–0.05 | NASA/TM-2017-219501 p. 4; NASA/CR-2005-213657 Table 1; NASA/TM-2007-214690 p. 12 | 1.83 / 1.82 | 7.704 / 7.701 | 1719 / 1718 | 102.3 / 102.5 |
+| η_c (isentropic) | 0.86 | 0.8225–0.8865 | polytropic 0.89–0.93 (NASA/TM-2017-219501 p. 3; NASA/CR-2005-213657 Table 1), constant-γ conversion at OPR 43.2 | 1.88 / 1.81 | 7.684 / 7.714 | 1734 / 1708 | 103.6 / 101.7 |
+| Turbine η_poly | 0.90 | 0.90–0.92 | NASA/TM-2017-219501 pp. 3–4; NASA/CR-2005-213657 Table 1 | 1.82 / 1.82 | 7.703 / 7.723 | 1718 / 1728 | 102.4 / 101.3 |
+| FPR rated | 1.45 | 1.3–1.7 | NASA/TM-2017-219501 Table 3 p. 12 | 1.89 / 1.91 | 7.732 / 7.592 | 1640 / 1780 | 115.1 / 93.0 |
+| Fan e_poly (→ η_fan per draw) | 0.905 (η_fan 0.90) | 0.8961–0.97 | NASA/CR-2005-213657 Table 1; NASA/TM-2017-219501 p. 3 | 1.82 / 1.87 | 7.697 / 7.738 | 1716 / 1732 | 102.6 / 101.0 |
+| η_b per mode (CO/HC proxy) | TAK 0.999894, APP 0.999834, IDL 0.998152 | calibration-group min–max | ICAO CO/HC of the calibration group (data-derived) | 1.82 / 1.82 | 7.703 / 7.703 | 1718 / 1718 | 102.4 / 102.4 |
+
+Central: held-out MAPE 1.82 %, TSFC 7.703, T4 1718 K, W_ref 102.4 kg/s.
+Joint Monte Carlo (64 seeded draws, uniform over every range, re-fit per draw),
+P5–P95: held-out MAPE 1.82–1.91 %, TSFC 7.643–7.752 mg/(N·s),
+T4 1667–1795 K, W_ref 91.8–111.7 kg/s. These are **range bands under
+assumed uniform ranges, not confidence intervals**.
+
+**Limiting assumption: rated FPR.** It moves fitted W_ref by 22 kg/s and T4 by
+140 K across its range; no other parameter moves T4 by more than 26 K. It does
+not change the P6.1 conclusion: held-out MAPE stays between B1 (1.08 %) and B0
+(2.19 %) at every draw and endpoint.
