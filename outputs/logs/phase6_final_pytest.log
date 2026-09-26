@@ -1,0 +1,315 @@
+........................................................................ [ 37%]
+.............s.......................................................... [ 75%]
+...............................................                          [100%]
+=============================== warnings summary ===============================
+tests/test_finetune_regression_guard.py::test_collapsed_init_is_refused
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/le_pinn.py:2045: RuntimeWarning: Global net collapsed at epoch 0 (alive units [276, 211, 192, 193, 187, 201, 0]); stopping and restoring the best weights from epoch 0.
+    warnings.warn(
+
+tests/test_le_pinn.py::TestCFDFinetune::test_validate_returns_metrics
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/le_pinn.py:2262: RuntimeWarning: No output normaliser available; comparing raw model outputs against un-normalised targets — RMSE/R² may be misleading.
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+tests/test_le_pinn_benchmark.py::TestComparisonWithRegularPINN::test_thrust_within_order_of_magnitude
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.15)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.93)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.26)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.30)
+  
+    warnings.warn(
+
+tests/test_nozzle_pinn_fix.py::test_nozzle_pinn_positive_thrust
+tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Inlet mismatch (max error 29.68%)
+  
+    warnings.warn(
+
+tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Inlet mismatch (max error 8.22%)
+  
+    warnings.warn(
+
+tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Inlet mismatch (max error 33.25%)
+  
+    warnings.warn(
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in cp/R detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  8.393471510000001
+  	Value computed using high-temperature polynomial: 9.1801039121875
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in h/RT detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  42.19914708979167
+  	Value computed using high-temperature polynomial: 41.961461604875
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in s/R detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  33.70692865946735
+  	Value computed using high-temperature polynomial: 33.51209988778391
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C4H5-2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  47.65235236593109
+  	Value computed using high-temperature polynomial: 48.43623165666667
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C4H5-2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  52.42918829260522
+  	Value computed using high-temperature polynomial: 54.32081704699501
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C4H6-2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  28.072393266570767
+  	Value computed using high-temperature polynomial: 28.60292515
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C4H6-2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  50.25139828976554
+  	Value computed using high-temperature polynomial: 51.51521152074738
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C2H3CHOCH2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  13.197490232436893
+  	Value computed using high-temperature polynomial: 13.009458623333332
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species C2H3CHOCH2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  55.5754926344824
+  	Value computed using high-temperature polynomial: 53.052987694542516
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species CH3CHCHCHO, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  -0.8755307677062499
+  	Value computed using high-temperature polynomial: -0.7952995433333364
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species CH3CHCHCHO, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  59.194456477008444
+  	Value computed using high-temperature polynomial: 62.495269678449205
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species iC4H7-1, discontinuity in cp/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  21.845278721000003
+  	Value computed using high-temperature polynomial: 22.278588722899997
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species iC4H7-1, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  39.871290752200004
+  	Value computed using high-temperature polynomial: 39.80803510063
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in cp/R detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  8.393471510000001
+  	Value computed using high-temperature polynomial: 9.1801039121875
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in h/RT detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  42.19914708979167
+  	Value computed using high-temperature polynomial: 41.961461604875
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species CH2OCH, discontinuity in s/R detected at Tmid = 500
+  	Value computed using low-temperature polynomial:  33.70692865946735
+  	Value computed using high-temperature polynomial: 33.51209988778391
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C4H5-2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  47.65235236593109
+  	Value computed using high-temperature polynomial: 48.43623165666667
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C4H5-2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  52.42918829260522
+  	Value computed using high-temperature polynomial: 54.32081704699501
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C4H6-2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  28.072393266570767
+  	Value computed using high-temperature polynomial: 28.60292515
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C4H6-2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  50.25139828976554
+  	Value computed using high-temperature polynomial: 51.51521152074738
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C2H3CHOCH2, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  13.197490232436893
+  	Value computed using high-temperature polynomial: 13.009458623333332
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species C2H3CHOCH2, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  55.5754926344824
+  	Value computed using high-temperature polynomial: 53.052987694542516
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species CH3CHCHCHO, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  -0.8755307677062499
+  	Value computed using high-temperature polynomial: -0.7952995433333364
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species CH3CHCHCHO, discontinuity in s/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  59.194456477008444
+  	Value computed using high-temperature polynomial: 62.495269678449205
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species iC4H7-1, discontinuity in cp/R detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  21.845278721000003
+  	Value computed using high-temperature polynomial: 22.278588722899997
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species iC4H7-1, discontinuity in h/RT detected at Tmid = 1000
+  	Value computed using low-temperature polynomial:  39.871290752200004
+  	Value computed using high-temperature polynomial: 39.80803510063
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[isooctane.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:52: UserWarning: NasaPoly2::validate: 
+  For species EC6H13O2, discontinuity in s/R detected at Tmid = 1388
+  	Value computed using low-temperature polynomial:  107.80575085204809
+  	Value computed using high-temperature polynomial: 107.11626904383158
+  
+    ct.Solution(mechanism_file)
+
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[isooctane.yaml]
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:67: UserWarning: NasaPoly2::validate: 
+  For species EC6H13O2, discontinuity in s/R detected at Tmid = 1388
+  	Value computed using low-temperature polynomial:  107.80575085204809
+  	Value computed using high-temperature polynomial: 107.11626904383158
+  
+    gases = (ct.Solution(self.mechanism_file), ct.Solution(self.mechanism_file))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+190 passed, 1 skipped, 65 warnings in 110.75s (0:01:50)

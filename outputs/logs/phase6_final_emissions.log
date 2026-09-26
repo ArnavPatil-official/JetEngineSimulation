@@ -1,0 +1,265 @@
+✓ Loaded Cantera mechanism: data/creck_c1c16_full.yaml
+  Species count: 492
+✓ Loaded CRECK mechanism for blend comparisons
+[OK] Loaded ICAO emissions data: 180 records
+[OK] NOx correlation fitted (ICAO databank):
+  EI_NOx = 9.8214 × OPR^0.2070 × ṁ_fuel^0.9506
+  fit set: 180 records / 28 engine models
+  in-sample R² = 0.9969  <- TRAINING DIAGNOSTIC, NOT VALIDATION
+  no fuel-composition dependence: cannot rank blends on NOx
+✓ CO Model Calibrated:
+  k = 2844.33 [g/kg per unit inefficiency²]
+  Reference: 7.11 g/kg at η=95.0% (IDLE)
+✓ IntegratedTurbofanEngine initialized successfully
+
+
+==========================================================================================
+MULTI-OBJECTIVE ENVIRONMENTAL OPTIMIZATION TEST
+==========================================================================================
+
+Comparing emissions across fuel blends with lifecycle carbon accounting
+
+
+==========================================================================================
+Testing: Jet-A1 (LCA Factor: 1.0)
+==========================================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Jet-A1
+======================================================================
+
+[Fan]
+  FPR:    1.450 (BPR 9.1, eta 0.90)
+  Bypass: 727.1 kg/s, dT=35.9 K
+  Work:   26.20 MW
+  Bypass thrust: 186.22 kN (u_exit=256.1 m/s)
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=901.5 K, P=43.77 bar
+  Work:   650.88 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Jet-A1
+  Phi:    0.500
+  FAR:    0.033523 (fuel/air mass ratio)
+  Inlet:  T=901.5 K, P=43.77 bar
+  Outlet: T=1998.0 K, P=43.77 bar
+  Efficiency: 98.0%
+
+[Turbine - ANALYTIC (polytropic, eta=0.9)]
+  Inlet:  T=1998.0 K, P=43.77 bar
+  Outlet: T=1297.6 K, P=4.65 bar
+  Work Extracted: 78.21 MW
+
+[Nozzle]
+  Inlet:  T=1297.6 K, P=4.65 bar, u=176.9 m/s
+  Exit:   T=936.8 K, P=101.3 kPa, u=987.8 m/s
+  Fuel-dependent properties: cp=1352.2 J/(kg·K), R=289.2 J/(kg·K), γ=1.272
+  Pressure Ratio: 0.2180
+  Thrust: 81.57 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Jet-A1
+  Equivalence Ratio:   0.500
+  Fuel-Air Ratio:      0.033523
+  Core Mass Flow:      79.90 kg/s
+  Bypass Mass Flow:    727.09 kg/s (BPR 9.1)
+  Fuel Mass Flow:      2.6785 kg/s
+  Total Mass Flow:     82.58 kg/s (core stream)
+  ---
+  Thrust:              267.79 kN (core 81.57 + bypass 186.22)
+  Specific Thrust:     331.8 N·s/kg (total air)
+  Fan Work:            26.20 MW
+  TSFC:                10.00 mg/(N·s)  [0.000010 kg/(N·s)]
+  η_kinetic:           55.68% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     52.01 MW
+  Turbine Work:        78.21 MW
+
+  Emissions Summary:
+    NOx:     146.334 g/s  (54.63 g/kg fuel)
+    CO:      3.047 g/s  (1.14 g/kg fuel)
+    CO₂ (combustion): 8304.44 g/s (EI 3.100 kg/kg, w_C=0.8461)
+    CO₂ (legacy net): 8304.44 g/s  (LCA factor: 1.00)
+
+  Internal consistency (by construction -- NOT validation):
+    - Turbine-Nozzle handoff exact (states passed directly)
+    - Continuity residual: 0.00%  (u = mdot/rho*A: zero by construction)
+    - Inlet BC residual: 0.000%  (hard boundary condition)
+    - Thrust model: STATIC_TEST_STAND
+    - Energy balance: turbine work = compressor + fan work (solved, not checked)
+======================================================================
+
+
+==========================================================================================
+Testing: Bio-SPK (LCA Factor: 0.32134831460674157)
+==========================================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: Bio-SPK
+======================================================================
+
+[Fan]
+  FPR:    1.450 (BPR 9.1, eta 0.90)
+  Bypass: 727.1 kg/s, dT=35.9 K
+  Work:   26.20 MW
+  Bypass thrust: 186.22 kN (u_exit=256.1 m/s)
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=901.5 K, P=43.77 bar
+  Work:   650.88 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   Bio-SPK
+  Phi:    0.500
+  FAR:    0.033422 (fuel/air mass ratio)
+  Inlet:  T=901.5 K, P=43.77 bar
+  Outlet: T=1997.3 K, P=43.77 bar
+  Efficiency: 98.0%
+
+[Turbine - ANALYTIC (polytropic, eta=0.9)]
+  Inlet:  T=1997.3 K, P=43.77 bar
+  Outlet: T=1297.1 K, P=4.65 bar
+  Work Extracted: 78.21 MW
+
+[Nozzle]
+  Inlet:  T=1297.1 K, P=4.65 bar, u=176.9 m/s
+  Exit:   T=936.4 K, P=101.3 kPa, u=987.8 m/s
+  Fuel-dependent properties: cp=1352.7 J/(kg·K), R=289.3 J/(kg·K), γ=1.272
+  Pressure Ratio: 0.2180
+  Thrust: 81.57 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          Bio-SPK
+  Equivalence Ratio:   0.500
+  Fuel-Air Ratio:      0.033422
+  Core Mass Flow:      79.90 kg/s
+  Bypass Mass Flow:    727.09 kg/s (BPR 9.1)
+  Fuel Mass Flow:      2.6704 kg/s
+  Total Mass Flow:     82.57 kg/s (core stream)
+  ---
+  Thrust:              267.78 kN (core 81.57 + bypass 186.22)
+  Specific Thrust:     331.8 N·s/kg (total air)
+  Fan Work:            26.20 MW
+  TSFC:                9.97 mg/(N·s)  [0.000010 kg/(N·s)]
+  η_kinetic:           55.85% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     52.01 MW
+  Turbine Work:        78.21 MW
+
+  Emissions Summary:
+    NOx:     145.473 g/s  (54.48 g/kg fuel)
+    CO:      3.038 g/s  (1.14 g/kg fuel)
+    CO₂ (combustion): 8259.79 g/s (EI 3.093 kg/kg, w_C=0.8441)
+    CO₂ (legacy net): 2654.27 g/s  (LCA factor: 0.32)
+
+  Internal consistency (by construction -- NOT validation):
+    - Turbine-Nozzle handoff exact (states passed directly)
+    - Continuity residual: 0.00%  (u = mdot/rho*A: zero by construction)
+    - Inlet BC residual: 0.000%  (hard boundary condition)
+    - Thrust model: STATIC_TEST_STAND
+    - Energy balance: turbine work = compressor + fan work (solved, not checked)
+======================================================================
+
+
+==========================================================================================
+Testing: HEFA-50 (LCA Factor: 0.6606741573033708)
+==========================================================================================
+
+======================================================================
+RUNNING FULL ENGINE CYCLE: HEFA-50
+======================================================================
+
+[Fan]
+  FPR:    1.450 (BPR 9.1, eta 0.90)
+  Bypass: 727.1 kg/s, dT=35.9 K
+  Work:   26.20 MW
+  Bypass thrust: 186.22 kN (u_exit=256.1 m/s)
+
+[Compressor]
+  Inlet:  T=288.1 K, P=1.01 bar
+  Outlet: T=901.5 K, P=43.77 bar
+  Work:   650.88 kJ/kg
+
+[Combustor - CRECK]
+  Fuel:   HEFA-50
+  Phi:    0.500
+  FAR:    0.033477 (fuel/air mass ratio)
+  Inlet:  T=901.5 K, P=43.77 bar
+  Outlet: T=1997.7 K, P=43.77 bar
+  Efficiency: 98.0%
+
+[Turbine - ANALYTIC (polytropic, eta=0.9)]
+  Inlet:  T=1997.7 K, P=43.77 bar
+  Outlet: T=1297.4 K, P=4.65 bar
+  Work Extracted: 78.21 MW
+
+[Nozzle]
+  Inlet:  T=1297.4 K, P=4.65 bar, u=176.9 m/s
+  Exit:   T=936.6 K, P=101.3 kPa, u=987.8 m/s
+  Fuel-dependent properties: cp=1352.4 J/(kg·K), R=289.3 J/(kg·K), γ=1.272
+  Pressure Ratio: 0.2180
+  Thrust: 81.57 kN
+
+======================================================================
+PERFORMANCE SUMMARY
+======================================================================
+  Fuel Blend:          HEFA-50
+  Equivalence Ratio:   0.500
+  Fuel-Air Ratio:      0.033477
+  Core Mass Flow:      79.90 kg/s
+  Bypass Mass Flow:    727.09 kg/s (BPR 9.1)
+  Fuel Mass Flow:      2.6748 kg/s
+  Total Mass Flow:     82.57 kg/s (core stream)
+  ---
+  Thrust:              267.79 kN (core 81.57 + bypass 186.22)
+  Specific Thrust:     331.8 N·s/kg (total air)
+  Fan Work:            26.20 MW
+  TSFC:                9.99 mg/(N·s)  [0.000010 kg/(N·s)]
+  η_kinetic:           55.76% (KE flux / fuel power)
+                       NOTE: Static test - not propulsive efficiency!
+  Compressor Work:     52.01 MW
+  Turbine Work:        78.21 MW
+
+  Emissions Summary:
+    NOx:     145.941 g/s  (54.56 g/kg fuel)
+    CO:      3.043 g/s  (1.14 g/kg fuel)
+    CO₂ (combustion): 8284.08 g/s (EI 3.097 kg/kg, w_C=0.8452)
+    CO₂ (legacy net): 5473.08 g/s  (LCA factor: 0.66)
+
+  Internal consistency (by construction -- NOT validation):
+    - Turbine-Nozzle handoff exact (states passed directly)
+    - Continuity residual: 0.00%  (u = mdot/rho*A: zero by construction)
+    - Inlet BC residual: 0.000%  (hard boundary condition)
+    - Thrust model: STATIC_TEST_STAND
+    - Energy balance: turbine work = compressor + fan work (solved, not checked)
+======================================================================
+
+
+==========================================================================================
+EMISSIONS COMPARISON SUMMARY
+==========================================================================================
+Fuel            NOx (g/s)    CO (g/s)     CO₂ (g/s)    LCA Factor   Thrust (kN) 
+------------------------------------------------------------------------------------------
+Jet-A1          146.33       3.05         8304.44      1.00         267.79      
+Bio-SPK         145.47       3.04         2654.27      0.32         267.78      
+HEFA-50         145.94       3.04         5473.08      0.66         267.79      
+------------------------------------------------------------------------------------------
+
+Lifecycle carbon factor ranges (CORSIA L_CEF / fossil baseline):
+  Fuel              min     mode      max   (used: mode)
+  Jet-A1          1.000    1.000    1.000
+  Bio-SPK         0.156    0.321    0.831
+  HEFA-50         0.578    0.661    0.916
+
+  Net CO2 scales linearly with these factors -- treat the spread, not
+  the point value, as the lifecycle result of this screening model.
+==========================================================================================
+
+✓ Emissions estimator test complete!

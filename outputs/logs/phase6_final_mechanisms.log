@@ -1,0 +1,5 @@
+# command: .venv/bin/python /tmp/mechcheck.py  (script body identical to outputs/logs/phase6_review_mechanisms.log)
+data/creck_c1c16_full.yaml: loaded; 492 species, 17790 reactions; HP equilibrium T_ad(850 K, 42 bar, phi 0.45) = 1878.13 K -> OK
+data/A1highT.yaml: loaded; 119 species, 841 reactions; HP equilibrium T_ad(850 K, 42 bar, phi 0.45) = 1871.49 K -> OK
+data/A2NOx.yaml: loaded; 201 species, 1589 reactions; HP equilibrium T_ad(850 K, 42 bar, phi 0.45) = 1861.86 K -> OK
+exit 0

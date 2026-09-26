@@ -1,0 +1,41 @@
+OK  data/A1highT.yaml
+OK  data/A2NOx.yaml
+OK  data/corsia_lca_values.yaml
+OK  data/creck_c1c16_full.yaml
+OK  data/isooctane.yaml
+OK  data/n_dodecane_hychem.yaml
+OK  models/le_pinn.pt
+OK  models/le_pinn_cfd.pt
+OK  models/le_pinn_engine.pt
+OK  models/le_pinn_engine_unified.pt
+OK  models/le_pinn_sajben.pt
+OK  models/le_pinn_sajben_finetuned.pt
+OK  models/le_pinn_sajben_v5.pt
+OK  models/le_pinn_sajben_v5_a2.pt
+OK  models/le_pinn_sajben_v5_a3_dataonly_s42.pt
+OK  models/le_pinn_sajben_v5_a3_dataonly_s43.pt
+OK  models/le_pinn_sajben_v5_a3_dataonly_s44.pt
+OK  models/le_pinn_sajben_v5_a3_s42.pt
+OK  models/le_pinn_sajben_v5_a3_s43.pt
+OK  models/le_pinn_sajben_v5_a3_s44.pt
+OK  models/le_pinn_sajben_v5_dataonly_ref.pt
+OK  models/le_pinn_unified.pt
+OK  models/nozzle_pinn.pt
+OK  models/turbine_pinn.pt
+OK  models/turbine_pinn_v5.pt
+OK  models/turbine_pinn_v5_a2.pt
+OK  outputs/calibration_trent1000_ae3_v2.json
+OK  outputs/calibration_trent1000_ae3_v3.json
+OK  outputs/calibration_trent1000_ae3_v4.json
+OK  outputs/design_point_summary_v4.csv -> outputs/archive/pre_phase6/design_point_summary_v4.csv
+OK  outputs/holdout_icao_validation_summary_v2.csv -> outputs/archive/pre_phase6/holdout_icao_validation_summary_v2.csv
+OK  outputs/holdout_icao_validation_summary_v3.csv -> outputs/archive/pre_phase6/holdout_icao_validation_summary_v3.csv
+OK  outputs/holdout_icao_validation_summary_v4.csv -> outputs/archive/pre_phase6/holdout_icao_validation_summary_v4.csv
+OK  outputs/holdout_icao_validation_v2.csv -> outputs/archive/pre_phase6/holdout_icao_validation_v2.csv
+OK  outputs/holdout_icao_validation_v3.csv -> outputs/archive/pre_phase6/holdout_icao_validation_v3.csv
+OK  outputs/holdout_icao_validation_v4.csv -> outputs/archive/pre_phase6/holdout_icao_validation_v4.csv
+OK  outputs/identifiability_profile_v4.csv -> outputs/archive/pre_phase6/identifiability_profile_v4.csv
+OK  outputs/identifiability_profile_v4.json -> outputs/archive/pre_phase6/identifiability_profile_v4.json
+OK  outputs/takeoff_thrust_gap.json -> outputs/archive/pre_phase6/takeoff_thrust_gap.json
+OK  outputs/takeoff_thrust_gap.md -> outputs/archive/pre_phase6/takeoff_thrust_gap.md
+protected files: 40 (11 verified at archived paths); mismatched/missing: 0 []
