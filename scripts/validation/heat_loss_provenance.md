@@ -18,8 +18,8 @@ and turbine inlet. It is a cycle heat loss, not a liner heat flux. `integrated_e
 `design_point['combustor_heat_loss_fraction']` (production default 0.0), and the Phase-2.6 sweep
 `outputs/heat_loss_sensitivity.csv` shows ξ = 4 % moves T4 by 45 K and TSFC by 0.059 mg/(N·s).
 
-The combustion efficiency η_b is a calibration parameter (`calibrate_lto.py`, search range 0.96–0.999;
-v4 value 0.9963). Only the product η_b(1 − ξ) enters the temperature rise. An earlier draft of this record
+The combustion efficiency η_b is a sampled calibration parameter (`calibrate_lto.py`, search range
+0.96–0.999; v4 sampler's value 0.9963, not an estimate — §5). Only the product η_b(1 − ξ) enters the temperature rise. An earlier draft of this record
 argued that η_b's headroom to its 0.999 bound (≈ 0.27 %) limits an absorbable ξ; §5 shows that η_b is
 not determined by the calibration at all, so that argument is withdrawn.
 
@@ -111,7 +111,7 @@ the residual argument bounds ξ. What ξ does move is T4 (−40 K at 4 %), thrus
 none of which is fitted or validated against data at the take-off point (the model's 241.6 kN static
 thrust vs the ICAO rated 310.9 kN is a separate, larger discrepancy discussed in the manuscript).
 
-The same test on the other calibrated parameters at the approach point:
+The same test on the other sampled parameters at the approach point:
 
 | Parameter (range) | fuel flow at range ends | Sensitivity of the objective |
 |---|---|---|
@@ -128,12 +128,14 @@ fuel flow is φ·f_st·β·ṁ_rated·x^k_mdot, so take-off (x = 1) pins φ_to w
 equations in three unknowns — k_mdot, φ_idle and φ_app lie on a ridge of identical objective. Measured
 table: `docs/plan.md` (Phase 5), finding F2; also `outputs/parameter_provenance.md`, Phase 5 section.]
 η_b = 0.9963, pressure_loss = 0.0442 and k_pi = 0.562 are wherever the seeded sampler landed
-and carry no information; `outputs/parameter_provenance.md` already flagged pressure_loss as inert in
-an earlier version and must now say the same of η_b and k_pi. Every manuscript-bound T4, thrust and
-TSFC depends on these three; across their search ranges that dependence is ±20 K / ±0.7 % at take-off
-from η_b alone and far larger at part power from k_pi. This is a Phase-4 finding outside P4.5's scope,
-recorded here because it was found here; how to fix it (fix the three at sourced values, or add a
-thrust or temperature target to the objective) is a user decision for P4.6/P4.8.
+and carry no information. Every manuscript-bound T4, thrust and TSFC depends on these three; across
+their search ranges that dependence is ±20 K / ±0.7 % at take-off from η_b alone and far larger at part
+power from k_pi. This is a Phase-4 finding outside P4.5's scope, recorded here because it was found here.
+[Superseded 2026-09-25 — the following were Phase-4 recommendations, not current facts:
+"`parameter_provenance.md` must now say the same of η_b and k_pi" (done in Phase 5 P5.0, Phase 5
+section of that file), and "how to fix it … is a user decision for P4.6/P4.8" (the repair is now
+`docs/plan.md` Phase 5 P5.2: thrust targets added to the objective, η_b and pressure_loss fixed at
+page-cited values or escalated).]
 
 **Consequence for ξ.** The decision rests on §2 alone. ξ = 0 is adopted because the cycle-relevant
 casing loss has no engine-class source and every performance reference located treats it as negligible;
@@ -146,11 +148,13 @@ Options, in the order this record recommends them:
 
 **A. ξ = 0, sourced.** Production stays at ξ = 0, now *justified* rather than defaulted: the combustor is
 adiabatic to the cycle because liner heat is recovered by the annulus air (Lefebvre & Ballal ch. 8
-heat-balance structure), external casing loss is below the resolution of η_b (sampled, not identified — §5), and η_b is
+heat-balance structure), external casing loss has no engine-class source and every performance reference
+located treats it as negligible (the fuel-flow data provide **no** bound on it — §5), and η_b is
 declared the lumped heat-delivery efficiency (already so labelled). The Phase-2.6 sweep is reported as a
 bound on the blend effect size, as it is now. Reviewer 1's point is answered in the model's *structure*
-(a lumped η_b) and in the physics, not by a limitations paragraph. Consequence for Phase 4: v5 differs
-from v4 only through the P4.3/P4.4 component adjudication; no combustor recalibration.
+(a lumped η_b) and in the physics, not by a limitations paragraph. [Superseded 2026-09-25: "Consequence
+for Phase 4: v5 differs from v4 only through the P4.3/P4.4 component adjudication; no combustor
+recalibration." Phase 5 (F2, P5.2) recalibrates v5 on a new objective; ξ = 0 is unchanged.]
 
 **B. The user supplies a page-cited ξ.** If the user has Lefebvre & Ballal (or Walsh & Fletcher) to hand
 and can cite a casing/cycle heat-loss fraction with page and engine class, this document is updated
@@ -160,4 +164,6 @@ with the citation and P4.5 steps 2–5 run exactly as planned (ξ fixed, not fit
 **C. ξ fixed at an estimate.** Not recommended: it is the "learnable factor absorbing model error"
 problem in different clothes, and P4.5(1) forbids it.
 
-Until one of these is chosen, P4.5(2)–(5) and the combustor side of P4.6 do not run.
+[Superseded: option A was chosen 2026-09-19. "Until one of these is chosen, P4.5(2)–(5) and the
+combustor side of P4.6 do not run" described the state before that decision; P4.6 is replaced by
+Phase 5 P5.3.]
