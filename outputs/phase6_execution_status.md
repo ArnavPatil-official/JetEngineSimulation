@@ -48,24 +48,27 @@ at 16:11. An interactive session took over from there.
 | P6.1 Step 4 pilot | `472617d` | Pilot fit (111 evaluations): W_ref 102.40 kg/s, a 1.109, k_pi 1.348, k_mdot 0.414; in-sample calibration MAPE 1.80 % (93 rows, 0 unreachable); box-scaled JᵀJ condition 222. Pilot profile: **all four IDENTIFIED** → full-fit free set unchanged. Caveats: for W_ref, a, k_mdot no 9-point grid value lies inside the 95 % interval (reported bracket = ±1 grid step), and 9/36 inner re-fits stopped at the 20-evaluation cap (status 0); an unconverged inner fit can only overstate D. The full profile (17 points, inner ≤40) is the gating A1 test. |
 | P6.2 surrogate LHV | `b55e55a` | LHVs computed from CRECK thermo (gas-phase fuel, H₂O vapour, 298.15 K) and tested; used only for energy-weighted lifecycle CO₂e. |
 
-| P6.1 full fit (registered) | (this commit) | `calibrate_lto.py --tag v5 --free W_ref a_thrust k_pi k_mdot` (232 evaluations, 16:12–16:29; `outputs/logs/phase6_p61_full_fit.log`). TPE best trial #83 (SSE 0.01369), polish stopped on xtol: W_ref 127.78, a 1.256, k_pi 0.249, k_mdot 1.048; **SSE 0.009845, calibration MAPE 6.94 %**, 0 unreachable, box-scaled JᵀJ condition 9.2e8. This is a **worse local optimum than the pilot's** (SSE 0.000460, MAPE 1.80 %, 21× lower SSE): the same second basin appears in the pilot profile at k_pi = 0.2 (SSE 0.00996, W_ref 127.4, k_mdot 1.07). No full-fit evaluation reached SSE < 0.001. |
+| P6.1 full fit (registered) | `e84a794` | `calibrate_lto.py --tag v5 --free W_ref a_thrust k_pi k_mdot` (232 evaluations, 16:12–16:29; `outputs/logs/phase6_p61_full_fit.log`). TPE best trial #83 (SSE 0.01369), polish stopped on xtol: W_ref 127.78, a 1.256, k_pi 0.249, k_mdot 1.048; **SSE 0.009845, calibration MAPE 6.94 %**, 0 unreachable, box-scaled JᵀJ condition 9.2e8. This is a **worse local optimum than the pilot's** (SSE 0.000460, MAPE 1.80 %, 21× lower SSE): the same second basin appears in the pilot profile at k_pi = 0.2 (SSE 0.00996, W_ref 127.4, k_mdot 1.07). No full-fit evaluation reached SSE < 0.001. |
 
 Tests after the pilot/LHV commits: 166 passed / 1 skipped / 1 intentional failure
 (`test_v5_holdout_prediction_depends_on_the_cycle`, v5 CSV not yet produced).
 
-## STOPPED — decision needed (registered optimizer did not find the known better optimum)
+## Decision: amendment A2 (user, 2026-09-26)
 
-The registration fixes the optimizer (TPE seed 42, 150 trials, then least_squares
-from the best trial) but has no rule for a full fit that lands in a worse basin
-than an optimum already found on the same calibration data. Running the full
-profile, held-out test, P6.2 bands or P6.4 sensitivity from `calibration_v5.json`
-would report a known-suboptimal calibration; picking a procedure now is an
-amendment made after seeing calibration (not held-out) outcomes. No held-out
-target has been read. `outputs/calibration_v5.json` is write-once and kept.
+The registration fixed the optimizer but had no rule for a full fit that lands
+in a worse basin than an optimum already found on the same calibration data.
+The user chose: v5 calibration = lower-calibration-SSE of two registered
+polishes (≤100 evaluations) — from the TPE best trial (as recorded) and from the
+pilot optimum. Registered in `e380ffb` before the selection run and before any
+held-out read (`outputs/phase6/p61_amendment_A2.json`, registration doc §0a).
+
+| Step | Commit | Result |
+|---|---|---|
+| A2 selection | `d9a47f3` | `calibrate_lto.py --tag v5 --a2-select` (`outputs/logs/phase6_p61_a2_select.log`). Selected **pilot-start polish**: W_ref 102.395 kg/s (v4 hand-set core 79.9; ×1.282), a 1.109, k_pi 1.348, k_mdot 0.414; calibration SSE 0.000460, MAPE 1.80 %, 0 unreachable, JᵀJ condition 222. The polish did not move (3 evaluations, xtol). Other candidate: registered fit, SSE 0.009845. Output `outputs/calibration_v5_A2.json`. |
 
 ## Outstanding gates
 
-- P6.1 Step 5: resolve the optimum question above; then full profile (A1), held-out test (A2, A3, A4).
+- P6.1: full profile (A1) running from the A2 optimum (`identifiability_profile.py --v5 full`); then held-out test (A2, A3, A4) and NOx split validation.
 - P6.2 bands (`scripts/validation/p62_parameter_bands.py`, written, not run —
-  needs `outputs/calibration_v5.json`).
+  reads `outputs/calibration_v5_A2.json`).
 - P6.4 item 2 (`scripts/validation/mechanism_sensitivity.py`, written, not run).
