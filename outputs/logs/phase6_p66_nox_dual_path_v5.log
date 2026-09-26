@@ -1,0 +1,12 @@
+$ .venv/bin/python scripts/validation/nox_dual_path.py --v5  # 2026-09-26T18:48:05-04:00 (rerun: v5 plot title corrected before commit)
+Takeoff   T3= 901.5 K  T_fl=1718.3 K  tau=8.3 ms | corr=  49.26  Zeld=    0.03  A2=    0.09  ICAO cert= 48.25 g/kg
+Approach  T3= 582.0 K  T_fl= 990.0 K  tau=5.2 ms | corr=   9.84  Zeld=    0.00  A2=    0.00  ICAO cert= 13.66 g/kg
+Idle      T3= 370.9 K  T_fl= 669.5 K  tau=3.3 ms | corr=   2.74  Zeld=    0.00  A2=    0.00  ICAO cert=  5.53 g/kg
+Path spread (max/min) per mode:
+  Takeoff     1698.0x
+  Approach  9836760520.0x
+  Idle      2739751500.2x
+Saved: /Users/arnavpatil/Documents/JetEngineSimulation/outputs/nox_dual_path_v5.csv
+       /Users/arnavpatil/Documents/JetEngineSimulation/outputs/plots/nox_path_comparison_v5.png
+exit 0
+(rerun 2026-09-26T18:49:42-04:00: legend moved below axes; CSV identical)

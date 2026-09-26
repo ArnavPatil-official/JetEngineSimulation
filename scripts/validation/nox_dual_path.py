@@ -24,6 +24,12 @@ The deliverable is the SPREAD between paths: blend-level NOx differences
 smaller than this spread cannot support blend rankings in the manuscript.
 
 Outputs: outputs/nox_dual_path.csv, outputs/plots/nox_path_comparison.png
+
+--v5 (Phase 6, P6.6): per-mode states from the thrust-matched v5 cycle
+(AE3 at ICAO thrust, outputs/calibration_v5_A2.json, A1 central fixed values,
+single-zone combustor, NOx correlation refit without the held-out models).
+Outputs: outputs/nox_dual_path_v5.csv, outputs/plots/nox_path_comparison_v5.png
+(write-once). The three NOx paths are unchanged.
 """
 
 import sys
@@ -100,32 +106,64 @@ def a2_kinetic_ei_nox(T3, p3, phi, tau):
     }
 
 
-def main():
+def v3_states():
+    """Frozen v3 per-mode cycle states at fixed phi (the Phase 2.4 evidence path)."""
     with open(CALIBRATION_JSON) as fh:
         calib = json.load(fh)
     best = calib["best_params"]
-    eta_b = best["eta_combustor"]
-
     engine = IntegratedTurbofanEngine()
-
-    rows = []
     for mode, state in calib["per_mode_states"].items():
         phi = best[MODE_PHI_KEY[mode]]
-        pi_c = state["pi_c"]
-        m_dot = state["mass_flow_core_kg_s"]
-
-        # Cycle state at this mode (T3/p3 from the real compressor path)
-        engine.design_point["pi_c"] = pi_c
-        engine.design_point["mass_flow_core"] = m_dot
+        engine.design_point["pi_c"] = state["pi_c"]
+        engine.design_point["mass_flow_core"] = state["mass_flow_core_kg_s"]
         engine.design_point["combustor_pressure_loss"] = best["pressure_loss"]
         engine.design_point["fpr"] = 1.0 + 0.45 * state["power_fraction"] ** best["k_pi"]
         with open(os.devnull, "w") as dn, contextlib.redirect_stdout(dn):
             res = engine.run_full_cycle(
                 fuel_blend=FUEL_LIBRARY["Jet-A1"], phi=phi,
-                combustor_efficiency=eta_b,
+                combustor_efficiency=best["eta_combustor"],
             )
+        yield mode, phi, state["pi_c"], best["pressure_loss"], engine, res
+
+
+def v5_states():
+    """Thrust-matched v5 per-mode cycle states (phi solved at the ICAO thrust)."""
+    sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "optimization"))
+    import lto_v5 as v5
+    from integrated_engine import EmissionsEstimator
+    reg, split = v5.load_registration(), v5.load_split()
+    fit = json.loads(v5.V5_FIT.read_text())
+    fixed = reg["fixed_central"]
+    with open(os.devnull, "w") as dn, contextlib.redirect_stdout(dn):
+        engine = IntegratedTurbofanEngine()
+        engine.emissions = EmissionsEstimator(nox_fit_exclude_models=set(split["heldout_models"]))
+    engine.compressor.eta_c = fixed["eta_compressor"]
+    engine.turbine_design["eta_polytropic"] = fixed["eta_turbine_polytropic"]
+    names = {"IDLE": "Idle", "APPROACH": "Approach", "TAKE-OFF": "Takeoff"}
+    for _, r in v5.load_rows(["02P23RR126"], with_targets=False).iterrows():
+        x = v5.MODE_X[r["Mode"]]
+        st = v5.mode_state(fit["params"], fixed, r["Pressure Ratio"], r["Bypass Ratio"],
+                           r["Rated Thrust (kN)"], x)
+        engine.design_point.update(st)
+        with open(os.devnull, "w") as dn, contextlib.redirect_stdout(dn):
+            res = engine.run_at_thrust(x * r["Rated Thrust (kN)"], FUEL_LIBRARY["Jet-A1"],
+                                       combustor_efficiency=fixed["eta_b"][r["Mode"]])
+        yield (names[r["Mode"]], res["thrust_match"]["phi"], st["pi_c"],
+               fixed["combustor_pressure_loss"], engine, res)
+
+
+def main():
+    v5_mode = "--v5" in sys.argv[1:]
+    out_csv = OUT_CSV.with_name("nox_dual_path_v5.csv") if v5_mode else OUT_CSV
+    out_plot = OUT_PLOT.with_name("nox_path_comparison_v5.png") if v5_mode else OUT_PLOT
+    if v5_mode:
+        for pth in (out_csv, out_plot):
+            if pth.exists():
+                raise SystemExit(f"{pth} exists; refusing to overwrite")
+    rows = []
+    for mode, phi, pi_c, p_loss, engine, res in (v5_states() if v5_mode else v3_states()):
         T3 = res["compressor"]["T_out"]
-        p3 = res["compressor"]["p_out"] * (1 - best["pressure_loss"])
+        p3 = res["compressor"]["p_out"] * (1 - p_loss)
         m_dot_fuel = res["performance"]["fuel_mass_flow"]
         m_dot_total = res["performance"]["total_mass_flow"]
         opr = res["compressor"]["p_out"] / engine.design_point["P_ambient"]
@@ -167,7 +205,7 @@ def main():
     # Path spread per mode: max/min ratio across the three model paths
     paths = ["EI_ICAO_correlation", "EI_Zeldovich_CRECK", "EI_HyChem_A2"]
     df["path_spread_max_over_min"] = df[paths].max(axis=1) / df[paths].min(axis=1).clip(lower=1e-9)
-    df.to_csv(OUT_CSV, index=False)
+    df.to_csv(out_csv, index=False)
 
     # Grouped-bar comparison figure (log scale: paths differ by orders)
     modes = df["Mode"].tolist()
@@ -185,19 +223,20 @@ def main():
     ax.set_yscale("log")
     ax.set_xticks(x, modes)
     ax.set_ylabel("EI-NOx [g NO$_2$-eq / kg fuel]")
-    ax.set_title("NOx model paths vs. ICAO certification\n"
-                 "(single-zone equilibrium-T chemistry paths are upper-bound proxies)")
-    ax.legend(frameon=False, fontsize=9)
+    ax.set_title("NOx model paths vs. ICAO certification\n" + (
+        "(v5: single zone at overall phi; chemistry paths are low-side proxies)" if v5_mode else
+        "(single-zone equilibrium-T chemistry paths are upper-bound proxies)"))
+    ax.legend(frameon=False, fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.08), ncol=4)
     ax.grid(True, axis="y", lw=0.4, alpha=0.4)
     fig.tight_layout()
-    OUT_PLOT.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT_PLOT, dpi=300)
+    out_plot.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_plot, dpi=300)
     plt.close(fig)
 
     print(f"\nPath spread (max/min) per mode:")
     for _, r in df.iterrows():
         print(f"  {r['Mode']:<9} {r['path_spread_max_over_min']:8.1f}x")
-    print(f"\nSaved: {OUT_CSV}\n       {OUT_PLOT}")
+    print(f"\nSaved: {out_csv}\n       {out_plot}")
 
 
 if __name__ == "__main__":
