@@ -3,8 +3,8 @@
 Plans: `docs/plan.md` (Phase 5, original), `docs/plan_phase5_review.md` (review corrections) and
 `docs/plan_phase5_nozzle_repair.md` (approved 2026-09-26: static-thrust accounting repair).
 Branch `phase4`. **State: the approved accounting repair is done. The work is STILL STOPPED AT THE P5.2 STEP 2 GATE,
-because the remaining 52.79 kN (17.0 %) take-off shortfall is unexplained and no sourced input
-closes it.** P5.1 finished independently overnight; the terminal report passed its
+because the remaining 52.79 kN (17.0 %) take-off shortfall is unexplained and the required input
+provenance is not established.** P5.1 finished independently overnight; the terminal report passed its
 completion guard and P4.3 is closed with the registered outcome below.
 
 ## Completed and committed
@@ -19,7 +19,7 @@ completion guard and P4.3 is closed with the registered outcome below.
 | P5.2 Step 2: take-off thrust decomposition | `f1bd920` | `outputs/takeoff_thrust_gap.{json,md}`, `outputs/logs/takeoff_thrust_gap.log` |
 | Repair phase 1: static-thrust regression tests, which fail before the fix (6 failed, 1 passed) | `8e14f10` | `tests/test_static_thrust_accounting.py`, `outputs/logs/static_thrust_accounting_prefix_pytest.log` |
 | Repair phases 2–3: analytic core nozzle F = ṁ·u_e (u_0 = 0); ideal-expansion boundary documented; `A_exit_effective` exposed as diagnostic metadata | `0be8227` | `integrated_engine.py` `run_nozzle` |
-| Repair phase 4: decomposition repeated with frozen inputs; pre-repair evidence preserved | this commit | `outputs/takeoff_thrust_gap_after_accounting.{json,md}`, `outputs/logs/takeoff_thrust_gap_after_accounting.log` |
+| Repair phase 4: decomposition repeated with frozen inputs; pre-repair evidence preserved | `1e42c8f` | `outputs/takeoff_thrust_gap_after_accounting.{json,md}`, `outputs/logs/takeoff_thrust_gap_after_accounting.log` |
 
 ### v4 identifiability (computed, closed form, cycle cross-checked)
 
@@ -47,9 +47,11 @@ k_mdot 0.575–0.625. The profile minimum is ≈ 0 against v4's 1.619 %, so the 
 9 warnings**, which is the 125/1 floor plus 7 new static-thrust tests
 (`outputs/logs/static_thrust_accounting_full_pytest.log`). `scripts/test_emissions.py` exits 0
 (`outputs/logs/static_thrust_accounting_emissions.log`). All three Cantera mechanisms load and validate
-(`outputs/logs/static_thrust_accounting_mechanisms.log`). The 39 hashed protected and evidence files
+(`outputs/logs/static_thrust_accounting_mechanisms.log`). Independent review verified that 40 protected and evidence files
 (data YAMLs, `models/*.pt`, v1–v4 calibration and hold-out artifacts, `outputs/takeoff_thrust_gap.{json,md}`, and
-`outputs/identifiability_profile_v4.*`) are byte-identical before and after.
+`outputs/identifiability_profile_v4.*`) are byte-identical before and after. The pre-repair hashes are retained in
+`outputs/logs/static_thrust_accounting_protected_sha256.json`. Independent emissions and mechanism checks
+also exited 0; their logs have the corresponding `_review.log` suffix.
 
 Before the repair: full suite `python -m pytest tests/ -v`: **125 passed, 1 skipped, 9 warnings** (baseline 104 / 1 / 9; +21 new:
 12 report guard, 9 identifiability). This is the post-change P5.0 count. `scripts/test_emissions.py` was not run
@@ -141,8 +143,11 @@ The three kinds of result are kept separate:
 1. **Corrected accounting (a model fix).** Core and bypass now both use the static engine-level balance
    F = ṁ_e·u_e + (p_e − p_amb)A_e, with u_0 = 0. The change is exactly the previously subtracted internal
    momentum; the residual is 1.8e-14 kN. Fuel flow (2.3182068896 kg/s), T4, turbine-exit state, core jet
-   velocity and emissions are unchanged: the max relative difference is 0. TSFC, thermal efficiency and
-   specific thrust are downstream of thrust, so they now move.
+   velocity and emissions are unchanged: the max relative difference is 0. TSFC changes from
+   9.5948303 to 8.9814556 mg/(N·s), and specific thrust from 299.3965 to 319.8433 N·s/kg.
+   The field named `thermal_efficiency` is a kinetic-efficiency proxy computed from jet velocity and
+   fuel power; it remains **0.5545372519474216**, unchanged. Independent comparison:
+   `outputs/logs/static_thrust_accounting_metrics_review.log`.
 2. **Unexplained residual (not a model fix).** The remaining **52.7896244 kN** is not attributed to any
    audited term. Ideal full expansion bounds the core from above: the convergent counterfactual,
    from the same stagnation state with a throat area implied by continuity and not sourced, is 1.29 kN lower.

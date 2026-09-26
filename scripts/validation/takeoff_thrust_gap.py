@@ -2,8 +2,8 @@
 """
 P5.2 Step 2 — Decompose the take-off thrust gap before fitting to thrust.
 
-At the frozen v4 take-off point (production configuration: analytic turbine,
-analytic nozzle, xi = 0) the cycle gives 241.6 kN against the ICAO rated
+Before the accounting repair, the frozen v4 take-off cycle (analytic turbine,
+analytic nozzle, xi = 0) gave 241.6 kN against the ICAO rated
 thrust of the Trent 1000-AE3 (``Rated Thrust (kN)`` in data/icao_engine_data.csv).
 This script decides whether that gap is a mis-set input or a missing/incorrect
 model term (docs/plan.md P5.2 Step 2 gate). Everything below is a DIAGNOSTIC

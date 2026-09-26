@@ -1,0 +1,8 @@
+======================================================================
+TURBINE PINN - FUEL-DEPENDENT WITH EXACT CONTINUITY
+======================================================================
+thrust_kN before= 241.60999464425643 after= 258.1103756466863 change= 16.50038100242986
+tsfc_mg_per_Ns before= 9.594830267698217 after= 8.981455641924242 change= -0.6133746257739752
+specific_thrust_Ns_kg before= 299.39651624463306 after= 319.84333838918235 change= 20.446822144549287
+thermal_efficiency before= 0.5545372519474216 after= 0.5545372519474216 change= 0.0
+fuel_mass_flow before= 2.318206889591116 after= 2.318206889591116 change= 0.0
