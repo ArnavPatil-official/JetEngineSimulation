@@ -76,6 +76,20 @@ It does not beat rescaling the nearest calibration engine by rated thrust (B1),
 which within one engine family is the stronger naive predictor. Per the plan,
 this is reported as it came out; no tuning toward the held-out set.
 
+## P6.3 / P6.6 / P6.8 progress (while P6.2 bands run)
+
+| Item | Commit | Result |
+|---|---|---|
+| P6.3 registration + code | `4e8f00f` | `outputs/phase6/p63_registration.json`, `docs/phase6_p63_registration.md`; `scripts/optimization/blend_matched_thrust_v5.py`; `variance_decomposition.py --v5`. **Found and avoided:** `make_saf_blend` mixes its "mass fractions" on a mole basis (nominal ATJ-50 = 42.5 % ATJ by mass) while lifecycle CO₂e weights by mass; P6.3 converts mass fractions to mixture mole fractions itself (tested). `fuels.py` unchanged (v4 reproduction). Not yet run (needs P6.2 bands). |
+| P6.6 design point | `ea18356` | `design_point_summary.py --v5`: AE3 take-off at 310.9 kN, φ 0.3488, T4 1718 K (v4 1895 K), core 102.4 / total 1034 kg/s, TSFC 7.70 mg/(N·s), fuel flow +2.9 % vs ICAO (in-sample); approach +0.6 %, idle −0.4 %. |
+| P6.6 NOx three-path | `e02b22b` | `nox_dual_path.py --v5`: single zone at overall φ → Zeldovich 0.03 and HyChem-A2 0.09 g/kg at take-off vs certification 48.25 and correlation 49.26. The chemistry paths are low-side proxies in v5 (the v3 "upper-bound" wording referred to the β = 0.8 burner zone). |
+| P6.6 heat loss | `219de8d` | `heat_loss_sensitivity.py --v5`: at matched thrust, ξ = 4 % raises Jet-A1 TSFC by 0.327 mg/(N·s) (+4.2 %), 13× the neat-fuel TSFC spread (0.025) → heat-loss treatment bounds the resolvable blend effect. |
+| P6.6 hash verifier | `e9316d8` | `scripts/validation/verify_protected_hashes.py` (archived files verified via explicit mapping; baseline never regenerated): 40/40. |
+| P6.8 small fixes | `371db20` | Turbine import-time banner moved under `__main__`. `tests/test_nozzle_pinn_fix.py`: both tests had been **silently failing** (missing checkpoint path, bool returns counted as passes); now assert and pass — through the analytic fallback, since the PINN fails its physics gates. `parse_sajben_cfd.py` emits zeros (committed dataset unchanged; NaN there). |
+| P6.8 archive | `3cc017e` | `simulation/emissions.py`, `pareto_visual.py`, `visualize_results.py`, `dashboard.py`, `fetch_and_build_cfd_data.py`, vendored SU2 repo + zip → `archive/` (`archive/README.md`). pytest 174 passed / 1 skipped. |
+| P6.8 checkpoint provenance | `d17f9b7` | `tests/test_checkpoint_provenance.py`: 11 checkpoints; dataset hashes verified against files; activation derived from source at the recorded SHA where not stored. |
+| P6.8 requirements | `c6efc65` | Pinned to the v5 environment; CPU torch install documented. |
+
 ## Outstanding gates
 
 - P6.2 bands running (`scripts/validation/p62_parameter_bands.py`).
