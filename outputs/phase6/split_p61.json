@@ -1,0 +1,314 @@
+{
+  "description": "P6.1 grouped split (inputs only; see scripts/validation/phase6_split.py)",
+  "seed": 42,
+  "n_model_names": 28,
+  "n_groups": 18,
+  "calibration_groups": [
+    [
+      "Trent 1000-E2"
+    ],
+    [
+      "Trent 1000-H2"
+    ],
+    [
+      "Trent 1000-A"
+    ],
+    [
+      "Trent 1000-AE3"
+    ],
+    [
+      "Trent 1000-G"
+    ],
+    [
+      "Trent 1000-C",
+      "Trent 1000-D"
+    ],
+    [
+      "Trent 1000-C2",
+      "Trent 1000-D2",
+      "Trent 1000-L2"
+    ],
+    [
+      "Trent 1000-J3",
+      "Trent 1000-K3",
+      "Trent 1000-Q3"
+    ],
+    [
+      "Trent 1000-M3",
+      "Trent 1000-N3"
+    ]
+  ],
+  "heldout_groups": [
+    [
+      "Trent 1000-E"
+    ],
+    [
+      "Trent 1000-H"
+    ],
+    [
+      "Trent 1000-H3"
+    ],
+    [
+      "Trent 1000-A2"
+    ],
+    [
+      "Trent 1000-G2"
+    ],
+    [
+      "Trent 1000-G3"
+    ],
+    [
+      "Trent 1000-CE3",
+      "Trent 1000-D3",
+      "Trent 1000-L3",
+      "Trent 1000-P3"
+    ],
+    [
+      "Trent 1000-J2",
+      "Trent 1000-K2"
+    ],
+    [
+      "Trent 1000-R3"
+    ]
+  ],
+  "calibration_models": [
+    "Trent 1000-A",
+    "Trent 1000-AE3",
+    "Trent 1000-C",
+    "Trent 1000-C2",
+    "Trent 1000-D",
+    "Trent 1000-D2",
+    "Trent 1000-E2",
+    "Trent 1000-G",
+    "Trent 1000-H2",
+    "Trent 1000-J3",
+    "Trent 1000-K3",
+    "Trent 1000-L2",
+    "Trent 1000-M3",
+    "Trent 1000-N3",
+    "Trent 1000-Q3"
+  ],
+  "heldout_models": [
+    "Trent 1000-A2",
+    "Trent 1000-CE3",
+    "Trent 1000-D3",
+    "Trent 1000-E",
+    "Trent 1000-G2",
+    "Trent 1000-G3",
+    "Trent 1000-H",
+    "Trent 1000-H3",
+    "Trent 1000-J2",
+    "Trent 1000-K2",
+    "Trent 1000-L3",
+    "Trent 1000-P3",
+    "Trent 1000-R3"
+  ],
+  "calibration_records": [
+    "01P19RR106",
+    "01P19RR111",
+    "01P19RR112",
+    "01P19RR114",
+    "01P19RR115",
+    "01P19RR117",
+    "02P23RR126",
+    "02P23RR131",
+    "02P23RR132",
+    "02P23RR134",
+    "02P23RR135",
+    "02P23RR137",
+    "11RR049",
+    "11RR050",
+    "11RR051",
+    "11RR053",
+    "12RR055",
+    "12RR056",
+    "12RR057",
+    "12RR059",
+    "12RR062",
+    "12RR063",
+    "12RR064",
+    "12RR066",
+    "12RR069",
+    "19RR085",
+    "19RR090",
+    "19RR091",
+    "19RR093",
+    "19RR094",
+    "19RR096"
+  ],
+  "heldout_records": [
+    "01P19RR107",
+    "01P19RR108",
+    "01P19RR109",
+    "01P19RR110",
+    "01P19RR113",
+    "01P19RR116",
+    "01P19RR118",
+    "02P23RR127",
+    "02P23RR128",
+    "02P23RR129",
+    "02P23RR130",
+    "02P23RR133",
+    "02P23RR136",
+    "02P23RR138",
+    "11RR052",
+    "11RR054",
+    "12RR058",
+    "12RR060",
+    "12RR061",
+    "12RR065",
+    "12RR067",
+    "12RR068",
+    "19RR086",
+    "19RR087",
+    "19RR088",
+    "19RR089",
+    "19RR092",
+    "19RR095",
+    "19RR097"
+  ],
+  "pairs": [
+    {
+      "pair": [
+        [
+          "Trent 1000-E2"
+        ],
+        [
+          "Trent 1000-E"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-E2"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-H"
+        ],
+        [
+          "Trent 1000-H2"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-H2"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-H3"
+        ],
+        [
+          "Trent 1000-A"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-A"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-A2"
+        ],
+        [
+          "Trent 1000-AE3"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-AE3"
+      ],
+      "forced_reference": true
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-G"
+        ],
+        [
+          "Trent 1000-G2"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-G"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-G3"
+        ],
+        [
+          "Trent 1000-C",
+          "Trent 1000-D"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-C",
+        "Trent 1000-D"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-C2",
+          "Trent 1000-D2",
+          "Trent 1000-L2"
+        ],
+        [
+          "Trent 1000-CE3",
+          "Trent 1000-D3",
+          "Trent 1000-L3",
+          "Trent 1000-P3"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-C2",
+        "Trent 1000-D2",
+        "Trent 1000-L2"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-J2",
+          "Trent 1000-K2"
+        ],
+        [
+          "Trent 1000-J3",
+          "Trent 1000-K3",
+          "Trent 1000-Q3"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-J3",
+        "Trent 1000-K3",
+        "Trent 1000-Q3"
+      ],
+      "forced_reference": false
+    },
+    {
+      "pair": [
+        [
+          "Trent 1000-M3",
+          "Trent 1000-N3"
+        ],
+        [
+          "Trent 1000-R3"
+        ]
+      ],
+      "calibration": [
+        "Trent 1000-M3",
+        "Trent 1000-N3"
+      ],
+      "forced_reference": false
+    }
+  ]
+}

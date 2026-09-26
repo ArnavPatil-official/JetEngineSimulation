@@ -1,0 +1,200 @@
+{
+  "registered": "2026-09-26",
+  "status": "frozen before any pilot or fit",
+  "split": "outputs/phase6/split_p61.json",
+  "formulation": "scripts/optimization/lto_v5.py (module docstring)",
+  "fuel": "Jet-A1 (CRECK, production mechanism profile)",
+  "components": {
+    "turbine": "analytic",
+    "nozzle": "analytic"
+  },
+  "fitted": {
+    "W_ref": [
+      60.0,
+      140.0
+    ],
+    "a_thrust": [
+      0.0,
+      2.0
+    ],
+    "k_pi": [
+      0.2,
+      1.5
+    ],
+    "k_mdot": [
+      0.2,
+      1.5
+    ]
+  },
+  "fixed_central": {
+    "combustor_pressure_loss": 0.045,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9,
+    "eta_fan": 0.9,
+    "fpr_rated": 1.45,
+    "combustor_air_fraction": 0.8,
+    "combustor_heat_loss_fraction": 0.0,
+    "eta_b": {
+      "TAKE-OFF": 0.999893720535389,
+      "APPROACH": 0.999833722706198,
+      "IDLE": 0.9981516090869106
+    }
+  },
+  "fixed_ranges": {
+    "combustor_pressure_loss": {
+      "range": [
+        0.04,
+        0.05
+      ],
+      "sources": [
+        "NASA/TM-2017-219501 (Jones, Haller & Tong), p. 4: burner 4 % stagnation pressure drop",
+        "NASA/CR-2005-213657 (Liew, Urip & Yang), Table 1, p. 10: main burner total pressure ratio 0.96",
+        "NASA/TM-2007-214690 (Jones), p. 12: NPSS turbojet example, 5 % burner pressure loss"
+      ],
+      "basis": "span of cited public design values"
+    },
+    "eta_compressor": {
+      "range": [
+        0.8224908451973029,
+        0.8865248769454375
+      ],
+      "polytropic_range": [
+        0.89,
+        0.93
+      ],
+      "sources": [
+        "NASA/TM-2017-219501, p. 3: HPC nominal polytropic 91 %, N+3 HPC ~2 % below nominal; LPC ~93 %",
+        "NASA/CR-2005-213657, Table 1, p. 10: e_lpc 0.9036, e_hpc 0.9066"
+      ],
+      "basis": "span of cited polytropic values, converted to the model's single isentropic efficiency at the calibration engine's rated OPR (43.2)"
+    },
+    "eta_turbine_polytropic": {
+      "range": [
+        0.9,
+        0.92
+      ],
+      "sources": [
+        "NASA/TM-2017-219501, p. 3: HPT polytropic 91 %, 1 % higher than the N+2 level (0.90)",
+        "NASA/TM-2017-219501, p. 4: LPT polytropic 92 %",
+        "NASA/CR-2005-213657, Table 1, p. 10: e_hpt 0.9029, e_lpt 0.9174"
+      ],
+      "basis": "span of cited polytropic values; central 0.90 = N+2 level (Trent 1000 predates N+3)"
+    },
+    "eta_fan": {
+      "range": [
+        0.89,
+        0.965
+      ],
+      "sources": [
+        "NASA/CR-2005-213657, Table 1, p. 10: fan polytropic 0.8961",
+        "NASA/TM-2017-219501, p. 3: fan polytropic 97 % (geared, FPR 1.3; 'may seem aggressive')"
+      ],
+      "basis": "cited polytropic span, lowered by ~0.005 at the top for isentropic at FPR ~1.45"
+    },
+    "fpr_rated": {
+      "range": [
+        1.3,
+        1.7
+      ],
+      "sources": [
+        "NASA/TM-2017-219501, Table 3, p. 12: FPR 1.7 (NASA CFM56 model) and 1.3 (N+3)"
+      ],
+      "basis": "span of cited design values"
+    },
+    "combustor_air_fraction": {
+      "range": [
+        0.7,
+        0.9
+      ],
+      "sources": [],
+      "basis": "ILLUSTRATIVE: no page-citable range for the burner-zone air fraction was found; nearest public analogue is secondary (cooling) flow 15-19 % in NASA/TM-2017-219501 Table 3, p. 12. Propagated over 0.70-0.90 and reported as an assumption."
+    },
+    "combustor_heat_loss_fraction": {
+      "range": [
+        0.0,
+        0.0
+      ],
+      "sources": [
+        "scripts/validation/heat_loss_provenance.md (structural argument, xi = 0)"
+      ],
+      "basis": "fixed by structural argument (P4.5), not varied"
+    },
+    "eta_b": {
+      "range": {
+        "TAKE-OFF": [
+          0.9998795835994783,
+          0.9999204797355045
+        ],
+        "APPROACH": [
+          0.9997705272367415,
+          0.9998773115919212
+        ],
+        "IDLE": [
+          0.997321271422788,
+          0.9986822356169313
+        ]
+      },
+      "sources": [
+        "data/icao_engine_data.csv CO and HC emission indices (calibration group only)"
+      ],
+      "basis": "data-derived per mode via eta_b_from_emissions (energy balance; CRECK heating values)"
+    }
+  },
+  "t4_guard_K": 2111.1111111111113,
+  "weighting": "each split group equal; records equal within a group; modes equal (recertifications and input-twin models share one group weight)",
+  "fit": {
+    "objective": "thrust_matched_v5: sum_i w_i e_i^2, e_i = relative fuel-flow error (unreachable row: e_i = 1.0)",
+    "reported": "group-weighted MAPE (same weights)",
+    "optimizer": "Optuna TPESampler(seed=42) over FIT_BOUNDS in FIT_ORDER, then scipy least_squares (trf, bounds, x_scale = box widths, diff_step 1e-4) from the best trial",
+    "full": {
+      "n_trials": 150,
+      "polish_max_nfev": 100
+    },
+    "pilot": {
+      "n_trials": 40,
+      "polish_max_nfev": 30
+    }
+  },
+  "identifiability": {
+    "diagnostic": "profile likelihood: for each fitted parameter theta_j on a uniform grid over its box, re-fit the others (least_squares, warm-started from the neighbouring grid point); D(theta) = n_eff * ln(SSE_profile(theta) / SSE_min), n_eff = number of calibration (group, mode) pairs",
+    "n_eff": 27,
+    "threshold_chi2_1_95": 3.841,
+    "rule": "IDENTIFIED iff D >= 3.841 at both box edges (95 % profile interval interior to the box) AND the interval width <= 50 % of the box width",
+    "local_check_reported_not_gating": "condition number of the box-scaled J^T J at the optimum",
+    "pilot": {
+      "grid_points": 9,
+      "inner_max_nfev": 20,
+      "start": "pilot fit optimum"
+    },
+    "full": {
+      "grid_points": 17,
+      "inner_max_nfev": 40,
+      "start": "v5 fit optimum"
+    },
+    "pilot_consequence": "a parameter not IDENTIFIED in the pilot is moved to fixed-with-cited-range or dropped BEFORE the full fit; the full profile is then run on the remaining fitted set"
+  },
+  "baselines": {
+    "B0": "constant TSFC: per mode, group-weighted calibration mean of ICAO FF / F_target, times the held-out F_target",
+    "B1": "F-A rule: nearest-rated-thrust calibration group (ties: mean over tied groups) per-mode mean ICAO fuel flow x (held-out rated thrust / that group's rated thrust)"
+  },
+  "heldout_metrics": {
+    "primary": "group-weighted MAPE over all held-out rows (weights as in the fit)",
+    "secondary": [
+      "record-level MAPE",
+      "per-mode group-weighted MAPE"
+    ],
+    "unreachable_rows": "APE = 100 %, reported by row"
+  },
+  "acceptance": {
+    "A1_identifiability": "every parameter in the final fitted set IDENTIFIED (full profile)",
+    "A2_skill_margin_pp": 0.25,
+    "A2_rule": "PASS iff primary MAPE_model <= min(MAPE_B0, MAPE_B1) - 0.25 pp; ESCALATE (plan section 9) iff MAPE_model > MAPE_B0 + 0.25 pp; otherwise 'no demonstrated skill' (fails A2, reported)",
+    "A3_opr_trend": "per mode, OLS slope of TSFC_i = FF_i / F_target,i on OPR_i across held-out groups (one point per group: group mean OPR, group-weighted mean TSFC), computed for ICAO data and for model predictions; PASS iff the signs agree in all three modes. Partial slope controlling for rated thrust is reported, not gating",
+    "A4_informativeness": "tests/test_holdout_informativeness.py passes on the v5 CSV"
+  },
+  "nox": "refit the NOx correlation on calibration-group models only (nox_fit_exclude_models = held-out models) and re-run nox_holdout_validation.py on the held-out group",
+  "bands_P6_2": {
+    "method": "seeded (42) Monte Carlo, 64 draws, each fixed parameter uniform over its cited range (eta_b per mode over its calibration min-max; xi fixed); for EACH draw the fitted parameters are RE-FIT on the calibration group (least_squares from the v5 optimum, max_nfev 30), then the design point and held-out MAPE are recomputed",
+    "reported_as": "refit-conditioned range bands (P5-P95 and min-max). These are range propagation under assumed uniform ranges, NOT statistical confidence intervals"
+  }
+}
