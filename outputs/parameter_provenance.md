@@ -240,3 +240,30 @@ point is the φ search box.
 Every T4, thrust and TSFC derived from v4 (and v2–v3) depends on the six
 unidentified values; v1's depend on its unidentified η_b and its hand-set
 airflow scales. The repair is Phase 5 P5.2 (calibration v5).
+
+---
+
+# Phase 6 updates (2026-09-26)
+
+## Finding F-A — the v2–v4 held-out fuel-flow validation is a rescaling rule
+
+`scripts/validation/holdout_icao_validation.py` sets each held-out engine's
+core airflow to `base_airflow × thrust_ratio`, where `thrust_ratio` is that
+engine's ICAO rated thrust over AE3's. With φ fixed per mode, fuel flow is
+φ·f_st·β·ṁ_core·x^k_mdot, so OPR and BPR never enter the prediction. On the
+frozen `outputs/holdout_icao_validation_v4.csv` (unchanged):
+
+- Predicted fuel flow ÷ thrust ratio is constant to ~1e-16 within each mode
+  (take-off 2.318207, approach 0.618863, idle 0.242230 kg/s; 59 rows each).
+- A model-free baseline — AE3's ICAO fuel flow × thrust ratio — scores
+  **3.21571920 %** MAPE against the model's **2.46016229 %** on all 177 rows,
+  and **3.24190221 %** vs **2.50278929 %** on the 171-row subset that excludes
+  every Trent 1000-AE3 record. At take-off the baseline is better
+  (1.78 % vs 1.81 %, all rows).
+
+The v4 held-out MAPE (manifest M2) therefore measures whether ICAO fuel flow is
+proportional to rated thrust within the Trent 1000 family — a property of the
+data, not of the cycle model. It is **superseded** as validation evidence by
+the Phase 6 P6.1 thrust-matched held-out test. Pinned by
+`tests/test_holdout_informativeness.py` (the two v4 tests keep the historical
+diagnosis; the v5 test requires the new predictions to depend on the cycle).
