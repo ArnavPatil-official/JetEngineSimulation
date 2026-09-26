@@ -600,6 +600,29 @@ def part_power_state(
     return pi_c, m_dot
 
 
+# Thrust-matched operation (Phase 6, P6.1). T4 guard: 3800 degR = 2111 K, the
+# upper end of the turbine-inlet-temperature design space searched for the NASA
+# N+3 reference turbofan (Jones, Haller & Tong, NASA/TM-2017-219501, p. 4:
+# "T4, was allowed to vary between 3000 to 3800 R"); its CFM56-7B model runs
+# at 3160 degR = 1756 K and the N+3 cycle at 3400 degR = 1889 K (Table 3, p. 12).
+# It is a feasibility guard on the mixed turbine-inlet temperature, not a
+# Trent 1000 limit.
+T4_GUARD_K = 3800.0 * 5.0 / 9.0
+# Lean-burner bracket for the equivalence-ratio solve (phi <= 1 keeps the
+# burner zone at or below stoichiometric; thrust is monotone in phi there).
+PHI_SOLVE_BOUNDS = (0.05, 1.0)
+
+
+class ThrustTargetUnreachable(ValueError):
+    """run_at_thrust could not bracket the target inside the phi bounds / T4 guard."""
+
+    def __init__(self, reason: str, target_kN: float, info: Dict[str, Any]):
+        super().__init__(f"thrust target {target_kN:.3f} kN unreachable: {reason}")
+        self.reason = reason
+        self.target_kN = target_kN
+        self.info = info
+
+
 class IntegratedTurbofanEngine:
     """
     Integrated turbofan engine simulation using hybrid Cantera-PINN modeling.
@@ -1436,7 +1459,8 @@ class IntegratedTurbofanEngine:
         # (see simulation/fan.py docstring for sourcing).
         bpr = self.design_point.get('bypass_ratio', 0.0)
         if bpr > 0:
-            fan = Fan(fpr=self.design_point.get('fpr', 1.45), eta_fan=0.90)
+            fan = Fan(fpr=self.design_point.get('fpr', 1.45),
+                      eta_fan=self.design_point.get('eta_fan', 0.90))
             m_dot_bypass = bpr * m_dot_core
             fan_result = fan.run(T_ambient, P_ambient, m_dot_bypass)
             fan_work_total = fan_result['work_total']
@@ -1724,6 +1748,102 @@ class IntegratedTurbofanEngine:
                 'lca_factor': lca_factor
             }
         }
+
+    def run_at_thrust(
+        self,
+        target_kN: float,
+        fuel_blend: LocalFuelBlend,
+        combustor_efficiency: Optional[float] = None,
+        phi_bounds: Tuple[float, float] = PHI_SOLVE_BOUNDS,
+        t4_max_K: float = T4_GUARD_K,
+        phi_xtol: float = 1e-12,
+        **cycle_kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Run the cycle at a prescribed static thrust (Phase 6, P6.1 Step 2).
+
+        ICAO defines LTO modes by thrust, so the thrust-matched formulation
+        solves the equivalence ratio phi (bracketed Brent root-finder) such that
+        run_full_cycle's static thrust equals ``target_kN`` at the current
+        design_point, and fuel flow becomes a model output. The returned dict is
+        run_full_cycle's result at the solved phi plus ``'thrust_match'``
+        (solved phi, status, residual, evaluations, bracket, guard).
+
+        The upper end of the bracket is the smaller of phi_bounds[1] and the phi
+        at which the mixed turbine-inlet temperature reaches ``t4_max_K``.
+        Failure is explicit: ThrustTargetUnreachable is raised (never a default
+        phi) when the target is below the thrust at phi_bounds[0] or above the
+        thrust at the guarded upper end.
+        """
+        import contextlib
+        import io
+        from scipy.optimize import brentq
+
+        lo, hi = phi_bounds
+        if not 0.0 < lo < hi:
+            raise ValueError(f"phi_bounds must satisfy 0 < lo < hi, got {phi_bounds}")
+        cache: Dict[float, Dict[str, Any]] = {}
+
+        def cycle(phi: float) -> Dict[str, Any]:
+            if phi not in cache:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    cache[phi] = self.run_full_cycle(
+                        fuel_blend=fuel_blend, phi=phi,
+                        combustor_efficiency=combustor_efficiency, **cycle_kwargs)
+            return cache[phi]
+
+        def t4(phi: float) -> float:
+            return float(cycle(phi)['combustor']['T_out'])
+
+        def residual(phi: float) -> float:
+            return float(cycle(phi)['performance']['thrust_kN']) - float(target_kN)
+
+        def runs(phi: float) -> bool:
+            try:
+                cycle(phi)
+                return True
+            except ValueError:   # turbine cannot supply compressor + fan work
+                return False
+
+        info: Dict[str, Any] = {'phi_bounds': (lo, hi), 't4_max_K': t4_max_K}
+        if not runs(lo):
+            # Lowest phi at which the cycle closes (turbine work and a positive
+            # core-nozzle pressure ratio); below it no thrust is defined.
+            if not runs(hi):
+                raise ThrustTargetUnreachable(
+                    f"cycle does not close anywhere in phi {phi_bounds}", target_kN, info)
+            a, b = lo, hi
+            while b - a > 1e-9 * b:
+                m = 0.5 * (a + b)
+                a, b = (a, m) if runs(m) else (m, b)
+            lo = b
+            info['phi_lower_cycle_closure'] = lo
+        if t4(lo) > t4_max_K:
+            raise ThrustTargetUnreachable(
+                f"T4 {t4(lo):.1f} K at phi={lo} already exceeds the guard", target_kN, info)
+        phi_hi, guard_active = hi, False
+        if t4(hi) > t4_max_K:
+            phi_hi = brentq(lambda p: t4(p) - t4_max_K, lo, hi, xtol=phi_xtol)
+            guard_active = True
+        info.update(phi_upper=float(phi_hi), t4_guard_active=guard_active,
+                    thrust_at_lower_kN=residual(lo) + target_kN,
+                    thrust_at_upper_kN=residual(phi_hi) + target_kN)
+        if residual(lo) > 0.0:
+            raise ThrustTargetUnreachable(
+                f"below the minimum thrust {info['thrust_at_lower_kN']:.3f} kN at phi={lo}",
+                target_kN, info)
+        if residual(phi_hi) < 0.0:
+            where = (f"the T4 guard ({t4_max_K:.1f} K, phi={phi_hi:.4f})" if guard_active
+                     else f"phi={phi_hi}")
+            raise ThrustTargetUnreachable(
+                f"above the maximum thrust {info['thrust_at_upper_kN']:.3f} kN at {where}",
+                target_kN, info)
+        phi = brentq(residual, lo, phi_hi, xtol=phi_xtol, rtol=4 * np.finfo(float).eps)
+        result = cycle(phi)
+        result['thrust_match'] = dict(
+            info, phi=float(phi), status='converged', target_kN=float(target_kN),
+            residual_kN=residual(phi), n_cycle_evaluations=len(cache))
+        return result
 
     def run_hychem_validation_case(
         self,
