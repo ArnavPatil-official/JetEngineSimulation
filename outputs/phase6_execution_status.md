@@ -31,6 +31,41 @@ failure** (`test_v5_holdout_prediction_depends_on_the_cycle`: the v5 CSV does
 not exist yet); emissions exit 0; 3 mechanisms validate; 40/40 protected
 hashes match (`outputs/logs/phase6_review_*.log`).
 
+## Continuation (second dispatch, then takeover)
+
+The second dispatch (`outputs/logs/phase6_review_dispatch.log`, started 15:16)
+committed through `f9cd774` and exited at 16:00 without a final report or commit
+of its pilot results. Its detached pilot profile (started 15:42) ran to completion
+at 16:11. An interactive session took over from there.
+
+| Step | Commit | Result |
+|---|---|---|
+| Amendment A1 | `3f0b940` | β dropped (single-zone), exact fan conversion, η_b proxy documented; R0 archived. |
+| P6.1 Step 4 drivers | `0d5a70e` | `lto_v5.fit` (TPE seed 42 + least_squares), `lto_v5.profile`; `calibrate_lto.py --tag v5 [--pilot] [--free ...]`, `identifiability_profile.py --v5 {pilot,full}`. |
+| P6.5 | `9ae1c23` | `docs/le_pinn_vs_ma2025.md`; PINN manifest rows. |
+| P6.4 item 1 | `1bffa26` | Production path described as equilibrium thermodynamics in docstrings. |
+| P6.1 Step 5 code | `f9cd774` | `lto_v5.run_holdout` (model vs B0 vs B1, A2/A3), NOx holdout on calibration-group refit. Not yet run. |
+| P6.1 Step 4 pilot | `472617d` | Pilot fit (111 evaluations): W_ref 102.40 kg/s, a 1.109, k_pi 1.348, k_mdot 0.414; in-sample calibration MAPE 1.80 % (93 rows, 0 unreachable); box-scaled JᵀJ condition 222. Pilot profile: **all four IDENTIFIED** → full-fit free set unchanged. Caveats: for W_ref, a, k_mdot no 9-point grid value lies inside the 95 % interval (reported bracket = ±1 grid step), and 9/36 inner re-fits stopped at the 20-evaluation cap (status 0); an unconverged inner fit can only overstate D. The full profile (17 points, inner ≤40) is the gating A1 test. |
+| P6.2 surrogate LHV | `b55e55a` | LHVs computed from CRECK thermo (gas-phase fuel, H₂O vapour, 298.15 K) and tested; used only for energy-weighted lifecycle CO₂e. |
+
+| P6.1 full fit (registered) | (this commit) | `calibrate_lto.py --tag v5 --free W_ref a_thrust k_pi k_mdot` (232 evaluations, 16:12–16:29; `outputs/logs/phase6_p61_full_fit.log`). TPE best trial #83 (SSE 0.01369), polish stopped on xtol: W_ref 127.78, a 1.256, k_pi 0.249, k_mdot 1.048; **SSE 0.009845, calibration MAPE 6.94 %**, 0 unreachable, box-scaled JᵀJ condition 9.2e8. This is a **worse local optimum than the pilot's** (SSE 0.000460, MAPE 1.80 %, 21× lower SSE): the same second basin appears in the pilot profile at k_pi = 0.2 (SSE 0.00996, W_ref 127.4, k_mdot 1.07). No full-fit evaluation reached SSE < 0.001. |
+
+Tests after the pilot/LHV commits: 166 passed / 1 skipped / 1 intentional failure
+(`test_v5_holdout_prediction_depends_on_the_cycle`, v5 CSV not yet produced).
+
+## STOPPED — decision needed (registered optimizer did not find the known better optimum)
+
+The registration fixes the optimizer (TPE seed 42, 150 trials, then least_squares
+from the best trial) but has no rule for a full fit that lands in a worse basin
+than an optimum already found on the same calibration data. Running the full
+profile, held-out test, P6.2 bands or P6.4 sensitivity from `calibration_v5.json`
+would report a known-suboptimal calibration; picking a procedure now is an
+amendment made after seeing calibration (not held-out) outcomes. No held-out
+target has been read. `outputs/calibration_v5.json` is write-once and kept.
+
 ## Outstanding gates
 
-- P6.1 Steps 4–5 (pilot identifiability, full fit, held-out test).
+- P6.1 Step 5: resolve the optimum question above; then full profile (A1), held-out test (A2, A3, A4).
+- P6.2 bands (`scripts/validation/p62_parameter_bands.py`, written, not run —
+  needs `outputs/calibration_v5.json`).
+- P6.4 item 2 (`scripts/validation/mechanism_sensitivity.py`, written, not run).

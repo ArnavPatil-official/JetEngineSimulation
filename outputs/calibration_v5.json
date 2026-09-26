@@ -1,0 +1,75 @@
+{
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "best_trial": {
+    "params": {
+      "W_ref": 120.08473317985651,
+      "a_thrust": 1.0897644861551696,
+      "k_pi": 0.38392385998256495,
+      "k_mdot": 0.9744803092896691
+    },
+    "sse": 0.013685680610540273,
+    "number": 83
+  },
+  "polish": {
+    "status": 3,
+    "message": "`xtol` termination condition is satisfied.",
+    "nfev": 22,
+    "sse": 0.009845058494145067,
+    "accepted": true
+  },
+  "params": {
+    "W_ref": 127.77886659418962,
+    "a_thrust": 1.256340045332093,
+    "k_pi": 0.2485310791391428,
+    "k_mdot": 1.0479896760913012
+  },
+  "sse": 0.009845058494145067,
+  "jtj_condition_box_scaled": 923329778.1421888,
+  "n_evaluations": 232,
+  "stage": "full",
+  "registration": "outputs/phase6/p61_registration.json (A1)",
+  "started": "2026-09-26T16:12:35",
+  "finished": "2026-09-26T16:28:58",
+  "fixed_central": {
+    "combustor_pressure_loss": 0.045,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9,
+    "eta_fan": 0.9,
+    "fpr_rated": 1.45,
+    "combustor_heat_loss_fraction": 0.0,
+    "eta_b": {
+      "TAKE-OFF": 0.999893720535389,
+      "APPROACH": 0.999833722706198,
+      "IDLE": 0.9981516090869106
+    }
+  },
+  "fit_bounds": {
+    "W_ref": [
+      60.0,
+      140.0
+    ],
+    "a_thrust": [
+      0.0,
+      2.0
+    ],
+    "k_pi": [
+      0.2,
+      1.5
+    ],
+    "k_mdot": [
+      0.2,
+      1.5
+    ]
+  },
+  "calibration_weighted_mape_pct": 6.938548437413419,
+  "n_rows": 93,
+  "n_unreachable": 0,
+  "unreachable_rows": [],
+  "m_rated_at_F_REF_kg_s": 127.77886659418962,
+  "note": "in-sample calibration fit (calibration group only); not validation"
+}
