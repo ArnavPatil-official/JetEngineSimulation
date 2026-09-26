@@ -93,7 +93,65 @@ def parse_args():
                    help="ICAO databank CSV (default: data/icao_engine_data.csv)")
     p.add_argument("--tag", default="",
                    help="Suffix appended to output filenames")
+    p.add_argument("--split", default=None,
+                   help="Phase 6: registered grouped split JSON (outputs/phase6/split_p61.json). "
+                        "Fit ONCE on the calibration-group models, score the held-out group, "
+                        "beside a constant-EI naive baseline. Outputs tagged _p61")
     return p.parse_args()
+
+
+def run_split(icao_csv: str, split_path: str) -> None:
+    """P6.1: NOx correlation fitted on the calibration group only, scored on the
+    held-out group (same split as the v5 fuel-flow validation). Naive baseline:
+    calibration-group per-mode mean EI_NOx. Inputs are the ICAO OPR and fuel
+    flow of each held-out record (the correlation's own inputs)."""
+    import json
+    split = json.loads(Path(split_path).read_text())
+    per_row_path = OUT_DIR / "nox_holdout_validation_p61.csv"
+    summary_path = OUT_DIR / "nox_holdout_validation_summary_p61.csv"
+    for pth in (per_row_path, summary_path):
+        if pth.exists():
+            raise SystemExit(f"{pth} exists; refusing to overwrite")
+    df = usable_rows(pd.read_csv(icao_csv))
+    held_models, cal_models = set(split["heldout_models"]), set(split["calibration_models"])
+    if not held_models.isdisjoint(cal_models):
+        raise ValueError("split is not disjoint")
+    est = fit_excluding(icao_csv, held_models)
+    cal = df[df["Unique ID"].isin(split["calibration_records"])]
+    held = df[df["Unique ID"].isin(split["heldout_records"])].copy()
+    if est.nox_fit_n != len(cal):
+        raise ValueError(f"fit used {est.nox_fit_n} rows, calibration group has {len(cal)}")
+    gid = {m: i for i, g in enumerate(split["heldout_groups"]) for m in g}
+    held["Group"] = held["EngineModel"].map(gid)
+    n_rec = held.groupby("Group")["Unique ID"].transform("nunique")
+    held["w"] = 1.0 / (held["Group"].nunique() * n_rec * held["Mode"].nunique())
+    held["EI_NOx_pred_g_kg"] = predict_ei(est, held["Pressure Ratio"].values,
+                                          held["Fuel Flow (kg/s)"].values)
+    naive = cal.groupby("Mode")["NOx (g/kg)"].mean()
+    held["EI_NOx_naive_g_kg"] = held["Mode"].map(naive)
+    for c, tag in (("EI_NOx_pred_g_kg", "Model"), ("EI_NOx_naive_g_kg", "Naive")):
+        held[f"{tag}_AbsError_pct"] = (held[c] - held["NOx (g/kg)"]).abs() / held["NOx (g/kg)"] * 100
+    rows = []
+    for scope, g in [("ALL (held-out group)", held)] + list(held.groupby("Mode")):
+        row = {"Scope": scope, "n": len(g)}
+        for tag in ("Model", "Naive"):
+            row[f"{tag}_MAPE_pct"] = float(g[f"{tag}_AbsError_pct"].mean())
+            row[f"{tag}_group_weighted_MAPE_pct"] = float(
+                np.sum(g["w"] * g[f"{tag}_AbsError_pct"]) / np.sum(g["w"]))
+        rows.append(row)
+    summary = pd.DataFrame(rows)
+    summary["fit"] = (f"EI_NOx = {est.nox_A:.4f} * OPR^{est.nox_B:.4f} * mdot^{est.nox_C:.4f}; "
+                      f"{est.nox_fit_n} calibration records / {est.nox_fit_n_models} models; "
+                      f"in-sample R^2 {est.nox_fit_r2_in_sample:.4f} (training diagnostic)")
+    held.rename(columns={"Pressure Ratio": "OPR", "Fuel Flow (kg/s)": "FuelFlow_kg_s",
+                         "NOx (g/kg)": "EI_NOx_icao_g_kg"})[
+        ["EngineModel", "Unique ID", "Group", "Mode", "OPR", "FuelFlow_kg_s", "EI_NOx_icao_g_kg",
+         "EI_NOx_pred_g_kg", "EI_NOx_naive_g_kg", "Model_AbsError_pct", "Naive_AbsError_pct", "w"]
+    ].to_csv(per_row_path, index=False)
+    summary.to_csv(summary_path, index=False)
+    print(summary.drop(columns=["fit"]).to_string(index=False, float_format=lambda v: f"{v:.2f}"))
+    print(summary["fit"].iloc[0])
+    print("Within-family (Trent 1000) only; no fuel-composition term: not evidence for blend NOx ranking.")
 
 
 def usable_rows(df: pd.DataFrame) -> pd.DataFrame:
@@ -120,6 +178,9 @@ def predict_ei(est, opr, m_dot_fuel):
 
 def main():
     args = parse_args()
+    if args.split:
+        run_split(args.icao_csv, args.split)
+        return
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     raw = pd.read_csv(args.icao_csv)

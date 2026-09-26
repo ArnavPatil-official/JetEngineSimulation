@@ -683,3 +683,130 @@ def run_profile(stage: str, n_workers: int = 8) -> dict:
     table.to_csv(f"{out}.csv", index=False)
     _write_new(out.with_suffix(".json"), _json(prof))
     return prof
+
+
+# --------------------------------------------------------------------------
+# P6.1 Step 5 — held-out validation (entry: holdout_icao_validation.py --tag _v5)
+# --------------------------------------------------------------------------
+HOLDOUT_CSV = ROOT / "outputs" / "holdout_icao_validation_v5.csv"
+HOLDOUT_SUMMARY = ROOT / "outputs" / "holdout_icao_validation_summary_v5.csv"
+HOLDOUT_JSON = ROOT / "outputs" / "holdout_icao_validation_v5.json"
+
+
+def baselines(cal: pd.DataFrame, held: pd.DataFrame) -> pd.DataFrame:
+    """Registered B0 (constant TSFC) and B1 (F-A rule) from calibration data only."""
+    cal = cal.assign(tsfc=cal["Fuel Flow (kg/s)"] / cal["Target Thrust (kN)"])
+    b0_tsfc = {m: float(np.sum(g["w"] * g["tsfc"]) / np.sum(g["w"])) for m, g in cal.groupby("Mode")}
+    grp = cal.groupby("Group").agg(F=("Rated Thrust (kN)", "mean"))
+    ff = cal.groupby(["Group", "Mode"])["Fuel Flow (kg/s)"].mean()
+    b0, b1, b1_groups = [], [], []
+    for _, r in held.iterrows():
+        b0.append(b0_tsfc[r["Mode"]] * r["Target Thrust (kN)"])
+        d = (grp["F"] - r["Rated Thrust (kN)"]).abs()
+        near = d.index[d == d.min()]
+        b1.append(float(np.mean([ff[(g, r["Mode"])] * r["Rated Thrust (kN)"] / grp.loc[g, "F"]
+                                 for g in near])))
+        b1_groups.append(";".join(str(g) for g in near))
+    return pd.DataFrame({"B0 Fuel Flow (kg/s)": b0, "B1 Fuel Flow (kg/s)": b1,
+                         "B1 Calibration Groups": b1_groups}, index=held.index)
+
+
+def _ape(pred, obs):
+    e = 100.0 * np.abs(pred - obs) / obs
+    return np.where(np.isfinite(e), e, 100.0)   # unreachable row: APE = 100 % (registered)
+
+
+def _wmean(v, w):
+    return float(np.sum(w * v) / np.sum(w))
+
+
+def opr_trend(df: pd.DataFrame, tsfc_col: str) -> dict:
+    """Registered A3 statistic per mode: OLS slope of group-weighted mean TSFC on
+    group mean OPR across held-out groups; partial slope controlling for rated
+    thrust reported (not gating)."""
+    out = {}
+    for mode, g in df.groupby("Mode"):
+        g = g[np.isfinite(g[tsfc_col])]
+        pts = g.groupby("Group").apply(lambda h: pd.Series({
+            "opr": h["OPR"].mean(), "F": h["Rated Thrust (kN)"].mean(),
+            "tsfc": _wmean(h[tsfc_col], h["w"])}), include_groups=False)
+        slope = float(np.polyfit(pts["opr"], pts["tsfc"], 1)[0]) if len(pts) > 1 else np.nan
+        X = np.column_stack([np.ones(len(pts)), pts["opr"], pts["F"]])
+        partial = (float(np.linalg.lstsq(X, pts["tsfc"].to_numpy(), rcond=None)[0][1])
+                   if len(pts) > 2 else np.nan)
+        out[mode] = {"n_groups": int(len(pts)), "slope": slope, "partial_slope_given_F": partial}
+    return out
+
+
+def run_holdout(n_workers: int = 8) -> dict:
+    import json
+    reg = load_registration()
+    split = load_split()
+    for p in (HOLDOUT_CSV, HOLDOUT_SUMMARY, HOLDOUT_JSON):
+        if p.exists():
+            raise SystemExit(f"{p} exists; refusing to overwrite")
+    fitted = json.loads(FULL_FIT.read_text())
+    cal = calibration_rows(split)
+    held = attach_groups(load_rows(split["heldout_records"], with_targets=True),
+                         split["heldout_groups"])
+    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
+                    n_workers=n_workers)
+    try:
+        pred = model.predict(fitted["params"], held)
+    finally:
+        model.close()
+    df = held.rename(columns={"Pressure Ratio": "OPR", "Bypass Ratio": "BPR",
+                              "Fuel Flow (kg/s)": "ICAO Fuel Flow (kg/s)"}).drop(
+        columns=["CO (g/kg)", "HC (g/kg)"])
+    df = df.join(baselines(cal, held))
+    df["Predicted Fuel Flow (kg/s)"] = pred["ff"]
+    df["Status"] = pred["status"]
+    df["Reason"] = pred["reason"]
+    for c in ("phi", "T3", "T4", "T5", "m_core", "pi_c", "nox_corr_g_s", "thrust_kN"):
+        df[f"model_{c}"] = pred.get(c)
+    obs = df["ICAO Fuel Flow (kg/s)"]
+    for tag, col in (("Model", "Predicted Fuel Flow (kg/s)"), ("B0", "B0 Fuel Flow (kg/s)"),
+                     ("B1", "B1 Fuel Flow (kg/s)")):
+        df[f"{tag} APE (%)"] = _ape(df[col].to_numpy(), obs.to_numpy())
+    summary = []
+    for scope, g in [("ALL", df)] + list(df.groupby("Mode")):
+        row = {"Scope": scope, "Rows": len(g), "Unreachable": int((g["Status"] == "unreachable").sum())}
+        for tag in ("Model", "B0", "B1"):
+            row[f"{tag} group-weighted MAPE (%)"] = _wmean(g[f"{tag} APE (%)"], g["w"])
+            row[f"{tag} record-level MAPE (%)"] = float(g[f"{tag} APE (%)"].mean())
+        summary.append(row)
+    summary = pd.DataFrame(summary)
+    allrow = summary.iloc[0]
+    m, b0, b1 = (allrow[f"{t} group-weighted MAPE (%)"] for t in ("Model", "B0", "B1"))
+    margin = reg["acceptance"]["A2_skill_margin_pp"]
+    if m <= min(b0, b1) - margin:
+        a2 = "PASS"
+    elif m > b0 + margin:
+        a2 = "ESCALATE (plan section 9: model loses to B0 by more than the registered margin)"
+    else:
+        a2 = "FAIL: no demonstrated skill"
+    df["tsfc_icao"] = obs / df["Target Thrust (kN)"]
+    df["tsfc_model"] = df["Predicted Fuel Flow (kg/s)"] / df["Target Thrust (kN)"]
+    tr_d, tr_m = opr_trend(df, "tsfc_icao"), opr_trend(df, "tsfc_model")
+    a3_modes = {mo: bool(np.sign(tr_d[mo]["slope"]) == np.sign(tr_m[mo]["slope"])) for mo in tr_d}
+    result = {
+        "registration": "outputs/phase6/p61_registration.json (A1)",
+        "calibration": str(FULL_FIT.relative_to(ROOT)),
+        "fitted_params": fitted["params"],
+        "W_ref_vs_handset": {"fitted_rated_core_airflow_AE3_kg_s": fitted["params"].get("W_ref"),
+                             "handset_v4_kg_s": 79.9,
+                             "ratio": (fitted["params"]["W_ref"] / 79.9
+                                       if "W_ref" in fitted["params"] else None)},
+        "primary_group_weighted_mape_pct": {"model": m, "B0": b0, "B1": b1},
+        "A2": {"margin_pp": margin, "verdict": a2},
+        "A3": {"icao": tr_d, "model": tr_m, "sign_agrees": a3_modes,
+               "verdict": "PASS" if all(a3_modes.values()) else "FAIL"},
+        "unreachable_rows": df.loc[df["Status"] == "unreachable",
+                                   ["Unique ID", "Model", "Mode", "Target Thrust (kN)", "Reason"]
+                                   ].to_dict("records"),
+        "nox_note": "model_nox_corr_g_s from a NOx correlation refit without held-out models",
+    }
+    df.drop(columns=["tsfc_icao", "tsfc_model"]).to_csv(HOLDOUT_CSV, index=False)
+    summary.to_csv(HOLDOUT_SUMMARY, index=False)
+    _write_new(HOLDOUT_JSON, _json(result))
+    return result

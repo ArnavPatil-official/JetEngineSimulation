@@ -122,6 +122,13 @@ def configure_engine_for_row(engine, calib, row, thrust_ratio):
 
 def main() -> None:
     args = parse_args()
+    if args.tag == "_v5":
+        # Phase 6 thrust-matched held-out validation on the registered held-out
+        # group: model vs B0 vs B1 (scripts/optimization/lto_v5.py run_holdout)
+        sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "optimization"))
+        import lto_v5
+        print(json.dumps(lto_v5.run_holdout(), indent=2, default=str))
+        return
     calib_path = Path(args.calibration)
     calib = load_calibration(calib_path)
     best = calib["best_params"]
