@@ -1,0 +1,14 @@
+Sat Sep 26 06:34:00 UTC 2026
+94dcf69b4c9e7becb9586aed60a7412b9b722dad
+                          checkpoint                    attempt  physics_weight  epochs collapsed_at_epoch  L2_Cp_upper  L2_Cp_lower  L2_Cp_worst  degenerate    band
+                le_pinn_sajben_v5.pt             P4.3-attempt-1            0.05    5000               None     0.258314     0.187372     0.258314       False    fail
+   le_pinn_sajben_v5_dataonly_ref.pt P4.3-reference-1-data-only            0.00    5000               None     0.104898     0.071976     0.104898       False partial
+             le_pinn_sajben_v5_a2.pt             P4.3-attempt-2            0.05    5000               None     0.245390     0.165851     0.245390       False partial
+         le_pinn_sajben_v5_a3_s42.pt             P4.3-attempt-3            0.05    5000               None     0.156334     0.112154     0.156334       False partial
+le_pinn_sajben_v5_a3_dataonly_s42.pt    P4.3-attempt-3-dataonly            0.00    5000               None     0.156437     0.074213     0.156437       False partial
+         le_pinn_sajben_v5_a3_s43.pt             P4.3-attempt-3            0.05    5000               None     0.144294     0.113840     0.144294       False partial
+le_pinn_sajben_v5_a3_dataonly_s43.pt    P4.3-attempt-3-dataonly            0.00    5000               None     0.105887     0.061333     0.105887       False partial
+         le_pinn_sajben_v5_a3_s44.pt             P4.3-attempt-3            0.05    5000               None     0.175275     0.140438     0.175275       False partial
+le_pinn_sajben_v5_a3_dataonly_s44.pt    P4.3-attempt-3-dataonly            0.00    5000               None     0.082487     0.066832     0.082487       False    pass
+
+Written: outputs/sajben_retrain_v5.md, outputs/sajben_retrain_v5.csv

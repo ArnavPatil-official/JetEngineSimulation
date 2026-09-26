@@ -1,0 +1,9 @@
+seed 42 caffeinate_pid 93999
+seed 43 caffeinate_pid 94000
+seed 44 caffeinate_pid 94001
+launched 2026-09-25T22:21:07-0400 at git 459b900; command: nohup caffeinate -i .venv/bin/python -u scripts/validation/train_sajben.py --attempt 3 --seed {42,43,44} --device cpu (three in parallel)
+note: le_pinn.py records git_sha from HEAD at checkpoint-save time (le_pinn.py _git_sha, called when the checkpoint dict is built),
+      so the physics-on checkpoints will carry the HEAD of whenever each run finishes. The code these runs EXECUTE is 459b900
+      (modules are loaded at start; later commits in this session touch le_pinn.py's log label text only, not training).
+note: the 2026-09-19 attempt (empty logs in outputs/logs/failed_launch_2026-09-19/) was replaced by this launch; the smoke-test
+      checkpoint of 2026-09-25 is in outputs/_smoketest/ and is not one of the six registered runs.

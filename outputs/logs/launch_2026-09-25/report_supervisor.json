@@ -1,0 +1,21 @@
+{
+  "pid": 99811,
+  "started_utc": "2026-09-26T02:58:54.000139+00:00",
+  "training_pids": [
+    93999,
+    94000,
+    94001
+  ],
+  "command": [
+    "nohup",
+    "caffeinate",
+    "-i",
+    "bash",
+    "/Users/arnavpatil/Documents/JetEngineSimulation/outputs/logs/launch_2026-09-25/score_terminal_when_ready.sh",
+    "93999",
+    "94000",
+    "94001"
+  ],
+  "report_log": "outputs/logs/launch_2026-09-25/terminal_report.log",
+  "purpose": "Run default all-attempt report after all physics-on completion markers exist, or after all training processes exit; reporter refuses incomplete/nonzero runs."
+}

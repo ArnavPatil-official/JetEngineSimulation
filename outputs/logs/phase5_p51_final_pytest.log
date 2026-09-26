@@ -1,0 +1,185 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-9.0.2, pluggy-1.6.0 -- /Users/arnavpatil/Documents/JetEngineSimulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/arnavpatil/Documents/JetEngineSimulation
+collecting ... collected 126 items
+
+tests/test_calibration_identifiability.py::test_v4_identifies_phi_to_alone PASSED [  0%]
+tests/test_calibration_identifiability.py::test_v4_inert_parameters_have_flat_profiles PASSED [  1%]
+tests/test_calibration_identifiability.py::test_v4_ridge_is_a_flat_valley_not_a_box_artifact PASSED [  2%]
+tests/test_calibration_identifiability.py::test_v4_phi_to_interval_is_narrow_and_interior PASSED [  3%]
+tests/test_calibration_identifiability.py::test_v4_ridge_measured PASSED [  3%]
+tests/test_calibration_identifiability.py::test_non_fuel_objective_is_refused PASSED [  4%]
+tests/test_calibration_identifiability.py::test_closed_form_matches_cycle_at_v4_and_on_the_ridge PASSED [  5%]
+tests/test_calibration_identifiability.py::test_refactored_calibration_reproduces_v4_objective PASSED [  6%]
+tests/test_calibration_identifiability.py::test_calibration_refuses_to_overwrite_a_frozen_record PASSED [  7%]
+tests/test_choking_detection.py::TestChokingDetection::test_critical_pressure_ratio_air PASSED [  7%]
+tests/test_choking_detection.py::TestChokingDetection::test_critical_pressure_ratio_combustion_products PASSED [  8%]
+tests/test_choking_detection.py::TestChokingDetection::test_detect_choking_unchoked PASSED [  9%]
+tests/test_choking_detection.py::TestChokingDetection::test_detect_choking_choked PASSED [ 10%]
+tests/test_choking_detection.py::TestChokingDetection::test_detect_choking_at_critical PASSED [ 11%]
+tests/test_choking_detection.py::TestChokingDetection::test_high_altitude_choking PASSED [ 11%]
+tests/test_choking_detection.py::TestChokingDetection::test_gamma_variation_effect PASSED [ 12%]
+tests/test_choking_detection.py::TestChokingDetection::test_static_sea_level_typical PASSED [ 13%]
+tests/test_choking_detection.py::TestChokingDetection::test_edge_case_equal_pressures PASSED [ 14%]
+tests/test_choking_detection.py::TestChokingDetection::test_invalid_gamma PASSED [ 15%]
+tests/test_choking_detection.py::test_choking_integration PASSED         [ 15%]
+tests/test_finetune_regression_guard.py::test_finetune_never_worse_than_init PASSED [ 16%]
+tests/test_finetune_regression_guard.py::test_finetune_with_useless_lr_returns_init_weights PASSED [ 17%]
+tests/test_finetune_regression_guard.py::test_checkpoint_provenance_fields PASSED [ 18%]
+tests/test_finetune_regression_guard.py::test_pretrained_normalizers_are_reused PASSED [ 19%]
+tests/test_finetune_regression_guard.py::test_dataset_outside_pretrained_domain_is_refused PASSED [ 19%]
+tests/test_finetune_regression_guard.py::test_collapsed_init_is_refused PASSED [ 20%]
+tests/test_finetune_regression_guard.py::test_shipped_sajben_checkpoint_is_collapsed PASSED [ 21%]
+tests/test_le_pinn.py::TestGlobalNetwork::test_output_shape PASSED       [ 22%]
+tests/test_le_pinn.py::TestGlobalNetwork::test_single_sample PASSED      [ 23%]
+tests/test_le_pinn.py::TestBoundaryNetwork::test_output_shape PASSED     [ 23%]
+tests/test_le_pinn.py::TestBoundaryNetwork::test_single_sample PASSED    [ 24%]
+tests/test_le_pinn.py::TestLE_PINN_Fusion::test_fusion_near_wall PASSED  [ 25%]
+tests/test_le_pinn.py::TestLE_PINN_Fusion::test_no_fusion_far_wall PASSED [ 26%]
+tests/test_le_pinn.py::TestLE_PINN_Fusion::test_mixed_fusion PASSED      [ 26%]
+tests/test_le_pinn.py::TestLE_PINN_Fusion::test_threshold_value PASSED   [ 27%]
+tests/test_le_pinn.py::TestInitialization::test_xavier_uniform_weights PASSED [ 28%]
+tests/test_le_pinn.py::TestInitialization::test_zero_bias_init PASSED    [ 29%]
+tests/test_le_pinn.py::TestMinMaxNormalizer::test_round_trip PASSED      [ 30%]
+tests/test_le_pinn.py::TestMinMaxNormalizer::test_range PASSED           [ 30%]
+tests/test_le_pinn.py::TestMinMaxNormalizer::test_epsilon_constant_column PASSED [ 31%]
+tests/test_le_pinn.py::TestTrainingSetup::test_optimizer_config PASSED   [ 32%]
+tests/test_le_pinn.py::TestTrainingSetup::test_scheduler_config PASSED   [ 33%]
+tests/test_le_pinn.py::TestWallDistance::test_known_distances PASSED     [ 34%]
+tests/test_le_pinn.py::TestRANSResiduals::test_output_shapes PASSED      [ 34%]
+tests/test_le_pinn.py::TestRANSResiduals::test_normalized_residuals_finite PASSED [ 35%]
+tests/test_le_pinn.py::TestRANSResiduals::test_planar_vs_axisymmetric_geometry PASSED [ 36%]
+tests/test_le_pinn.py::TestRANSResiduals::test_axisymmetric_mass_flux_integral_matches_analytic_profile PASSED [ 37%]
+tests/test_le_pinn.py::TestExistingPINNUnaffected::test_nozzle_pinn_import PASSED [ 38%]
+tests/test_le_pinn.py::TestCFDFinetune::test_finetune_returns_model_and_history PASSED [ 38%]
+tests/test_le_pinn.py::TestCFDFinetune::test_finetune_loss_decreases_or_stable PASSED [ 39%]
+tests/test_le_pinn.py::TestCFDFinetune::test_finetune_warning_for_missing_pretrained PASSED [ 40%]
+tests/test_le_pinn.py::TestCFDFinetune::test_finetune_with_physics_loss_without_cap PASSED [ 41%]
+tests/test_le_pinn.py::TestCFDFinetune::test_validate_returns_metrics PASSED [ 42%]
+tests/test_le_pinn.py::TestCFDFinetune::test_validate_handles_warning_for_missing_normalizer PASSED [ 42%]
+tests/test_le_pinn.py::TestSchedulerMonitor::test_scheduler_steps_on_data_loss_not_total PASSED [ 43%]
+tests/test_le_pinn.py::TestSchedulerMonitor::test_lr_does_not_immediately_collapse PASSED [ 44%]
+tests/test_le_pinn_benchmark.py::TestPhysicalBounds::test_le_pinn_exit_state_positive PASSED [ 45%]
+tests/test_le_pinn_benchmark.py::TestPhysicalBounds::test_le_pinn_exit_velocity_subsonic_or_sonic PASSED [ 46%]
+tests/test_le_pinn_benchmark.py::TestPhysicalBounds::test_le_pinn_temperature_drop PASSED [ 46%]
+tests/test_le_pinn_benchmark.py::TestPhysicalBounds::test_le_pinn_pressure_drop PASSED [ 47%]
+tests/test_le_pinn_benchmark.py::TestConservationLaws::test_mass_conservation_le_pinn PASSED [ 48%]
+tests/test_le_pinn_benchmark.py::TestConservationLaws::test_energy_conservation_le_pinn PASSED [ 49%]
+tests/test_le_pinn_benchmark.py::TestConservationLaws::test_eos_consistency_le_pinn PASSED [ 50%]
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable PASSED [ 50%]
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_ood_does_not_silently_pass PASSED [ 51%]
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_thrust_greater_than_zero PASSED [ 52%]
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_inlet_not_identically_reproduced PASSED [ 53%]
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_wrapper_matches_interface PASSED [ 53%]
+tests/test_le_pinn_benchmark.py::TestComparisonWithRegularPINN::test_thrust_within_order_of_magnitude PASSED [ 54%]
+tests/test_le_pinn_benchmark.py::TestComparisonWithRegularPINN::test_exit_temperature_within_bounds PASSED [ 55%]
+tests/test_le_pinn_benchmark.py::TestComparisonWithRegularPINN::test_models_disagree_at_least_slightly SKIPPED [ 56%]
+tests/test_nox_chemistry.py::TestRateConstants::test_k1f_at_2000K PASSED [ 57%]
+tests/test_nox_chemistry.py::TestRateConstants::test_k2f_at_2000K PASSED [ 57%]
+tests/test_nox_chemistry.py::TestRateConstants::test_k3f_at_2000K PASSED [ 58%]
+tests/test_nox_chemistry.py::TestRateConstants::test_strong_temperature_sensitivity PASSED [ 59%]
+tests/test_nox_chemistry.py::TestIntegrator::test_linear_growth_far_from_equilibrium PASSED [ 60%]
+tests/test_nox_chemistry.py::TestIntegrator::test_never_exceeds_equilibrium PASSED [ 61%]
+tests/test_nox_chemistry.py::TestIntegrator::test_zero_tau_zero_no PASSED [ 61%]
+tests/test_nox_chemistry.py::TestResidenceTime::test_magnitude_at_takeoff_conditions PASSED [ 62%]
+tests/test_nox_chemistry.py::TestResidenceTime::test_rejects_nonpositive PASSED [ 63%]
+tests/test_nozzle_pinn_fix.py::test_nozzle_pinn_positive_thrust PASSED   [ 64%]
+tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness PASSED     [ 65%]
+tests/test_nozzle_regression.py::TestNozzleRegression::test_analytic_nozzle_baseline PASSED [ 65%]
+tests/test_nozzle_regression.py::TestNozzleRegression::test_pinn_vs_analytic_agreement PASSED [ 66%]
+tests/test_nozzle_regression.py::TestNozzleRegression::test_optimizer_guards PASSED [ 67%]
+tests/test_physics_conservation.py::test_eos_satisfaction_subsonic PASSED [ 68%]
+tests/test_physics_conservation.py::test_eos_on_ground_truth PASSED      [ 69%]
+tests/test_physics_conservation.py::test_mass_flow_axial_consistency PASSED [ 69%]
+tests/test_physics_conservation.py::test_stagnation_enthalpy_conservation PASSED [ 70%]
+tests/test_physics_conservation.py::test_pde_residuals_shape_and_finiteness PASSED [ 71%]
+tests/test_physics_conservation.py::test_pde_residuals_planar_mode PASSED [ 72%]
+tests/test_physics_conservation.py::test_pressure_thrust_sign PASSED     [ 73%]
+tests/test_sajben_leakage_guard.py::test_clean_split_is_accepted PASSED  [ 73%]
+tests/test_sajben_leakage_guard.py::test_eval_hash_in_training_sources_is_refused PASSED [ 74%]
+tests/test_sajben_leakage_guard.py::test_eval_file_named_as_training_source_is_refused PASSED [ 75%]
+tests/test_sajben_leakage_guard.py::test_nonzero_eval_rows_in_train_is_refused PASSED [ 76%]
+tests/test_sajben_leakage_guard.py::test_legacy_checkpoint_warns_but_scores PASSED [ 76%]
+tests/test_sajben_leakage_guard.py::test_legacy_checkpoint_trained_on_eval_file_is_refused PASSED [ 77%]
+tests/test_sajben_leakage_guard.py::test_changed_eval_file_warns PASSED  [ 78%]
+tests/test_sajben_report_guard.py::test_one_terminal_checkpoint_expands_to_the_full_registered_set PASSED [ 79%]
+tests/test_sajben_report_guard.py::test_earlier_attempts_kept_in_place_and_terminal_expanded_once PASSED [ 80%]
+tests/test_sajben_report_guard.py::test_duplicate_selection_is_refused PASSED [ 80%]
+tests/test_sajben_report_guard.py::test_terminal_checkpoint_outside_registered_paths_is_refused PASSED [ 81%]
+tests/test_sajben_report_guard.py::test_complete_evidence_passes_guard PASSED [ 82%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[missing checkpoint-None-checkpoint missing] PASSED [ 83%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[missing marker (legacy log, no trailer)-override1-no exit=N trailer] PASSED [ 84%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[nonzero exit-override2-exit code 137] PASSED [ 84%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[wrong seed recorded-override3-mismatched identity] PASSED [ 85%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[wrong attempt recorded-override4-mismatched identity] PASSED [ 86%]
+tests/test_sajben_report_guard.py::test_bad_evidence_refuses_before_any_output[marker names another checkpoint-override5-mismatched identity] PASSED [ 87%]
+tests/test_sajben_report_guard.py::test_partial_selection_scores_all_six_not_the_subset PASSED [ 88%]
+tests/test_sajben_training_path.py::test_dataset_path_resolves PASSED    [ 88%]
+tests/test_sajben_training_path.py::test_dataset_carries_declared_split PASSED [ 89%]
+tests/test_sajben_training_path.py::test_train_script_registers_attempt_and_constant_weights PASSED [ 90%]
+tests/test_sajben_training_path.py::test_resolve_device_auto_is_cpu PASSED [ 91%]
+tests/test_sajben_training_path.py::test_physics_warmup_weighting_never_decays_data PASSED [ 92%]
+tests/test_sajben_training_path.py::test_dataset_existence_check_raises PASSED [ 92%]
+tests/test_sajben_training_path.py::test_dataset_schema_validation_raises PASSED [ 93%]
+tests/test_sajben_training_path.py::test_geometry_mode_is_planar PASSED  [ 94%]
+tests/test_sajben_training_path.py::test_finetune_sajben_script_uses_planar_geometry PASSED [ 95%]
+tests/test_wind_cff.py::test_adf_tree_has_expected_nodes PASSED          [ 96%]
+tests/test_wind_cff.py::test_grid_and_shape PASSED                       [ 96%]
+tests/test_wind_cff.py::test_reference_conditions_match_listing PASSED   [ 97%]
+tests/test_wind_cff.py::test_flow_state_matches_experiment_endpoints PASSED [ 98%]
+tests/test_wind_cff.py::test_walls_are_no_slip_and_turbulent PASSED      [ 99%]
+tests/test_wind_cff.py::test_provenance_recorded PASSED                  [100%]
+
+=============================== warnings summary ===============================
+tests/test_finetune_regression_guard.py::test_collapsed_init_is_refused
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/le_pinn.py:2043: RuntimeWarning: Global net collapsed at epoch 0 (alive units [276, 211, 192, 193, 187, 201, 0]); stopping and restoring the best weights from epoch 0.
+    warnings.warn(
+
+tests/test_le_pinn.py::TestCFDFinetune::test_validate_returns_metrics
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/le_pinn.py:2260: RuntimeWarning: No output normaliser available; comparing raw model outputs against un-normalised targets — RMSE/R² may be misleading.
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+tests/test_le_pinn_benchmark.py::TestComparisonWithRegularPINN::test_thrust_within_order_of_magnitude
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.15)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.93)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.26)
+  
+    warnings.warn(
+
+tests/test_le_pinn_benchmark.py::TestNonFalsePosGuards::test_fallback_rate_acceptable
+  /Users/arnavpatil/Documents/JetEngineSimulation/simulation/nozzle/nozzle.py:1633: UserWarning: 
+  ⚠️  PINN FAILED PHYSICS CHECKS → Using analytical fallback
+  Reason: Unreasonable Mach (2.30)
+  
+    warnings.warn(
+
+tests/test_nozzle_pinn_fix.py::test_nozzle_pinn_positive_thrust
+  /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_nozzle_pinn_fix.py::test_nozzle_pinn_positive_thrust returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness
+  /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_nozzle_pinn_fix.py::test_nozzle_scaling_robustness returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============ 125 passed, 1 skipped, 9 warnings in 93.83s (0:01:33) =============

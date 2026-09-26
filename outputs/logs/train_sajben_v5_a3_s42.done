@@ -1,0 +1,23 @@
+{
+  "exit_code": 0,
+  "error": null,
+  "checkpoint": "models/le_pinn_sajben_v5_a3_s42.pt",
+  "checkpoint_sha256": "578277ca577655e833c6678a6b70d4c1d66296858c2105abb18b4ca9adf70af1",
+  "log": "outputs/logs/train_sajben_v5_a3_s42.log",
+  "started": "2026-09-25T22:21:08-0400",
+  "finished": "2026-09-26T02:33:53-0400",
+  "pid": 93999,
+  "argv": [
+    "scripts/validation/train_sajben.py",
+    "--attempt",
+    "3",
+    "--seed",
+    "42",
+    "--device",
+    "cpu"
+  ],
+  "host": "mac.lan",
+  "python": "3.12.4",
+  "torch": "2.9.1",
+  "torch_threads": 5
+}

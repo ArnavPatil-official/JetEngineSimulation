@@ -1,8 +1,9 @@
-# Phase 5 execution status — 2026-09-25 23:15 EDT
+# Phase 5 execution status — 2026-09-26
 
 Plans: `docs/plan.md` (Phase 5, original) and `docs/plan_phase5_review.md` (review corrections).
 Branch `phase4`. **State: STOPPED AT THE P5.2 STEP 2 ESCALATION GATE: the take-off thrust gap is
-structural.** The P5.1 training runs are independent of the gate and are still running.
+structural.** P5.1 finished independently overnight; the terminal report passed its
+completion guard and P4.3 is closed with the registered outcome below.
 
 ## Completed and committed
 
@@ -39,25 +40,40 @@ k_mdot 0.575–0.625. The profile minimum is ≈ 0 against v4's 1.619 %, so the 
 
 Full suite `python -m pytest tests/ -v`: **125 passed, 1 skipped, 9 warnings** (baseline 104 / 1 / 9; +21 new:
 12 report guard, 9 identifiability). This is the post-change P5.0 count. `scripts/test_emissions.py` was not run
-because no cycle or emissions code changed.
+because no cycle or emissions code changed. The full suite was repeated after P5.1
+completed: **125 passed, 1 skipped, 9 warnings** in 93.83 s; retained output is
+`outputs/logs/phase5_p51_final_pytest.log`.
 
 Protected artifacts: all 33 files in the session hash manifest (data YAMLs, `models/*.pt`, v2–v4 calibration and
 hold-out artifacts) match byte-for-byte.
 
-## Live jobs (not stopped, not relaunched)
+## P5.1 complete — terminal attempt 3
 
-| Seed | PID | Log | State at 23:15 |
+| Seed | Training PID | Log | Completion (EDT) |
 |---|---|---|---|
-| 42 | 93999 | `outputs/logs/train_sajben_v5_a3_s42.log` | running, epoch ~950 / 5000 |
-| 43 | 94000 | `outputs/logs/train_sajben_v5_a3_s43.log` | running, epoch ~1000 / 5000 |
-| 44 | 94001 | `outputs/logs/train_sajben_v5_a3_s44.log` | running, epoch ~950 / 5000 |
+| 42 | 93999 | `outputs/logs/train_sajben_v5_a3_s42.log` | 02:33:53, exit 0, 5000 epochs |
+| 43 | 94000 | `outputs/logs/train_sajben_v5_a3_s43.log` | 02:33:07, exit 0, 5000 epochs |
+| 44 | 94001 | `outputs/logs/train_sajben_v5_a3_s44.log` | 02:33:54, exit 0, 5000 epochs |
 
-Launch record: `outputs/logs/launch_2026-09-25/launch_record.txt`. Each run writes `<log>.done` on exit.
-**P5.1 is not complete.** Once all three `.done` markers show exit 0, run
-`python scripts/validation/sajben_report_p43.py` (the guard refuses otherwise), then commit the checkpoints,
-logs, markers and `outputs/sajben_retrain_v5.{md,csv}`. The growing logs are deliberately uncommitted.
-On the current tree the guard refuses: the three physics-on checkpoints are missing, and the legacy data-only
-runs pass on their log-trailer evidence.
+Launch record: `outputs/logs/launch_2026-09-25/launch_record.txt`. All three `.done`
+markers record exit 0 and match the checkpoint SHA-256 hashes. The existing three
+data-only logs supply their captured `exit=0` trailers. All six checkpoints contain
+finite weights and record the registered seed, CPU device, tanh activation, and 5000 epochs.
+
+The queued reporter completed with exit 0; evidence is in
+`outputs/logs/launch_2026-09-25/terminal_report.{log,done}`. It scored every historical
+attempt and all six terminal runs. Canonical report: `outputs/sajben_retrain_v5.{md,csv}`.
+
+- Physics-on worse-wall L2: 0.156 / 0.144 / 0.175; mean **0.158634**, sample sd **0.015618**.
+  Every seed is partial, so the registered terminal outcome is **PARTIAL**. Production remains analytic.
+- Matched data-only mean **0.114937**, sample sd **0.037796**; seeds straddle pass/partial.
+- Difference **+0.043697** exceeds the registered spread **0.037796**: reading 3,
+  **negative result about this residual formulation**. There is no attempt 4.
+
+The physics-on checkpoint `git_sha` is `94dcf69`, sampled at save time. The launch record
+identifies the code loaded at startup as `459b900`; subsequent training-module changes
+were log-label text only. The original checkpoint bytes are preserved, with this
+distinction recorded in the launch evidence rather than rewriting their metadata.
 
 ## GATE: take-off thrust gap is structural (docs/plan.md P5.2 Step 2)
 
@@ -83,17 +99,15 @@ runs pass on their log-trailer evidence.
   (the core's 79.9 kg/s is hand-set and unsourced) or BPR 12.29 (against the ICAO-sourced 9.1). FPR cannot close it
   alone within [1.45, 2.0].
 
-**Proposed repair scope (not implemented; needs the user's decision):**
-1. Correct the core-nozzle thrust in `integrated_engine.py::run_nozzle` (and the PINN nozzle path's thrust
-   bookkeeping, for ablations) to the engine-level static equation, F = ṁ_e·u_e + (p_e − p_amb)·A_e.
-2. Decide the core nozzle treatment: ideal full expansion (current) or convergent/choked with pressure thrust.
-   These differ by 1.3 kN at take-off.
-3. Then re-run `takeoff_thrust_gap.py`. The remaining ~52.8 kN would be input-level, and the main unsourced input
-   is the core mass flow (79.9 kg/s). It needs a sourced value, or the user must decide to make airflow a fitted
-   parameter identified by the new thrust targets (to be decided under P5.2 Step 3).
-4. After any change: full pytest, `scripts/test_emissions.py`, and update the nozzle tests that touch
-   `thrust_momentum` (`tests/test_nozzle_pinn_fix.py`, `tests/test_le_pinn_benchmark.py`). Every v1–v4 thrust/TSFC
-   number moves (+6.8 % at take-off from item 1 alone); v1–v4 artifacts stay frozen.
+**Proposed repair (not implemented; needs the user's decision):**
+`docs/plan_phase5_nozzle_repair.md` defines the exact scope and acceptance tests.
+It corrects the analytic core's static momentum accounting, preserves and explicitly
+labels the ideal-expansion approximation, and reruns the decomposition with frozen
+inputs. The PINN paths already receive `static_test_stand`; no change to those paths
+is proposed without evidence of a separate defect. The remaining ~52.8 kN stays an
+unexplained residual until the follow-up diagnosis establishes its causes. An unsourced
+airflow or geometry must not be selected merely to close it. The original citation and
+identifiability gates remain in force; all historical v1–v4 artifacts remain frozen.
 
 ## Blocked until the gate is resolved
 
@@ -103,6 +117,5 @@ values before v5 can fix them.
 
 ## Next required action
 
-1. **User:** decide the thrust repair (items 1–3 above).
-2. **Executor, independent of the gate:** when the three runs finish, run the reporter and commit P5.1 as described
-   above.
+1. **User:** decide the proposed repair in `docs/plan_phase5_nozzle_repair.md`.
+2. P5.1 is closed; no training or report-supervisor jobs remain active.
