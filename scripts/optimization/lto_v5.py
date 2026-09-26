@@ -338,15 +338,17 @@ def mode_state(params: dict, fixed: dict, opr: float, bpr: float, f_rated: float
 
 
 def solve_task(task: tuple) -> dict:
-    """Worker: one thrust-matched cycle. task = (state, eta_c, eta_poly, eta_b, target, guess, fuel)."""
-    from integrated_engine import FUEL_LIBRARY, ThrustTargetUnreachable
+    """Worker: one thrust-matched cycle. task = (state, eta_c, eta_poly, eta_b, target, guess, fuel);
+    ``fuel`` is a FUEL_LIBRARY name or a {species: mole fraction} dict (P6.3 blends)."""
+    from integrated_engine import FUEL_LIBRARY, LocalFuelBlend, ThrustTargetUnreachable
     state, eta_c, eta_poly, eta_b, target, guess, fuel = task
+    fuel_obj = FUEL_LIBRARY[fuel] if isinstance(fuel, str) else LocalFuelBlend("blend", dict(fuel))
     e = _ENGINE
     e.design_point.update(state)
     e.compressor.eta_c = eta_c
     e.turbine_design["eta_polytropic"] = eta_poly
     try:
-        r = e.run_at_thrust(target, FUEL_LIBRARY[fuel], combustor_efficiency=eta_b, phi_guess=guess)
+        r = e.run_at_thrust(target, fuel_obj, combustor_efficiency=eta_b, phi_guess=guess)
     except ThrustTargetUnreachable as exc:
         # the only failure scored as an ordinary row penalty (FAILED_ROW_ERROR)
         return {"status": "unreachable", "reason": exc.reason, "ff": np.nan, "phi": np.nan}

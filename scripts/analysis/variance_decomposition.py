@@ -76,12 +76,81 @@ def variance_shares(df: pd.DataFrame, objective: str, features: list,
     return shares
 
 
+V5_FEATURES = ["p_HEFA", "p_FT", "p_ATJ", "lcef_draw_HEFA", "lcef_draw_FT", "lcef_draw_ATJ"]
+V5_OUTPUTS = ["ff", "tsfc_mg_Ns", "T4", "nox_corr_g_s", "lifecycle_g_s_point_draw"]
+
+
+def main_v5(seed: int, n_mc: int) -> None:
+    """P6.3 (outputs/phase6/p63_registration.json): blends at MATCHED take-off
+    thrust. Variance shares, Spearman correlations and CORSIA rank stability
+    over the 256 Sobol design points (reference blends excluded)."""
+    outs = {k: RESULTS / f"{k}_v5.csv" for k in
+            ("variance_decomposition", "objective_correlation", "lca_rank_stability")}
+    for pth in outs.values():
+        if pth.exists():
+            raise SystemExit(f"{pth} exists; refusing to overwrite")
+    df = pd.read_csv(RESULTS / "blend_matched_thrust_v5.csv")
+    df = df[(df["Mode"] == "TAKE-OFF") & df["blend"].str.startswith("S")].reset_index(drop=True)
+    if (df["status"] != "converged").any():
+        raise SystemExit("unreachable take-off design points; registered analysis needs all 256")
+    rows = []
+    for obj in V5_OUTPUTS:
+        sh = variance_shares(df, obj, V5_FEATURES, seed)
+        sh.update({"Objective": obj, "rel_range_pct": float(100 * (df[obj].max() - df[obj].min())
+                                                              / df[obj].mean())})
+        rows.append(sh)
+    shares = pd.DataFrame(rows)[["Objective", "R2", "rel_range_pct", *V5_FEATURES]]
+    shares.to_csv(outs["variance_decomposition"], index=False)
+    df[V5_OUTPUTS].corr(method="spearman").to_csv(outs["objective_correlation"])
+
+    with open(PROJECT_ROOT / "data" / "corsia_lca_values.yaml") as fh:
+        corsia = yaml.safe_load(fh)
+    tri = {p: corsia["pathways"][p]["triangular"] for p in ("HEFA", "FT", "ATJ")}
+    lcef_c = {"JetA": corsia["baseline_fossil_gCO2e_MJ"], **{p: t["mode"] for p, t in tri.items()}}
+    from simulation.fuels import JET_A1, HEFA_SPK, FT_SPK, ATJ_SPK
+    lhv = {"JetA": JET_A1.LHV_MJ_per_kg, "HEFA": HEFA_SPK.LHV_MJ_per_kg,
+           "FT": FT_SPK.LHV_MJ_per_kg, "ATJ": ATJ_SPK.LHV_MJ_per_kg}
+
+    def lifecycle(draw):
+        return df["ff"].to_numpy() * sum(df[f"p_{k}"].to_numpy() * lhv[k] * draw[k] for k in lhv)
+
+    fixed = df[["tsfc_mg_Ns", "nox_corr_g_s"]].to_numpy()
+    central = pareto_mask(np.column_stack([fixed[:, 0], lifecycle(lcef_c), fixed[:, 1]]))
+    rng = np.random.default_rng(seed)
+    persist, samples = np.zeros(len(df)), np.empty((n_mc, len(df)))
+    for d in range(n_mc):
+        draw = {"JetA": lcef_c["JetA"], **{p: rng.triangular(t["min"], t["mode"], t["max"])
+                                          for p, t in tri.items()}}
+        samples[d] = lifecycle(draw)
+        persist += pareto_mask(np.column_stack([fixed[:, 0], samples[d], fixed[:, 1]]))
+    persist /= n_mc
+    out = df[["blend", "p_JetA", "p_HEFA", "p_FT", "p_ATJ", "ff", "tsfc_mg_Ns", "T4",
+              "nox_corr_g_s"]].copy()
+    out["Lifecycle_central"] = lifecycle(lcef_c)
+    out["ParetoOptimal_central"] = central
+    out["Pareto_persistence"] = persist
+    for q in (5, 50, 95):
+        out[f"Lifecycle_P{q}"] = np.percentile(samples, q, axis=0)
+    out.to_csv(outs["lca_rank_stability"], index=False)
+    members = out[out["ParetoOptimal_central"]]
+    stable = float((members["Pareto_persistence"] >= 0.5).mean()) if len(members) else float("nan")
+    print(shares.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    print(f"Central Pareto members: {len(members)}; stable in >= 50 % of {n_mc} draws: "
+          f"{stable * 100:.1f} % -> blend-selection statements "
+          f"{'may be stated with scenario bands' if stable >= 0.5 else 'must be scenario-conditional'}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--n-mc", type=int, default=1000,
                     help="Monte Carlo CORSIA scenario draws (default 1000)")
+    ap.add_argument("--v5", action="store_true",
+                    help="P6.3 matched-thrust blend study (blend_matched_thrust_v5.csv)")
     args = ap.parse_args()
+    if args.v5:
+        main_v5(args.seed, args.n_mc)
+        return
 
     with open(PROJECT_ROOT / "data" / "corsia_lca_values.yaml") as fh:
         corsia = yaml.safe_load(fh)

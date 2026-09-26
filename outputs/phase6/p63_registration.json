@@ -1,0 +1,28 @@
+{
+  "phase": "P6.3",
+  "registered": "2026-09-26",
+  "registered_before": "the first run of scripts/optimization/blend_matched_thrust_v5.py; P6.1 held-out results were known (they do not enter this design)",
+  "engine": "Trent 1000-AE3 inputs (ICAO record 02P23RR126: OPR, BPR, rated thrust); v5 calibration outputs/calibration_v5_A2.json; A1 central fixed values; single-zone equilibrium combustor; analytic turbine and nozzle",
+  "operating_points": "ICAO LTO thrust x * F_rated for TAKE-OFF (primary), APPROACH, IDLE; phi solved by run_at_thrust (not a design variable)",
+  "blend_basis": "mass fractions (p_JetA, p_HEFA, p_FT, p_ATJ) of the four component surrogates, converted to mixture mole fractions for Cantera; SAF total <= 0.5 by mass (ASTM D7566 limits are volumetric; surrogate densities are not modelled, so the mass cap is an approximation)",
+  "design": {
+    "sampler": "scipy.stats.qmc.Sobol(d=4, scramble=True, seed) over (SAF total/0.5, w_HEFA, w_FT, w_ATJ); p_i = SAF * w_i / sum(w)",
+    "n_sobol": 256,
+    "seed": 42,
+    "references": ["Jet-A1", "HEFA-50", "FT-50", "ATJ-50"],
+    "n_corsia_common": 1000,
+    "corsia_per_point": "seeded triangular draw per design point, formula of optimize_blend.draw_lcef (seed * 1000003 + index); used by the variance decomposition",
+    "corsia_central": "triangular mode per pathway; fossil baseline 89 gCO2e/MJ"
+  },
+  "outputs_per_point": ["fuel flow", "TSFC", "T4", "phi", "NOx (ICAO-derived correlation of OPR and fuel flow; no composition term)", "lifecycle CO2e g/s = fuel flow * sum_i p_i LHV_i L_CEF_i"],
+  "p62_conditioning": "the four reference blends are re-run under each of the 64 P6.2 draws (fixed values and refitted parameters from outputs/p62_bands_v5.csv)",
+  "ranking_rule": {
+    "pairs": "each SAF-50 reference vs Jet-A1, and the three SAF-50 references against each other, per mode, for fuel flow, TSFC, T4, NOx, lifecycle CO2e",
+    "spread_a": "Monte-Carlo spread: P5-P95 width of the paired difference over the 1000 common CORSIA draws (lifecycle); 0 for cycle quantities (deterministic; phi solved to xtol 1e-12)",
+    "band_b": "P6.2 band: P5-P95 width of the quantity for Jet-A1 across the 64 P6.2 draws",
+    "claim": "a ranking is claimed iff |central difference| > spread_a AND > band_b (plan P6.3 item 3)",
+    "reported_not_gating": "paired P6.2 difference: P5-P95 and the fraction of draws whose sign matches the central difference"
+  },
+  "variance_decomposition": "scripts/analysis/variance_decomposition.py --v5, over the 256 Sobol points at TAKE-OFF: (1) random-forest permutation-importance shares (existing variance_shares, seed 42) of fuel flow, TSFC, T4, NOx and lifecycle CO2e (per-point draw) over features p_HEFA, p_FT, p_ATJ, lcef_draw_HEFA, lcef_draw_FT, lcef_draw_ATJ, with R^2; (2) Spearman correlation of those outputs; (3) CORSIA rank stability: the Pareto set on (TSFC, lifecycle CO2e, NOx) at the central CORSIA values, then the fraction of the 1000 common draws in which each central Pareto member stays Pareto-optimal (lifecycle recomputed per draw for all points). Decision rule carried from Phase 2: membership stable in < 50 % of draws => blend-selection statements are scenario-conditional",
+  "supersedes": "optimize_blend.py free-phi and fixed-phi studies (blends at unequal thrust); kept only as the v4 reproduction path"
+}
