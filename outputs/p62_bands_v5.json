@@ -1,0 +1,185 @@
+{
+  "method": "seeded (42) Monte Carlo, 64 draws, each fixed parameter uniform over its cited range (eta_b per mode over its calibration min-max; eta_fan transformed per draw = fan_isentropic(e_poly ~ U(polytropic_range), drawn FPR_rated); eta_compressor uniform over its constant-gamma isentropic range; xi fixed; no beta); for EACH draw the fitted parameters are RE-FIT on the calibration group (least_squares from the v5 optimum, max_nfev 30), then the design point and held-out MAPE are recomputed",
+  "reported_as": "refit-conditioned range bands (P5-P95 and min-max). These are range propagation under assumed uniform ranges, NOT statistical confidence intervals",
+  "n_draws": 64,
+  "central": {
+    "case": "central",
+    "fit_W_ref": 102.39547191158805,
+    "fit_a_thrust": 1.109036507149692,
+    "fit_k_pi": 1.3482577723216178,
+    "fit_k_mdot": 0.41360456851971344,
+    "cal_sse": 0.000459706239335649,
+    "refit_nfev": 3,
+    "heldout_mape_pct": 1.8236129405720565,
+    "heldout_unreachable": 0,
+    "dp_status": "converged",
+    "dp_ff_kg_s": 2.3948315605475403,
+    "dp_tsfc_mg_Ns": 7.70289984093774,
+    "dp_T4_K": 1718.4631816463416,
+    "dp_T3_K": 901.5451512272988,
+    "dp_phi": 0.3488323474355371,
+    "dp_m_core_kg_s": 102.39547191158805,
+    "fixed_combustor_pressure_loss": NaN,
+    "fixed_eta_compressor": NaN,
+    "fixed_eta_turbine_polytropic": NaN,
+    "fixed_fpr_rated": NaN,
+    "fixed_eta_fan": NaN,
+    "fixed_fan_e_poly": NaN,
+    "fixed_eta_b_TAKE-OFF": NaN,
+    "fixed_eta_b_APPROACH": NaN,
+    "fixed_eta_b_IDLE": NaN
+  },
+  "bands": {
+    "heldout_mape_pct": {
+      "p5": 1.8202865448782164,
+      "p95": 1.911288451313337,
+      "min": 1.8072758254550965,
+      "max": 1.9707201119201532,
+      "n": 64
+    },
+    "dp_ff_kg_s": {
+      "p5": 2.3760930881454603,
+      "p95": 2.4102421076199354,
+      "min": 2.368162402587955,
+      "max": 2.4151388688910616,
+      "n": 64
+    },
+    "dp_tsfc_mg_Ns": {
+      "p5": 7.642628138132731,
+      "p95": 7.752467377356395,
+      "min": 7.6171193392986565,
+      "max": 7.768217654844206,
+      "n": 64
+    },
+    "dp_T4_K": {
+      "p5": 1667.1081159620103,
+      "p95": 1795.165989157426,
+      "min": 1646.9768565277482,
+      "max": 1817.2795714404042,
+      "n": 64
+    },
+    "dp_phi": {
+      "p5": 0.3217896152727768,
+      "p95": 0.38698651615939755,
+      "min": 0.3134855159310555,
+      "max": 0.38839721043065106,
+      "n": 64
+    },
+    "dp_m_core_kg_s": {
+      "p5": 91.78762837536496,
+      "p95": 111.67614450062058,
+      "min": 91.50786193444956,
+      "max": 114.5090683448226,
+      "n": 64
+    },
+    "fit_W_ref": {
+      "p5": 91.78762837536496,
+      "p95": 111.67614450062058,
+      "min": 91.50786193444956,
+      "max": 114.5090683448226,
+      "n": 64
+    },
+    "fit_a_thrust": {
+      "p5": 1.1066794670176567,
+      "p95": 1.11476519554748,
+      "min": 1.10354240237006,
+      "max": 1.1188836277123375,
+      "n": 64
+    },
+    "fit_k_pi": {
+      "p5": 1.3168544439882466,
+      "p95": 1.3546984375513804,
+      "min": 1.3059666720863152,
+      "max": 1.3668014997426239,
+      "n": 64
+    },
+    "fit_k_mdot": {
+      "p5": 0.3948918508282156,
+      "p95": 0.45846724182313403,
+      "min": 0.3905989577403627,
+      "max": 0.4715665638803525,
+      "n": 64
+    }
+  },
+  "oat": {
+    "heldout_mape_pct": {
+      "oat_combustor_pressure_loss=lo": 1.8276378037095222,
+      "oat_combustor_pressure_loss=hi": 1.819439489025527,
+      "oat_eta_compressor=lo": 1.8801547926517934,
+      "oat_eta_compressor=hi": 1.805949363350134,
+      "oat_eta_turbine_polytropic=lo": 1.823612940579119,
+      "oat_eta_turbine_polytropic=hi": 1.824484112405108,
+      "oat_fpr_rated=lo": 1.8857040017928757,
+      "oat_fpr_rated=hi": 1.9131349266984183,
+      "oat_fan_e_poly=lo": 1.8196997560076495,
+      "oat_fan_e_poly=hi": 1.8685316854201253,
+      "oat_eta_b=lo": 1.8243744524511376,
+      "oat_eta_b=hi": 1.823125171688084
+    },
+    "dp_tsfc_mg_Ns": {
+      "oat_combustor_pressure_loss=lo": 7.704302722933939,
+      "oat_combustor_pressure_loss=hi": 7.701463739802351,
+      "oat_eta_compressor=lo": 7.683774575402014,
+      "oat_eta_compressor=hi": 7.713617221038532,
+      "oat_eta_turbine_polytropic=lo": 7.702899840937797,
+      "oat_eta_turbine_polytropic=hi": 7.722567770202408,
+      "oat_fpr_rated=lo": 7.731778544659028,
+      "oat_fpr_rated=hi": 7.591635171729131,
+      "oat_fan_e_poly=lo": 7.697264546518577,
+      "oat_fan_e_poly=hi": 7.737983168549781,
+      "oat_eta_b=lo": 7.702926227044363,
+      "oat_eta_b=hi": 7.702891599840148
+    },
+    "dp_T4_K": {
+      "oat_combustor_pressure_loss=lo": 1719.2723074710084,
+      "oat_combustor_pressure_loss=hi": 1717.6424853262643,
+      "oat_eta_compressor=lo": 1733.8562971229508,
+      "oat_eta_compressor=hi": 1707.871694900287,
+      "oat_eta_turbine_polytropic=lo": 1718.4631816463461,
+      "oat_eta_turbine_polytropic=hi": 1728.0410129328193,
+      "oat_fpr_rated=lo": 1639.6908618324676,
+      "oat_fpr_rated=hi": 1779.8250806512528,
+      "oat_fan_e_poly=lo": 1716.2433307628926,
+      "oat_fan_e_poly=hi": 1732.0991200754802,
+      "oat_eta_b=lo": 1718.450620105442,
+      "oat_eta_b=hi": 1718.492636140706
+    },
+    "fit_W_ref": {
+      "oat_combustor_pressure_loss=lo": 102.30071332904632,
+      "oat_combustor_pressure_loss=hi": 102.49160028922878,
+      "oat_eta_compressor=lo": 103.56342555001889,
+      "oat_eta_compressor=hi": 101.69841810925827,
+      "oat_eta_turbine_polytropic=lo": 102.39547191158805,
+      "oat_eta_turbine_polytropic=hi": 101.32438114333412,
+      "oat_fpr_rated=lo": 115.06932041697077,
+      "oat_fpr_rated=hi": 93.01962681660846,
+      "oat_fan_e_poly=lo": 102.63285949661328,
+      "oat_fan_e_poly=hi": 100.97022658614978,
+      "oat_eta_b=lo": 102.3959646994632,
+      "oat_eta_b=hi": 102.39429644195141
+    }
+  },
+  "design_point_takeoff": {
+    "dp_ff_kg_s": {
+      "p5": 2.3760930881454603,
+      "p95": 2.4102421076199354,
+      "min": 2.368162402587955,
+      "max": 2.4151388688910616,
+      "n": 64
+    },
+    "dp_tsfc_mg_Ns": {
+      "p5": 7.642628138132731,
+      "p95": 7.752467377356395,
+      "min": 7.6171193392986565,
+      "max": 7.768217654844206,
+      "n": 64
+    },
+    "dp_T4_K": {
+      "p5": 1667.1081159620103,
+      "p95": 1795.165989157426,
+      "min": 1646.9768565277482,
+      "max": 1817.2795714404042,
+      "n": 64
+    }
+  }
+}
