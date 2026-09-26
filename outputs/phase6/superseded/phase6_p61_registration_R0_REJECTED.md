@@ -1,53 +1,6 @@
-# Phase 6 P6.1 — pre-registration, amendment A1 (frozen 2026-09-26, before any pilot or fit)
+# Phase 6 P6.1 — pre-registration (frozen 2026-09-26, before any pilot or fit)
 
-**A1 supersedes R0.** The first registration (R0, commit `59d9665`) was rejected
-by planner review `docs/plan_phase6_review.md` (R6-A) before any pilot, v5 fit
-or held-out evaluation had run, because it fixed the burner-zone air fraction
-β = 0.8 over an unsourced "illustrative" range. R0 is archived byte-identical at
-`outputs/phase6/superseded/` (see its `README.md` for hashes and reason). A1
-keeps R0's split, weighting, objective, fitted set and box, optimizer, pilot
-budget, identifiability rule, baselines, metrics, margin and thresholds
-**verbatim** (`scripts/validation/phase6_register_p61.py` refuses to write A1
-if any of them differs from R0). Changes from R0 are listed in §0.
-
-## 0. Changes from R0 (A1)
-
-1. **β dropped — single-zone combustor.** All core air enters one HP
-   equilibrium at the overall φ (`design_point['combustor_air_fraction'] = 1.0`,
-   which switches off the Phase 3.4 burner/dilution split); the temperature rise
-   is scaled by η_b. No citable range exists for the quantity the split
-   implements (air frozen out of equilibrium, then remixed at constant cp before
-   the turbine). The nearest public items are different quantities or single
-   designs: turbine cooling (secondary) air injected *into the turbine*
-   (NASA/TM-2017-219501 Table 3, 15–19 %), and one 1972 research-combustor air
-   distribution (NASA TM X-2476, Fig. 2). Decision 2's drop option is therefore
-   used. β is neither fitted nor fixed under another name. Frozen v2–v4 artifacts
-   and reproduction paths keep their own β. Size of the structural change,
-   from a provisional input-only probe (AE3 inputs, W_ref 96 kg/s, k 0.6, no fuel
-   flow read): matched-thrust fuel flow is +0.41 % at take-off and +0.59 % at
-   approach with β = 1.0 vs 0.8.
-2. **η_fan:** exact polytropic→isentropic conversion (the fan model uses
-   constant γ = 1.4, so the conversion is the model's own definition),
-   **transformed per Monte-Carlo draw** at the drawn FPR_rated. The reported
-   range is the envelope (polytropic 0.8961–0.97 × FPR 1.3–1.7): 0.8880–0.9689.
-   At FPR 1.45 the span is 0.8905–0.9684. Central 0.90 ≡ e_poly 0.905.
-3. **η_c:** R0's constant-γ, rated-OPR (43.2) conversion is retained as the
-   registered envelope (0.8225–0.8865). Documented approximation: the production
-   compressor uses variable-cp Cantera air and a temperature-rise efficiency;
-   that conversion gives 0.8356–0.8949 at OPR 43.2. Across the calibration OPR
-   span (36.3–48.8) the constant-γ conversion moves by < 0.006. The central 0.86
-   is inside every variant. One η_c applies to every engine and mode.
-4. **η_b is an energy-efficiency proxy** (assumptions in §3 and in
-   `lto_v5.eta_b_from_emissions`), not an identified parameter. Heating values
-   are reproduced by `lto_v5.creck_heating_values()` (tested).
-5. **NOx:** the v5 cycle workers refit the NOx correlation without the
-   held-out models (`lto_v5._init_worker`); no full-data-fit NOx value is
-   reported as held-out evidence.
-6. **Driver errors (R6-B):** only `ThrustTargetUnreachable` rows are scored
-   as e = 1.0. Any other exception, or a non-finite prediction without that
-   status, aborts the run.
-
-Machine-readable copy: `outputs/phase6/p61_registration.json` (A1; written by
+Machine-readable copy: `outputs/phase6/p61_registration.json` (written by
 `scripts/validation/phase6_register_p61.py`, which refuses to overwrite).
 Formulation code: `scripts/optimization/lto_v5.py`. Split:
 `outputs/phase6/split_p61.json` (`scripts/validation/phase6_split.py`).
@@ -63,8 +16,6 @@ targets, OPR, BPR) with provisional fixed values; it read no fuel flow.
 `scripts/optimization/lto_v5.py`, `scripts/validation/phase6_split.py`,
 `scripts/validation/phase6_register_p61.py`, `outputs/phase6/`,
 `tests/test_holdout_informativeness.py`, `tests/test_run_at_thrust.py`,
-`tests/test_solution_reuse.py`, `tests/test_phase6_registration.py`,
-`outputs/phase6/superseded/`,
 `simulation/combustor/combustor.py` (Solution reuse, bit-identical),
 `integrated_engine.py` (`run_at_thrust`, `eta_fan` design-point key). Planned
 edits: `scripts/optimization/calibrate_lto.py` (`--tag v5` path),
@@ -96,8 +47,7 @@ Per record and mode (x = Power % / 100 ∈ {1.00, 0.30, 0.07}): target thrust
 x·F_rated (ICAO input); ṁ_rated = W_ref·(F_rated/310.9)^a; π_c =
 1 + (OPR−1)x^k_pi; ṁ_core = ṁ_rated·x^k_mdot; FPR = 1 + (FPR_rated−1)x^k_pi;
 BPR = ICAO value; φ solved by `run_at_thrust`; fuel flow is the model output.
-Jet-A1, CRECK, **single-zone** HP-equilibrium combustor (A1), analytic
-turbine and nozzle. T4 guard 2111 K (3800 °R: upper
+Jet-A1, CRECK, analytic turbine and nozzle. T4 guard 2111 K (3800 °R: upper
 end of the NASA N+3 T4 design space, NASA/TM-2017-219501 p. 4).
 
 **Fitted** (shared across calibration): W_ref ∈ [60, 140] kg/s, a ∈ [0, 2],
@@ -107,13 +57,13 @@ k_pi ∈ [0.2, 1.5], k_mdot ∈ [0.2, 1.5].
 
 | Parameter | Central | Range | Basis |
 |---|---|---|---|
-| η_b (per mode) | TO 0.999894, APP 0.999834, IDLE 0.998152 | TO 0.999880–0.999920; APP 0.999771–0.999877; IDLE 0.997321–0.998682 | **Data-derived energy-efficiency proxy**: η_b = 1 − (EI_CO·Q_CO + EI_HC·Q_fuel)/(1000·Q_fuel) from the calibration group's ICAO CO/HC only. Q_CO 10.1018 (CO + ½O₂ → CO₂) and Q_fuel 44.4620 MJ/kg (n-C12H26 LHV, H₂O **vapour**) from CRECK thermo at 298.15 K, reproduced by `creck_heating_values()`. Assumptions: CO and HC carry all unreleased energy; HC counted as unburned fuel at the fuel LHV per unit mass (ICAO HC is a methane-equivalent mass, so this is an approximation). Used only as the temperature-rise scaling T4 = T3 + η_b(T_ad − T3); not identified from fuel flow. Central = group-weighted mean, range = min–max over calibration records. Replaces v4's unidentified 0.9963. |
+| η_b (per mode) | TO 0.999894, APP 0.999834, IDLE 0.998152 | TO 0.999880–0.999920; APP 0.999771–0.999877; IDLE 0.997321–0.998682 | **Data-derived**: η_b = 1 − (EI_CO·Q_CO + EI_HC·Q_fuel)/(1000·Q_fuel) from the calibration group's ICAO CO/HC; Q_CO 10.1018, Q_fuel (n-C12H26 LHV) 44.4620 MJ/kg from CRECK thermo at 298.15 K; central = group-weighted mean, range = min–max over calibration records. Replaces v4's unidentified 0.9963. |
 | Combustor pressure loss | 0.045 | 0.04–0.05 | NASA/TM-2017-219501 p. 4 (4 %); NASA/CR-2005-213657 Table 1 p. 10 (π_b 0.96); NASA/TM-2007-214690 p. 12 (5 %, NPSS example). Replaces v4's unidentified 0.0442. |
-| η_c (isentropic, single-stage model) | 0.86 | 0.8225–0.8865 (envelope) | Polytropic 0.89–0.93 (NASA/TM-2017-219501 p. 3: HPC nominal 0.91, N+3 ~0.89, LPC ~0.93; NASA/CR-2005-213657 Table 1: e_lpc 0.9036, e_hpc 0.9066) converted to isentropic at OPR 43.2 with constant γ = 1.4 (approximation; variable-cp conversion 0.8356–0.8949, §0.3) |
+| η_c (isentropic, single-stage model) | 0.86 | 0.8225–0.8865 | Polytropic 0.89–0.93 (NASA/TM-2017-219501 p. 3: HPC nominal 0.91, N+3 ~0.89, LPC ~0.93; NASA/CR-2005-213657 Table 1: e_lpc 0.9036, e_hpc 0.9066) converted to isentropic at OPR 43.2, γ = 1.4 |
 | η_poly turbine | 0.90 | 0.90–0.92 | NASA/TM-2017-219501 p. 3 (HPT 0.91; N+2 level 0.90), p. 4 (LPT 0.92); NASA/CR-2005-213657 Table 1 (0.9029, 0.9174). Central = N+2 level (Trent 1000 predates N+3). |
-| η_fan (isentropic) | 0.90 | 0.8880–0.9689 (envelope; per-draw transform) | Polytropic 0.8961 (NASA/CR-2005-213657 Table 1) – 0.97 (NASA/TM-2017-219501 p. 3, geared FPR 1.3, "may seem aggressive"), converted exactly at the drawn FPR_rated (§0.2) |
+| η_fan (isentropic) | 0.90 | 0.89–0.965 | NASA/CR-2005-213657 Table 1 (e_fan 0.8961); NASA/TM-2017-219501 p. 3 (0.97, geared FPR 1.3, "may seem aggressive") |
 | FPR rated | 1.45 | 1.3–1.7 | NASA/TM-2017-219501 Table 3 p. 12 (NASA CFM56 model 1.7; N+3 1.3) |
-| β (burner air fraction) | — | — | **Dropped (A1)**: single-zone combustor, §0.1. |
+| β (burner air fraction) | 0.80 | 0.70–0.90 | **ILLUSTRATIVE** — no page-citable range found. Nearest public analogue: secondary flows 15–19 % (NASA/TM-2017-219501 Table 3). Propagated and named as an assumption. |
 | ξ (heat loss) | 0 | fixed | structural argument, `scripts/validation/heat_loss_provenance.md` |
 
 These are spans of cited public design values (NASA reference-cycle and
@@ -163,15 +113,13 @@ fixed-with-cited-range or dropped **before** the full fit.
   gating.
 - **A4** `tests/test_holdout_informativeness.py` passes on the v5 CSV.
 
-NOx: correlation refit on calibration-group models only (also inside the v5
-cycle workers); held-out validation on the held-out group.
+NOx: correlation refit on calibration-group models only; held-out validation
+on the held-out group.
 
 ## 7. P6.2 bands (conditioning rule)
 
 Seeded (42) Monte Carlo, 64 draws, each fixed parameter uniform over its
-range (η_b per mode over its calibration min–max; η_fan transformed per draw
-from e_poly ~ U(0.8961, 0.97) at the drawn FPR_rated; η_c uniform over its
-constant-γ envelope; ξ fixed; no β). For **each draw
+range (η_b per mode over its calibration min–max; ξ fixed). For **each draw
 the fitted parameters are re-fit** on the calibration group (least_squares
 from the v5 optimum, ≤30 evaluations), then the design point and held-out
 MAPE are recomputed. Reported as **refit-conditioned range bands** (P5–P95,

@@ -4,7 +4,9 @@ calibrate_lto.py (--tag v5), holdout_icao_validation.py (--tag _v5) and
 identifiability_profile.py.
 
 Registered in docs/phase6_p61_registration.md BEFORE any pilot or fit; the
-numbers below must match outputs/phase6/p61_registration.json.
+numbers below must match outputs/phase6/p61_registration.json (amendment A1,
+R6 review). The first registration (illustrative beta 0.8) was rejected before
+any pilot and is archived under outputs/phase6/superseded/.
 
 Per ICAO record r and LTO mode m (x = 'Power (%)' / 100):
     F_target      = x * F_rated,r                     (input: ICAO rated thrust)
@@ -15,6 +17,16 @@ Per ICAO record r and LTO mode m (x = 'Power (%)' / 100):
     BPR           = BPR_r                              (ICAO, constant across modes)
     phi           solved by IntegratedTurbofanEngine.run_at_thrust(F_target)
     fuel flow     = model output (compared with ICAO 'Fuel Flow (kg/s)')
+
+Combustor structure (amendment A1): SINGLE-ZONE. All core air enters one HP
+equilibrium at the overall phi (design_point combustor_air_fraction = 1.0,
+which disables the Phase 3.4 burner/dilution split); the temperature rise is
+scaled by eta_b. The split parameter beta has no citable range for the
+quantity implemented (air frozen out of equilibrium and remixed at constant cp
+before the turbine), so decision 2's drop option is exercised: it is neither
+fitted nor fixed in v5. Frozen v2-v4 calibrations and reproduction paths keep
+their own beta values. Turbine cooling air (injected into the turbine) is a
+different quantity and is not modelled.
 
 Fitted (shared across the calibration group): W_ref, a_thrust, k_pi, k_mdot.
 Fixed (P6.2 range rule): see FIXED / FIXED_RANGES.
@@ -49,16 +61,50 @@ FIT_BOUNDS = {
 }
 FIT_ORDER = tuple(FIT_BOUNDS)   # Optuna suggest order (part of reproducibility)
 
-# ---- heating values for eta_b from ICAO CO/HC (method in the registration) ----
+# ---- heating values for eta_b from ICAO CO/HC (reproduced by creck_heating_values) ----
 Q_CO_MJ_KG = 10.1018      # CO + 1/2 O2 -> CO2 at 298.15 K, CRECK thermo
 Q_FUEL_MJ_KG = 44.4620    # n-C12H26 LHV (H2O vapour) at 298.15 K, CRECK thermo
+MECH_CRECK = ROOT / "data" / "creck_c1c16_full.yaml"
+
+
+def creck_heating_values(T: float = 298.15) -> dict:
+    """Reproduce Q_CO_MJ_KG and Q_FUEL_MJ_KG from the production CRECK thermo.
+
+    Reaction enthalpies at T (pure species at 1 atm; ideal gas, so pressure-
+    independent), in MJ per kg of the named reactant:
+        CO + 1/2 O2 -> CO2                          (Q_CO)
+        n-C12H26 + 18.5 O2 -> 12 CO2 + 13 H2O(g)    (Q_fuel: LHV, water as VAPOUR)
+    """
+    import cantera as ct
+    g = ct.Solution(str(MECH_CRECK))
+
+    def h(sp):
+        g.TPX = T, ct.one_atm, f"{sp}:1"
+        return g.enthalpy_mole
+
+    def mw(sp):
+        return g.molecular_weights[g.species_index(sp)]
+
+    return {
+        "Q_CO_MJ_KG": (h("CO") + 0.5 * h("O2") - h("CO2")) / mw("CO") / 1e6,
+        "Q_FUEL_MJ_KG": (h("NC12H26") + 18.5 * h("O2") - 12 * h("CO2") - 13 * h("H2O"))
+                        / mw("NC12H26") / 1e6,
+    }
 
 
 def eta_b_from_emissions(ei_co_g_kg, ei_hc_g_kg):
-    """Combustion efficiency from the unburned-energy balance of CO and HC.
+    """Combustion-efficiency PROXY from the unburned-energy balance of CO and HC.
 
-    eta_b = 1 - (EI_CO * Q_CO + EI_HC * Q_fuel) / (1000 * Q_fuel), HC counted at
-    the fuel heating value (EIs in g per kg fuel).
+    eta_b = 1 - (EI_CO * Q_CO + EI_HC * Q_fuel) / (1000 * Q_fuel), EIs in g per
+    kg fuel. Assumptions: (i) the chemical energy not released is carried only
+    by CO and unburned HC (soot, H2 and other species neglected); (ii) HC is
+    counted as if it were unburned fuel, at the fuel LHV per unit mass (ICAO
+    reports HC as a methane-equivalent mass; the heating value of the actual
+    unburned species is unknown); (iii) heating values are lower heating values
+    (H2O vapour) at 298.15 K from CRECK thermo for n-C12H26, the production
+    Jet-A1 surrogate. It is an energy-efficiency proxy fixed from data and used
+    as the model's temperature-rise scaling (T4 = T3 + eta_b (T_ad - T3)); it is
+    NOT an inverse-cycle parameter identified from the fuel-flow objective.
     """
     return 1.0 - (np.asarray(ei_co_g_kg) * Q_CO_MJ_KG
                   + np.asarray(ei_hc_g_kg) * Q_FUEL_MJ_KG) / (1000.0 * Q_FUEL_MJ_KG)
@@ -71,7 +117,6 @@ FIXED = {
     "eta_turbine_polytropic": 0.90,
     "eta_fan": 0.90,
     "fpr_rated": 1.45,
-    "combustor_air_fraction": 0.80,
     "combustor_heat_loss_fraction": 0.0,
     # eta_b per mode: group-weighted mean over the CALIBRATION group of
     # eta_b_from_emissions(CO, HC); filled by calibration_eta_b() and frozen
@@ -97,7 +142,12 @@ FIXED_RANGES = {
             "NASA/CR-2005-213657, Table 1, p. 10: e_lpc 0.9036, e_hpc 0.9066",
         ],
         "basis": "span of cited polytropic values, converted to the model's single "
-                 "isentropic efficiency at the calibration engine's rated OPR (43.2)",
+                 "isentropic efficiency at the calibration engine's rated OPR (43.2) with the "
+                 "constant-gamma (1.4) relation compressor_isentropic(); ENVELOPE, applied to all "
+                 "engines and modes. Approximation: the production compressor uses variable-cp "
+                 "Cantera air and a temperature-rise efficiency; the variable-cp conversion "
+                 "(compressor_isentropic_variable_cp) is ~0.008-0.013 higher and is reported, "
+                 "not substituted. The central 0.86 lies inside both conversions.",
     },
     "eta_turbine_polytropic": {
         "range": (0.90, 0.92),
@@ -109,12 +159,18 @@ FIXED_RANGES = {
         "basis": "span of cited polytropic values; central 0.90 = N+2 level (Trent 1000 predates N+3)",
     },
     "eta_fan": {
-        "range": (0.89, 0.965),
+        "range": None,  # envelope filled by fan_isentropic_envelope()
+        "polytropic_range": (0.8961, 0.97),
         "sources": [
             "NASA/CR-2005-213657, Table 1, p. 10: fan polytropic 0.8961",
             "NASA/TM-2017-219501, p. 3: fan polytropic 97 % (geared, FPR 1.3; 'may seem aggressive')",
         ],
-        "basis": "cited polytropic span, lowered by ~0.005 at the top for isentropic at FPR ~1.45",
+        "basis": "cited polytropic span converted EXACTLY to the fan model's isentropic "
+                 "efficiency (simulation/fan.py uses constant gamma 1.4, so fan_isentropic() is the "
+                 "model's own definition). TRANSFORMED PER DRAW in the P6.2 Monte Carlo: draw "
+                 "e_poly and FPR_rated, eta_fan = fan_isentropic(e_poly, FPR_rated). 'range' is the "
+                 "envelope over the polytropic span and FPR_rated 1.3-1.7 (reporting only). "
+                 "Central 0.90 at FPR 1.45 corresponds to e_poly ~0.905, inside the span.",
     },
     "fpr_rated": {
         "range": (1.3, 1.7),
@@ -122,13 +178,6 @@ FIXED_RANGES = {
             "NASA/TM-2017-219501, Table 3, p. 12: FPR 1.7 (NASA CFM56 model) and 1.3 (N+3)",
         ],
         "basis": "span of cited design values",
-    },
-    "combustor_air_fraction": {
-        "range": (0.70, 0.90),
-        "sources": [],
-        "basis": "ILLUSTRATIVE: no page-citable range for the burner-zone air fraction was found; "
-                 "nearest public analogue is secondary (cooling) flow 15-19 % in NASA/TM-2017-219501 "
-                 "Table 3, p. 12. Propagated over 0.70-0.90 and reported as an assumption.",
     },
     "combustor_heat_loss_fraction": {
         "range": (0.0, 0.0),
@@ -138,9 +187,15 @@ FIXED_RANGES = {
     "eta_b": {
         "range": None,  # per mode: min-max over calibration records
         "sources": ["data/icao_engine_data.csv CO and HC emission indices (calibration group only)"],
-        "basis": "data-derived per mode via eta_b_from_emissions (energy balance; CRECK heating values)",
+        "basis": "data-derived per mode via eta_b_from_emissions (energy-efficiency proxy; "
+                 "assumptions in its docstring; heating values reproduced by creck_heating_values); "
+                 "calibration-group records only",
     },
 }
+
+# Model structure (amendment A1): single-zone combustor. Not a parameter: the
+# value 1.0 switches off the burner/dilution split in run_full_cycle.
+SINGLE_ZONE_AIR_FRACTION = 1.0
 
 
 def compressor_isentropic(e_poly: float, pi: float = 43.2, gamma: float = 1.4) -> float:
@@ -152,6 +207,43 @@ def compressor_isentropic(e_poly: float, pi: float = 43.2, gamma: float = 1.4) -
 def compressor_isentropic_range() -> tuple[float, float]:
     lo, hi = FIXED_RANGES["eta_compressor"]["polytropic_range"]
     return (compressor_isentropic(lo), compressor_isentropic(hi))
+
+
+def compressor_isentropic_variable_cp(e_poly: float, pi: float = 43.2, T_in: float = 288.15,
+                                      p_in: float = 101325.0, n_steps: int = 4000) -> float:
+    """Documentation check of the constant-gamma conversion: the production
+    compressor's temperature-rise efficiency (T_s - T_in)/(T_out - T_in) for a
+    polytropic compression of variable-cp CRECK air (n_steps small isentropic
+    steps, each with enthalpy rise dh_s / e_poly)."""
+    import cantera as ct
+    g = ct.Solution(str(MECH_CRECK))
+    g.TPX = T_in, p_in, "O2:0.21, N2:0.79"
+    s0, h, p = g.entropy_mass, g.enthalpy_mass, p_in
+    g.SP = s0, p_in * pi
+    T_s = g.T
+    g.TPX = T_in, p_in, "O2:0.21, N2:0.79"
+    r = pi ** (1.0 / n_steps)
+    for _ in range(n_steps):
+        g.SP = g.entropy_mass, p * r
+        h += (g.enthalpy_mass - h) / e_poly
+        p *= r
+        g.HP = h, p
+    return (T_s - T_in) / (g.T - T_in)
+
+
+def fan_isentropic(e_poly: float, fpr: float, gamma: float = 1.4) -> float:
+    """Fan isentropic efficiency equivalent to polytropic ``e_poly`` at ``fpr``
+    (exact for simulation/fan.py, which uses constant gamma = 1.4)."""
+    k = (gamma - 1.0) / gamma
+    return (fpr ** k - 1.0) / (fpr ** (k / e_poly) - 1.0)
+
+
+def fan_isentropic_envelope() -> tuple[float, float]:
+    """Envelope of fan_isentropic over the cited polytropic span and FPR_rated
+    span (isentropic efficiency falls with FPR and rises with e_poly)."""
+    e_lo, e_hi = FIXED_RANGES["eta_fan"]["polytropic_range"]
+    f_lo, f_hi = FIXED_RANGES["fpr_rated"]["range"]
+    return (fan_isentropic(e_lo, f_hi), fan_isentropic(e_hi, f_lo))
 
 
 # --------------------------------------------------------------------------
@@ -214,16 +306,21 @@ def calibration_eta_b(cal_rows: pd.DataFrame) -> dict:
 _ENGINE = None
 
 
-def _init_worker():
+def _init_worker(nox_fit_exclude_models):
+    """Worker engine. The NOx correlation is refit WITHOUT the given models
+    (the held-out group), so no NOx value produced here uses held-out data."""
     global _ENGINE
     import logging
     logging.getLogger("cantera").setLevel(logging.ERROR)
     import sys
     sys.path.insert(0, str(ROOT))
     os.chdir(ROOT)
-    from integrated_engine import IntegratedTurbofanEngine
+    from integrated_engine import EmissionsEstimator, IntegratedTurbofanEngine
     with contextlib.redirect_stdout(io.StringIO()):
         _ENGINE = IntegratedTurbofanEngine()
+        _ENGINE.emissions = EmissionsEstimator(nox_fit_exclude_models=set(nox_fit_exclude_models))
+    if _ENGINE.emissions.nox_fit_exclude_models != set(nox_fit_exclude_models):
+        raise RuntimeError("NOx held-out exclusion not applied")
 
 
 def mode_state(params: dict, fixed: dict, opr: float, bpr: float, f_rated: float, x: float) -> dict:
@@ -234,7 +331,7 @@ def mode_state(params: dict, fixed: dict, opr: float, bpr: float, f_rated: float
         "fpr": 1.0 + (fixed["fpr_rated"] - 1.0) * x ** params["k_pi"],
         "bypass_ratio": bpr,
         "combustor_pressure_loss": fixed["combustor_pressure_loss"],
-        "combustor_air_fraction": fixed["combustor_air_fraction"],
+        "combustor_air_fraction": SINGLE_ZONE_AIR_FRACTION,   # structure, not a parameter
         "combustor_heat_loss_fraction": fixed["combustor_heat_loss_fraction"],
         "eta_fan": fixed["eta_fan"],
     }
@@ -271,14 +368,23 @@ def solve_task(task: tuple) -> dict:
 class V5Model:
     """Thrust-matched predictions for a set of rows; parallel, warm-started, deterministic."""
 
-    def __init__(self, fixed: dict, n_workers: int = 6, fuel: str = "Jet-A1"):
+    def __init__(self, fixed: dict, nox_fit_exclude_models, n_workers: int = 6,
+                 fuel: str = "Jet-A1"):
+        """``nox_fit_exclude_models`` is required (no default): pass the
+        held-out model names so worker NOx never comes from a fit that saw them."""
         if fixed.get("eta_b") is None:
             raise ValueError("fixed['eta_b'] (per-mode) must be set")
+        if "combustor_air_fraction" in fixed:
+            raise ValueError("combustor_air_fraction is not a v5 parameter (single-zone, A1)")
+        if not nox_fit_exclude_models:
+            raise ValueError("nox_fit_exclude_models must list the held-out models")
         self.fixed = fixed
         self.fuel = fuel
         self.guess: dict = {}
         self.n_evals = 0
-        self.pool = ProcessPoolExecutor(max_workers=n_workers, initializer=_init_worker)
+        self.nox_fit_exclude_models = sorted(nox_fit_exclude_models)
+        self.pool = ProcessPoolExecutor(max_workers=n_workers, initializer=_init_worker,
+                                        initargs=(self.nox_fit_exclude_models,))
 
     def close(self):
         self.pool.shutdown()

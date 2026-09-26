@@ -1,28 +1,6 @@
 {
   "registered": "2026-09-26",
-  "amendment": "A1",
-  "status": "frozen before any pilot or fit (amends R0, which was rejected before any pilot)",
-  "supersedes": {
-    "path": "outputs/phase6/superseded/p61_registration_R0_REJECTED.json",
-    "sha256": "89e7d11630f2aa0bd1cbfb1e2a8fccf8e57c98b69132388ffb2e7ddb35158dc8",
-    "registered_in_commit": "59d9665",
-    "rejected_by": "docs/plan_phase6_review.md R6-A (commit c55e182)",
-    "reason": "R0 fixed the burner-zone air fraction beta = 0.8 over an unsourced ILLUSTRATIVE range; decision 2 requires a cited range, data identification, or dropping the parameter"
-  },
-  "changes_from_R0": [
-    "beta (combustor_air_fraction) DROPPED: single-zone combustor, all core air in one HP equilibrium at the overall phi (design_point combustor_air_fraction = 1.0, which disables the split). The split has no citable range for the quantity implemented (air frozen out of equilibrium and remixed at constant cp before the turbine); one 1972 research-combustor air distribution (NASA TM X-2476, Fig. 2) is a single design and a different quantity; turbine cooling air (NASA/TM-2017-219501 Table 3) is injected into the turbine and is also a different quantity. Legacy beta stays in frozen v2-v4 and reproduction paths. Provisional input-only probe (AE3, W_ref 96, k 0.6): matched-thrust fuel flow beta 1.0 vs 0.8 = +0.41 % take-off, +0.59 % approach",
-    "eta_fan range: exact polytropic-to-isentropic conversion (fan model's constant gamma 1.4), transformed per Monte Carlo draw at the drawn FPR_rated; envelope reported",
-    "eta_compressor: constant-gamma rated-OPR conversion retained; variable-cp conversion and calibration-OPR span reported (documentation, not substituted)",
-    "eta_b: documented as an energy-efficiency proxy (assumptions in lto_v5.eta_b_from_emissions); heating values reproduced by lto_v5.creck_heating_values",
-    "NOx: worker engines refit the NOx correlation without held-out models (lto_v5._init_worker); no full-data-fit NOx value is reported as held-out evidence",
-    "driver errors: only ThrustTargetUnreachable rows are penalised (e = 1.0); any other exception or non-finite prediction aborts the run (R6-B)"
-  ],
-  "model_structure": {
-    "combustor": "single-zone HP equilibrium at overall phi (Cantera, CRECK), temperature rise scaled by eta_b; no burner/dilution split",
-    "turbine": "analytic",
-    "nozzle": "analytic",
-    "heat_loss_xi": 0.0
-  },
+  "status": "frozen before any pilot or fit",
   "split": "outputs/phase6/split_p61.json",
   "formulation": "scripts/optimization/lto_v5.py (module docstring)",
   "fuel": "Jet-A1 (CRECK, production mechanism profile)",
@@ -54,6 +32,7 @@
     "eta_turbine_polytropic": 0.9,
     "eta_fan": 0.9,
     "fpr_rated": 1.45,
+    "combustor_air_fraction": 0.8,
     "combustor_heat_loss_fraction": 0.0,
     "eta_b": {
       "TAKE-OFF": 0.999893720535389,
@@ -87,21 +66,7 @@
         "NASA/TM-2017-219501, p. 3: HPC nominal polytropic 91 %, N+3 HPC ~2 % below nominal; LPC ~93 %",
         "NASA/CR-2005-213657, Table 1, p. 10: e_lpc 0.9036, e_hpc 0.9066"
       ],
-      "basis": "span of cited polytropic values, converted to the model's single isentropic efficiency at the calibration engine's rated OPR (43.2) with the constant-gamma (1.4) relation compressor_isentropic(); ENVELOPE, applied to all engines and modes. Approximation: the production compressor uses variable-cp Cantera air and a temperature-rise efficiency; the variable-cp conversion (compressor_isentropic_variable_cp) is ~0.008-0.013 higher and is reported, not substituted. The central 0.86 lies inside both conversions.",
-      "variable_cp_conversion_at_opr_43.2": [
-        0.8356441422807064,
-        0.8949071128794953
-      ],
-      "constant_gamma_at_calibration_opr_span": {
-        "36.3": [
-          0.8259278829875454,
-          0.8887666936125641
-        ],
-        "48.8": [
-          0.8200687502919332,
-          0.884943014371855
-        ]
-      }
+      "basis": "span of cited polytropic values, converted to the model's single isentropic efficiency at the calibration engine's rated OPR (43.2)"
     },
     "eta_turbine_polytropic": {
       "range": [
@@ -117,22 +82,14 @@
     },
     "eta_fan": {
       "range": [
-        0.8880498790990209,
-        0.9688619859917622
-      ],
-      "polytropic_range": [
-        0.8961,
-        0.97
+        0.89,
+        0.965
       ],
       "sources": [
         "NASA/CR-2005-213657, Table 1, p. 10: fan polytropic 0.8961",
         "NASA/TM-2017-219501, p. 3: fan polytropic 97 % (geared, FPR 1.3; 'may seem aggressive')"
       ],
-      "basis": "cited polytropic span converted EXACTLY to the fan model's isentropic efficiency (simulation/fan.py uses constant gamma 1.4, so fan_isentropic() is the model's own definition). TRANSFORMED PER DRAW in the P6.2 Monte Carlo: draw e_poly and FPR_rated, eta_fan = fan_isentropic(e_poly, FPR_rated). 'range' is the envelope over the polytropic span and FPR_rated 1.3-1.7 (reporting only). Central 0.90 at FPR 1.45 corresponds to e_poly ~0.905, inside the span.",
-      "at_central_fpr_1.45": [
-        0.8904992947931649,
-        0.9683803329288038
-      ]
+      "basis": "cited polytropic span, lowered by ~0.005 at the top for isentropic at FPR ~1.45"
     },
     "fpr_rated": {
       "range": [
@@ -143,6 +100,14 @@
         "NASA/TM-2017-219501, Table 3, p. 12: FPR 1.7 (NASA CFM56 model) and 1.3 (N+3)"
       ],
       "basis": "span of cited design values"
+    },
+    "combustor_air_fraction": {
+      "range": [
+        0.7,
+        0.9
+      ],
+      "sources": [],
+      "basis": "ILLUSTRATIVE: no page-citable range for the burner-zone air fraction was found; nearest public analogue is secondary (cooling) flow 15-19 % in NASA/TM-2017-219501 Table 3, p. 12. Propagated over 0.70-0.90 and reported as an assumption."
     },
     "combustor_heat_loss_fraction": {
       "range": [
@@ -172,7 +137,7 @@
       "sources": [
         "data/icao_engine_data.csv CO and HC emission indices (calibration group only)"
       ],
-      "basis": "data-derived per mode via eta_b_from_emissions (energy-efficiency proxy; assumptions in its docstring; heating values reproduced by creck_heating_values); calibration-group records only"
+      "basis": "data-derived per mode via eta_b_from_emissions (energy balance; CRECK heating values)"
     }
   },
   "t4_guard_K": 2111.1111111111113,
@@ -227,21 +192,9 @@
     "A3_opr_trend": "per mode, OLS slope of TSFC_i = FF_i / F_target,i on OPR_i across held-out groups (one point per group: group mean OPR, group-weighted mean TSFC), computed for ICAO data and for model predictions; PASS iff the signs agree in all three modes. Partial slope controlling for rated thrust is reported, not gating",
     "A4_informativeness": "tests/test_holdout_informativeness.py passes on the v5 CSV"
   },
-  "nox": "refit the NOx correlation on calibration-group models only (nox_fit_exclude_models = held-out models) and re-run nox_holdout_validation.py on the held-out group. The v5 cycle workers apply the same exclusion at initialisation (lto_v5._init_worker), so every v5 NOx(corr) value is from the calibration-only fit",
-  "eta_b_proxy": {
-    "formula": "eta_b = 1 - (EI_CO*Q_CO + EI_HC*Q_fuel)/(1000*Q_fuel), EI in g/kg",
-    "Q_CO_MJ_kg": 10.1018,
-    "Q_fuel_MJ_kg": 44.462,
-    "reproduced_from_CRECK": {
-      "Q_CO_MJ_KG": 10.10177387658744,
-      "Q_FUEL_MJ_KG": 44.46200840844502
-    },
-    "conventions": "298.15 K; lower heating values (H2O vapour); Q_fuel = n-C12H26 (production Jet-A1 surrogate); HC counted as unburned fuel at Q_fuel per unit mass (ICAO HC is methane-equivalent mass: approximation); CO and HC are the only unreleased-energy carriers",
-    "role": "energy-efficiency proxy fixed from calibration-group data and used as the temperature-rise scaling T4 = T3 + eta_b (T_ad - T3); NOT an inverse-cycle parameter identified from the fuel-flow objective",
-    "data": "calibration-group records only"
-  },
+  "nox": "refit the NOx correlation on calibration-group models only (nox_fit_exclude_models = held-out models) and re-run nox_holdout_validation.py on the held-out group",
   "bands_P6_2": {
-    "method": "seeded (42) Monte Carlo, 64 draws, each fixed parameter uniform over its cited range (eta_b per mode over its calibration min-max; eta_fan transformed per draw = fan_isentropic(e_poly ~ U(polytropic_range), drawn FPR_rated); eta_compressor uniform over its constant-gamma isentropic range; xi fixed; no beta); for EACH draw the fitted parameters are RE-FIT on the calibration group (least_squares from the v5 optimum, max_nfev 30), then the design point and held-out MAPE are recomputed",
+    "method": "seeded (42) Monte Carlo, 64 draws, each fixed parameter uniform over its cited range (eta_b per mode over its calibration min-max; xi fixed); for EACH draw the fitted parameters are RE-FIT on the calibration group (least_squares from the v5 optimum, max_nfev 30), then the design point and held-out MAPE are recomputed",
     "reported_as": "refit-conditioned range bands (P5-P95 and min-max). These are range propagation under assumed uniform ranges, NOT statistical confidence intervals"
   }
 }
