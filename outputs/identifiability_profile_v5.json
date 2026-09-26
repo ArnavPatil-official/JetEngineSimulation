@@ -1,0 +1,73 @@
+{
+  "sse_min": 0.000459706239335649,
+  "sse_min_source": "fit",
+  "n_eff": 27,
+  "verdicts": {
+    "W_ref": {
+      "D_at_lower_edge": 183.40005153507457,
+      "D_at_upper_edge": 178.04973693659147,
+      "interval_95": [
+        100.0,
+        110.0
+      ],
+      "interval_width_frac_of_box": 0.125,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 105.0,
+      "IDENTIFIED": true
+    },
+    "a_thrust": {
+      "D_at_lower_edge": 140.5518711341947,
+      "D_at_upper_edge": 99.00556235375657,
+      "interval_95": [
+        1.0945438697070693,
+        1.1444974062860394
+      ],
+      "interval_width_frac_of_box": 0.02497676828948503,
+      "interval_contains_no_grid_point": false,
+      "grid_argmin": 1.125,
+      "IDENTIFIED": true
+    },
+    "k_pi": {
+      "D_at_lower_edge": 83.31414860388924,
+      "D_at_upper_edge": 51.85558773325189,
+      "interval_95": [
+        1.323554203876382,
+        1.353025895817885
+      ],
+      "interval_width_frac_of_box": 0.02267053226269462,
+      "interval_contains_no_grid_point": false,
+      "grid_argmin": 1.3375,
+      "IDENTIFIED": true
+    },
+    "k_mdot": {
+      "D_at_lower_edge": 84.03500113875846,
+      "D_at_upper_edge": 198.32706591991135,
+      "interval_95": [
+        0.36250000000000004,
+        0.525
+      ],
+      "interval_width_frac_of_box": 0.12499999999999997,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 0.44375000000000003,
+      "IDENTIFIED": true
+    }
+  },
+  "stage": "full",
+  "fit": "outputs/calibration_v5_A2.json",
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "rule": "IDENTIFIED iff D >= 3.841 at both box edges (95 % profile interval interior to the box) AND the interval width <= 50 % of the box width",
+  "threshold": 3.841,
+  "identified": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "not_identified": [],
+  "jtj_condition_box_scaled_at_fit": 221.54868111086407
+}
