@@ -343,7 +343,7 @@ def _write_cfd_subset(path: Path, max_rows: int = 128) -> str:
 
 @pytest.mark.skipif(
     not Path(DATASET_PATH).exists(),
-    reason="master_shock_dataset.pt not present — run fetch_and_build_cfd_data.py",
+    reason="master_shock_dataset.pt not present — run scripts/parse_sajben_cfd.py",
 )
 class TestCFDFinetune:
     def test_finetune_returns_model_and_history(self, tmp_path: Path) -> None:

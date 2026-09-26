@@ -1748,7 +1748,7 @@ def finetune_on_cfd_data(
     if not Path(dataset_path).exists():
         raise FileNotFoundError(
             f"CFD dataset not found: {dataset_path}. "
-            "Run fetch_and_build_cfd_data.py first."
+            "Run scripts/parse_sajben_cfd.py first."
         )
 
     # ---- Load dataset (weights_only with fallback for older PyTorch) ----
