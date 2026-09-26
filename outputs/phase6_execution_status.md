@@ -90,7 +90,39 @@ this is reported as it came out; no tuning toward the held-out set.
 | P6.8 checkpoint provenance | `d17f9b7` | `tests/test_checkpoint_provenance.py`: 11 checkpoints; dataset hashes verified against files; activation derived from source at the recorded SHA where not stored. |
 | P6.8 requirements | `c6efc65` | Pinned to the v5 environment; CPU torch install documented. |
 
+## P6.2, P6.3, P6.4 results and P6.6–P6.8 completion
+
+| Item | Commit | Result |
+|---|---|---|
+| P6.2 bands | `c9a6034` | 64 draws + 12 one-at-a-time endpoints, calibration re-fit per case, 0 unreachable. P5–P95: held-out MAPE 1.82–1.91 % (max 1.97; B0 2.19, B1 1.08 → **A2 verdict holds across all ranges**); TO TSFC 7.64–7.75 mg/(N·s); T4 1667–1795 K; W_ref 91.8–111.7 kg/s. **Limiting assumption: rated FPR** (W_ref 115.1/93.0, T4 1640/1780 K at FPR 1.3/1.7). Range bands, not CIs. Table in `parameter_provenance.md` (`66a13cd`). |
+| P6.3 blends | `395466d` | Matched thrust, 780 + 768 rows, 0 unreachable. Blends move TO fuel flow/TSFC ≤ 0.16 % and T4 < 0.5 K — below the P6.2 bands → **no cycle-quantity ranking**. Claimed: each SAF-50 vs Jet-A1 on lifecycle CO₂e (−34 to −46 %), all modes; no pathway-vs-pathway ranking. Variance: lifecycle 97 % blend fractions / 3 % CORSIA draw; rank stability 80 % (4 of 5). |
+| P6.4 mechanism | `4308ffa` | At fixed v5 calibration HyChem A1/A2 need **+2.55/+3.42 % fuel** vs CRECK — above the P6.2 fuel-flow band width (1.43 %); mostly surrogate heating value (44.46 vs 43.53/43.48 MJ/kg), remainder product thermo (A2NOx equilibrium NO). T4 ≤ 0.07 %; A1 vs A2 0.84 % (within band). **The plan's hoped-for "mechanism choice does not affect any reported number" is not supported for absolute fuel flow**; the HyChem A-1/A-2 text stays on the manuscript path (checklist R1.8). Not re-calibrated per mechanism. |
+| P6.6 archive | `8b571d9` | 41 superseded outputs → `outputs/archive/pre_phase6/` (`MAPPING.json`, README). Hashes 40/40 (11 at archived paths). |
+| P6.6/P6.7 manifest + model map | `f0024f9` | `scripts/build_manifest.py` → `outputs/ARTIFACT_MANIFEST.md` + `docs/model_map.md` (claim numbers read from artifacts; Mermaid + claim-to-evidence table); `tests/test_manifest_integrity.py` (no drift, paths exist, orphan sweep zero); `docs/number_crosswalk_v5.md`. |
+| P6.8 docs | `0e50c97`, `5e72ea9` | `docs/manuscript_checklist_final.md` (text items external: pending); `REPRODUCE.md`; `scripts/reproduce_check.py`. |
+
+Validation at `f0024f9`: pytest **190 passed / 1 skipped**; `scripts/test_emissions.py`
+exit 0; 3 shipped mechanisms validate (T_ad unchanged); protected hashes 40/40
+(`outputs/logs/phase6_final_*.log`).
+
+## Fresh-clone verification (P6.8)
+
+Clone of `phase4` at `5e72ea9` into `/tmp/jes_fresh`, new Python 3.12 virtualenv,
+`pip install -r requirements.txt` (exit 0): pytest 190 passed / 1 skipped;
+emissions exit 0; protected hashes 40/40. `scripts/reproduce_check.py --in-clone`
+regenerated the 10 default rows (V1 pilot fit and A2 selection, V3, V5, V6, E3,
+E4, E9, B1, B2/B3; 21 files, ~20 min) and **all match** the committed artifacts
+at rtol 1e-9 (`outputs/logs/phase6_fresh_clone_verification.log`). **Not re-run
+in the clone:** the registered full fit, the full identifiability profile and the
+P6.2 bands (`--long`, ~3 h); their committed artifacts are consumed as-is by B1
+and E9.
+
 ## Outstanding gates
 
-- P6.2 bands running (`scripts/validation/p62_parameter_bands.py`).
-- P6.4 item 2 (`scripts/validation/mechanism_sensitivity.py`, written, not run).
+- **P6.9 freeze — awaiting the user.** Repo acceptance checks pass. The plan's
+  merge `phase4` → `main` and tag `v5.0` are held for explicit approval: the
+  predictive gates A2 (no skill over rated-thrust rescaling) and A3 (approach
+  sign) failed as registered results, P6.4 did not support "mechanism choice
+  does not matter", and every manuscript item in
+  `docs/manuscript_checklist_final.md` is external: pending.
+- Not run: the `--long` reproduction rows (~3 h).

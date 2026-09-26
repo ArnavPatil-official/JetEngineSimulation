@@ -1,0 +1,28 @@
+# Fresh-clone verification (P6.8), 2026-09-26T19:49:59-04:00
+# git clone --branch phase4 <repo> /tmp/jes_fresh  (HEAD 5e72ea9); python3.12 -m venv .venv; .venv/bin/pip install -r requirements.txt (exit 0)
+# pytest: 190 passed, 1 skipped, 65 warnings in 139.38s (0:02:19)
+# scripts/test_emissions.py exit 0; verify_protected_hashes.py 40/40 (11 at archived paths)
+# .venv/bin/python scripts/reproduce_check.py --in-clone
+V1-pilot: outputs/phase6/p61_pilot_fit.json: match (259 s)
+V1-pilot: outputs/phase6/p61_pilot_fit_rows.csv: match (259 s)
+V1-A2: outputs/calibration_v5_A2.json: match (19 s)
+V1-A2: outputs/calibration_v5_A2_rows.csv: match (19 s)
+V3: outputs/holdout_icao_validation_v5.csv: match (16 s)
+V3: outputs/holdout_icao_validation_summary_v5.csv: match (16 s)
+V3: outputs/holdout_icao_validation_v5.json: match (16 s)
+V5: outputs/design_point_summary_v5.csv: match (419 s)
+V6: outputs/nox_holdout_validation_summary_p61.csv: match (2 s)
+V6: outputs/nox_holdout_validation_p61.csv: match (2 s)
+E3: outputs/nox_dual_path_v5.csv: match (12 s)
+E4: outputs/heat_loss_sensitivity_v5.csv: match (12 s)
+E9: outputs/mechanism_sensitivity_v5.csv: match (15 s)
+E9: outputs/mechanism_sensitivity_v5.json: match (15 s)
+B1: outputs/results/blend_matched_thrust_v5.csv: match (183 s)
+B1: outputs/results/blend_matched_thrust_v5_rankings.csv: match (183 s)
+B1: outputs/results/blend_matched_thrust_v5_refs_p62.csv: match (183 s)
+B1: outputs/results/blend_matched_thrust_v5.json: match (183 s)
+B2-B3: outputs/results/variance_decomposition_v5.csv: match (12 s)
+B2-B3: outputs/results/objective_correlation_v5.csv: match (12 s)
+B2-B3: outputs/results/lca_rank_stability_v5.csv: match (12 s)
+rows checked: 10; mismatches/failures: 0
+exit 0

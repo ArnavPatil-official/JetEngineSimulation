@@ -36,7 +36,7 @@ and compares the two files: numbers to a relative tolerance of 1e-9, strings
 exactly, wall-clock timestamps ignored.
 
 ```bash
-.venv/bin/python scripts/reproduce_check.py --in-clone            # default rows, ~15 min
+.venv/bin/python scripts/reproduce_check.py --in-clone            # default rows, ~20 min
 .venv/bin/python scripts/reproduce_check.py --in-clone --long     # adds full fit, V2 profile, V8 bands (~3 h more)
 ```
 
