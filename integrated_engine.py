@@ -613,6 +613,15 @@ T4_GUARD_K = 3800.0 * 5.0 / 9.0
 PHI_SOLVE_BOUNDS = (0.05, 1.0)
 
 
+class CycleDoesNotClose(ValueError):
+    """The cycle has no physical solution at this operating point: the turbine
+    cannot supply the compressor + fan work (non-positive turbine exit
+    temperature) or leaves no pressure for the nozzle to expand (non-positive
+    exit velocity). run_at_thrust treats only this as "outside the working
+    range"; every other exception is a configuration/programming error and
+    propagates."""
+
+
 class ThrustTargetUnreachable(ValueError):
     """run_at_thrust could not bracket the target inside the phi bounds / T4 guard."""
 
@@ -1027,7 +1036,7 @@ class IntegratedTurbofanEngine:
 
         T_out = T_in - target_work_total / (m_dot * cp)
         if T_out <= 0:
-            raise ValueError(
+            raise CycleDoesNotClose(
                 f"Analytic turbine: target work {target_work_total/1e6:.1f} MW "
                 f"exceeds available enthalpy flux"
             )
@@ -1204,7 +1213,7 @@ class IntegratedTurbofanEngine:
             2 * cp * T_in * expansion_factor
         )
         if u_exit_isentropic <= 0:
-            raise ValueError("Computed non-positive nozzle exit velocity")
+            raise CycleDoesNotClose("Computed non-positive nozzle exit velocity")
 
         # Calculate exit temperature from isentropic relation
         T_exit = T_in * pressure_ratio**exponent
@@ -1778,16 +1787,31 @@ class IntegratedTurbofanEngine:
         parameter sweep) only narrows the initial bracket; it does not change
         the root. Failure is explicit: ThrustTargetUnreachable is raised (never
         a default phi) when the target is below the thrust at cycle closure or
-        above the thrust at the T4 guard / upper phi bound.
+        above the thrust at the T4 guard / upper phi bound. A warm-started root
+        above the T4 guard is re-diagnosed through the cold bracket (lowest
+        closing phi), so cold and warm starts report the same failure and
+        guarded bound. Only CycleDoesNotClose marks phi as outside the working
+        range; non-finite inputs and any other exception (configuration or
+        programming error) raise and are never reported as unreachable.
         """
         import contextlib
         import io
         from scipy.optimize import brentq
 
-        lo, hi = phi_bounds
-        if not 0.0 < lo < hi:
+        lo, hi = (float(v) for v in phi_bounds)
+        if not (np.isfinite(lo) and np.isfinite(hi) and 0.0 < lo < hi):
             raise ValueError(f"phi_bounds must satisfy 0 < lo < hi, got {phi_bounds}")
         target = float(target_kN)
+        if not (np.isfinite(target) and target > 0.0):
+            raise ValueError(f"target_kN must be finite and positive, got {target_kN}")
+        if not (np.isfinite(t4_max_K) and t4_max_K > 0.0):
+            raise ValueError(f"t4_max_K must be finite and positive, got {t4_max_K}")
+        if phi_guess is not None and not np.isfinite(phi_guess):
+            raise ValueError(f"phi_guess must be finite or None, got {phi_guess}")
+        if combustor_efficiency is not None and not (
+                np.isfinite(combustor_efficiency) and 0.0 < combustor_efficiency <= 1.0):
+            raise ValueError(
+                f"combustor_efficiency must be in (0, 1] or None, got {combustor_efficiency}")
         cache: Dict[float, Any] = {}
 
         def cycle(phi: float) -> Dict[str, Any]:
@@ -1797,7 +1821,7 @@ class IntegratedTurbofanEngine:
                         cache[phi] = self.run_full_cycle(
                             fuel_blend=fuel_blend, phi=phi,
                             combustor_efficiency=combustor_efficiency, **cycle_kwargs)
-                except ValueError as exc:   # turbine cannot supply compressor + fan work
+                except CycleDoesNotClose as exc:   # outside the working range
                     cache[phi] = exc
             if isinstance(cache[phi], Exception):
                 raise cache[phi]
@@ -1807,7 +1831,7 @@ class IntegratedTurbofanEngine:
             try:
                 cycle(phi)
                 return True
-            except ValueError:
+            except CycleDoesNotClose:
                 return False
 
         def t4(phi: float) -> float:
@@ -1851,6 +1875,12 @@ class IntegratedTurbofanEngine:
                         break
                     if p1 in (lo, hi):
                         break
+        if a is not None:
+            phi = float(brentq(residual, a, b, xtol=phi_xtol, rtol=4 * np.finfo(float).eps))
+            if t4(phi) > t4_max_K:
+                # re-diagnose through the cold bracket below: its lower end is a
+                # closing state under the guard, so the guarded bound is valid
+                a = b = None
         if a is None:
             if not runs(lo):
                 if not runs(hi):
@@ -1878,10 +1908,9 @@ class IntegratedTurbofanEngine:
                     target_kN, info)
             if residual(hi) < 0.0:
                 fail_high(lo)
-            a, b = lo, hi
-        phi = float(brentq(residual, a, b, xtol=phi_xtol, rtol=4 * np.finfo(float).eps))
-        if t4(phi) > t4_max_K:
-            fail_high(lo)
+            phi = float(brentq(residual, lo, hi, xtol=phi_xtol, rtol=4 * np.finfo(float).eps))
+            if t4(phi) > t4_max_K:
+                fail_high(lo)
         result = cycle(phi)
         result['thrust_match'] = dict(
             info, phi=phi, status='converged', target_kN=target,

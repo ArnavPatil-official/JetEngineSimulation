@@ -1,0 +1,19 @@
+# R6-D Solution-reuse regression evidence (2026-09-26T19:20Z, HEAD c55e182 + working tree)
+# command: .venv/bin/python -m pytest tests/test_solution_reuse.py -v -p no:warnings
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[creck_c1c16_full.yaml] PASSED [ 14%]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A1highT.yaml] PASSED [ 28%]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[A2NOx.yaml] PASSED [ 42%]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[n_dodecane_hychem.yaml] PASSED [ 57%]
+tests/test_solution_reuse.py::test_combustor_reuse_matches_fresh_solutions_in_aba_order[isooctane.yaml] PASSED [ 71%]
+tests/test_solution_reuse.py::test_fuel_air_ratio_reuse_matches_fresh_in_aba_order PASSED [ 85%]
+tests/test_solution_reuse.py::test_full_cycle_reuse_matches_fresh_in_aba_order PASSED [100%]
+============================== 7 passed in 37.63s ==============================
+
+# Sensitivity (one-off, not committed code): same combustor A/B/A test with the pristine-state reset removed
+#   creck_c1c16_full: detected (T_out differs); A2NOx: detected; n_dodecane_hychem: detected; isooctane: detected;
+#   A1highT: NOT detected at these two states (reuse without reset happened to agree) - the reset is still applied there.
+
+# One-off comparison of temporary full-cycle dumps /tmp/cyc_{head,new,new2}.json (5 cycles each; head = fresh Solutions at pre-ba333a8 code):
+#   keys compared: ['NOx', 'T4', 'T5', 'bypass_mass_flow', 'fan_work_W', 'fuel_air_ratio', 'fuel_mass_flow', 'specific_thrust_Ns_kg', 'thermal_efficiency', 'thrust_N', 'thrust_bypass_kN', 'thrust_core_kN', 'thrust_kN', 'total_air_mass_flow', 'total_mass_flow', 'tsfc_SI', 'tsfc_mg_per_Ns']
+#   head==new exactly: True ; head==new2 exactly: True
+# These /tmp files are not a reproducibility dependency; tests/test_solution_reuse.py is the committed evidence.

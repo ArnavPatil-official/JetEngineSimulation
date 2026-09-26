@@ -1,0 +1,8 @@
+# command: .venv/bin/python /tmp/hashcheck.py  (script body below)
+#   import hashlib, json, sys
+#   from pathlib import Path
+#   m = json.loads(Path("outputs/logs/static_thrust_accounting_protected_sha256.json").read_text())
+#   bad = [p for p, h in m.items() if not Path(p).exists() or hashlib.sha256(Path(p).read_bytes()).hexdigest() != h]
+#   print(f"protected files: {len(m)}; mismatched/missing: {len(bad)}", bad)
+#   sys.exit(1 if bad else 0)
+protected files: 40; mismatched/missing: 0 []

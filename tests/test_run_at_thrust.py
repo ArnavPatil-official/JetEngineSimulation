@@ -85,3 +85,59 @@ def test_unreachable_below_minimum_fails_cleanly(engine):
 def test_solved_state_respects_t4_guard(engine):
     res = engine.run_at_thrust(270.0, JET_A1, combustor_efficiency=ETA_B)
     assert res["combustor"]["T_out"] <= T4_GUARD_K + 1e-6
+
+
+# ---- R6-B (docs/plan_phase6_review.md): guarded failures from a warm start ----
+# At these v4 design values phi = 0.9 gives 291.726 kN at T4 = 2366.8 K, so the
+# target is reachable below phi = 1 but only above the T4 guard. The warm path
+# used to diagnose the guard from the original phi = 0.05 endpoint (where the
+# cycle does not close) and raised a generic nozzle ValueError instead.
+
+def _guarded_target(engine):
+    ref = thrust_at(engine, 0.9)
+    assert ref["combustor"]["T_out"] > T4_GUARD_K
+    return ref["performance"]["thrust_kN"]
+
+
+def test_warm_and_cold_agree_on_guarded_unreachable_target(engine):
+    target = _guarded_target(engine)
+    failures = []
+    for guess in (None, 0.89, 0.5, 0.2):
+        with pytest.raises(ThrustTargetUnreachable) as exc:
+            engine.run_at_thrust(target, JET_A1, combustor_efficiency=ETA_B, phi_guess=guess)
+        failures.append(exc.value)
+    cold = failures[0]
+    assert cold.info["t4_guard_active"]
+    assert "T4 guard" in cold.reason
+    for warm in failures[1:]:
+        assert warm.reason == cold.reason
+        assert warm.info["t4_guard_active"]
+        assert warm.info["phi_upper"] == pytest.approx(cold.info["phi_upper"], abs=1e-10)
+        assert warm.info["thrust_at_upper_kN"] == pytest.approx(
+            cold.info["thrust_at_upper_kN"], abs=1e-8)
+
+
+@pytest.mark.parametrize("kwargs", [
+    dict(target_kN=float("nan")),
+    dict(target_kN=float("inf")),
+    dict(target_kN=-10.0),
+    dict(target_kN=250.0, phi_guess=float("nan")),
+    dict(target_kN=250.0, combustor_efficiency=float("nan")),
+    dict(target_kN=250.0, t4_max_K=float("nan")),
+])
+def test_non_finite_inputs_are_rejected_not_reported_unreachable(engine, kwargs):
+    kwargs.setdefault("combustor_efficiency", ETA_B)
+    with pytest.raises(ValueError) as exc:
+        engine.run_at_thrust(fuel_blend=JET_A1, **kwargs)
+    assert not isinstance(exc.value, ThrustTargetUnreachable)
+
+
+def test_configuration_errors_propagate_not_reported_unreachable(engine):
+    saved = engine.design_point["combustor_pressure_loss"]
+    engine.design_point["combustor_pressure_loss"] = 1.5
+    try:
+        with pytest.raises(ValueError, match="combustor_pressure_loss") as exc:
+            engine.run_at_thrust(250.0, JET_A1, combustor_efficiency=ETA_B)
+        assert not isinstance(exc.value, ThrustTargetUnreachable)
+    finally:
+        engine.design_point["combustor_pressure_loss"] = saved

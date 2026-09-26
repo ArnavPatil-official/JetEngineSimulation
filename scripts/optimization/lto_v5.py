@@ -251,10 +251,10 @@ def solve_task(task: tuple) -> dict:
     try:
         r = e.run_at_thrust(target, FUEL_LIBRARY[fuel], combustor_efficiency=eta_b, phi_guess=guess)
     except ThrustTargetUnreachable as exc:
+        # the only failure scored as an ordinary row penalty (FAILED_ROW_ERROR)
         return {"status": "unreachable", "reason": exc.reason, "ff": np.nan, "phi": np.nan}
-    except Exception as exc:  # noqa: BLE001 — any other cycle failure is recorded, never defaulted
-        return {"status": "error", "reason": f"{type(exc).__name__}: {exc}", "ff": np.nan,
-                "phi": np.nan}
+    # Any other exception is a configuration/programming error: it is NOT caught
+    # here, so pool.map re-raises it in the driver and the run stops (R6-B).
     p = r["performance"]
     return {
         "status": "converged", "reason": "",
@@ -305,15 +305,24 @@ class V5Model:
         return out
 
 
-def relative_errors(pred_ff: pd.Series, rows: pd.DataFrame) -> np.ndarray:
+def relative_errors(pred_ff: pd.Series, rows: pd.DataFrame, status: pd.Series | None = None) -> np.ndarray:
+    """Relative fuel-flow errors; a row is penalised with FAILED_ROW_ERROR only
+    when its status is 'unreachable'. Any other non-finite prediction raises."""
     e = (pred_ff.to_numpy() - rows["Fuel Flow (kg/s)"].to_numpy()) / rows["Fuel Flow (kg/s)"].to_numpy()
-    return np.where(np.isfinite(e), e, FAILED_ROW_ERROR)
+    bad = ~np.isfinite(e)
+    if bad.any():
+        unreachable = (np.zeros(len(e), bool) if status is None
+                       else (status.to_numpy() == "unreachable"))
+        if not np.all(unreachable[bad]):
+            raise RuntimeError(f"{int((bad & ~unreachable).sum())} non-finite fuel-flow "
+                               "predictions that are not registered unreachable rows")
+    return np.where(bad, FAILED_ROW_ERROR, e)
 
 
-def residual_vector(pred_ff: pd.Series, rows: pd.DataFrame) -> np.ndarray:
+def residual_vector(pred_ff: pd.Series, rows: pd.DataFrame, status: pd.Series | None = None) -> np.ndarray:
     """sqrt(w) * relative error; sum of squares = group-weighted mean squared relative error."""
-    return np.sqrt(rows["w"].to_numpy()) * relative_errors(pred_ff, rows)
+    return np.sqrt(rows["w"].to_numpy()) * relative_errors(pred_ff, rows, status)
 
 
-def weighted_mape(pred_ff: pd.Series, rows: pd.DataFrame) -> float:
-    return float(100.0 * np.sum(rows["w"].to_numpy() * np.abs(relative_errors(pred_ff, rows))))
+def weighted_mape(pred_ff: pd.Series, rows: pd.DataFrame, status: pd.Series | None = None) -> float:
+    return float(100.0 * np.sum(rows["w"].to_numpy() * np.abs(relative_errors(pred_ff, rows, status))))
