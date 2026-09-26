@@ -1,0 +1,21 @@
+$ .venv/bin/python scripts/optimization/calibrate_lto.py --tag v5 --a2-select  # started 2026-09-26T16:53:44-04:00
+{
+  "stage": "full (A2 selection)",
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "params": {
+    "W_ref": 102.39547191158805,
+    "a_thrust": 1.109036507149692,
+    "k_pi": 1.3482577723216178,
+    "k_mdot": 0.41360456851971344
+  },
+  "sse": 0.000459706239335649,
+  "calibration_weighted_mape_pct": 1.7961856171968758,
+  "n_unreachable": 0,
+  "jtj_condition_box_scaled": 221.54868111086407
+}
+exit 0 2026-09-26T16:54:03-04:00
