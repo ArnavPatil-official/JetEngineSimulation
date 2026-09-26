@@ -66,9 +66,17 @@ held-out read (`outputs/phase6/p61_amendment_A2.json`, registration doc §0a).
 |---|---|---|
 | A2 selection | `d9a47f3` | `calibrate_lto.py --tag v5 --a2-select` (`outputs/logs/phase6_p61_a2_select.log`). Selected **pilot-start polish**: W_ref 102.395 kg/s (v4 hand-set core 79.9; ×1.282), a 1.109, k_pi 1.348, k_mdot 0.414; calibration SSE 0.000460, MAPE 1.80 %, 0 unreachable, JᵀJ condition 222. The polish did not move (3 evaluations, xtol). Other candidate: registered fit, SSE 0.009845. Output `outputs/calibration_v5_A2.json`. |
 
+| Full profile (A1) | `90e56e8` | `identifiability_profile.py --v5 full` from the A2 optimum (16:55–18:22). **All four IDENTIFIED** → **A1 PASS**. Edge D 51.9–198.3 (threshold 3.841); 95 % intervals W_ref [100, 110] and k_mdot [0.3625, 0.525] (grid brackets: no grid point inside), a [1.095, 1.144], k_pi [1.324, 1.353]; widths 2–13 % of box. No profile point below the fit SSE. 1/68 inner re-fits at the evaluation cap (k_pi 0.281, D 82.8). |
+| Held-out test (A2–A4) | `a48e484` | `holdout_icao_validation.py --tag _v5`. 87 rows / 9 groups, 0 unreachable. Group-weighted MAPE: **model 1.82 %, B0 2.19 %, B1 1.08 %** (TO 1.71/2.05/0.58; APP 1.96/1.12/0.85; IDLE 1.81/3.40/1.79). **A2 FAIL — no demonstrated skill** (beats B0 by 0.37 pp, loses to B1 by 0.75 pp; not a §9 escalation, which is triggered only by losing to B0 by > 0.25 pp). **A3 FAIL**: TSFC–OPR slope sign agrees at take-off and idle, disagrees at approach (ICAO −1.1e-5, model +1.0e-5 per unit OPR; both near zero). **A4 PASS** (`tests/test_holdout_informativeness.py` 3/3). Fitted W_ref 102.40 kg/s vs hand-set 79.9 (×1.28): the old take-off gap as a fitted airflow. |
+| NOx split validation | `a48e484` | `nox_holdout_validation.py --split outputs/phase6/split_p61.json`: EI_NOx = 8.8295·OPR^0.2348·ṁ^0.9558 fitted on 93 calibration rows / 15 models. Held-out group-weighted MAPE **3.77 %** vs naive per-mode mean EI **10.60 %** (APP 4.95 vs 5.74; IDLE 3.65 vs 7.80; TO 2.70 vs 18.25). Inputs are ICAO OPR and fuel flow (the correlation's own inputs); within-family only. |
+
+**Reading of P6.1.** Thrust matching turns fuel flow into a genuine model output
+(A4) with identified parameters (A1), and the model beats a constant-TSFC rule.
+It does not beat rescaling the nearest calibration engine by rated thrust (B1),
+which within one engine family is the stronger naive predictor. Per the plan,
+this is reported as it came out; no tuning toward the held-out set.
+
 ## Outstanding gates
 
-- P6.1: full profile (A1) running from the A2 optimum (`identifiability_profile.py --v5 full`); then held-out test (A2, A3, A4) and NOx split validation.
-- P6.2 bands (`scripts/validation/p62_parameter_bands.py`, written, not run —
-  reads `outputs/calibration_v5_A2.json`).
+- P6.2 bands running (`scripts/validation/p62_parameter_bands.py`).
 - P6.4 item 2 (`scripts/validation/mechanism_sensitivity.py`, written, not run).
