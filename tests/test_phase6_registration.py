@@ -96,3 +96,23 @@ def test_v5_model_requires_heldout_nox_exclusion():
         v5.V5Model(fixed, nox_fit_exclude_models=[])
     with pytest.raises(ValueError, match="combustor_air_fraction"):
         v5.V5Model(dict(fixed, combustor_air_fraction=0.8), nox_fit_exclude_models=["x"])
+
+
+def test_surrogate_lhv_reproduces_from_creck_thermo():
+    """P6.2: stored surrogate LHVs = complete combustion to H2O(g) at 298.15 K, CRECK thermo."""
+    import cantera as ct
+    from simulation.fuels import ATJ_SPK, FT_SPK, HEFA_SPK, JET_A1
+    g = ct.Solution(str(ROOT / "data" / "creck_c1c16_full.yaml"))
+
+    def h(sp):
+        g.TPX = 298.15, ct.one_atm, f"{sp}:1"
+        return g.enthalpy_mole
+
+    ch = {"NC12H26": (12, 26), "NC10H22": (10, 22), "IC8H18": (8, 18)}
+    for fuel in (JET_A1, HEFA_SPK, FT_SPK, ATJ_SPK):
+        dh = mw = 0.0
+        for sp, x in fuel.normalized_species().items():
+            c, hh = ch[sp]
+            dh += x * (h(sp) + (c + hh / 4) * h("O2") - c * h("CO2") - hh / 2 * h("H2O"))
+            mw += x * g.molecular_weights[g.species_index(sp)]
+        assert fuel.LHV_MJ_per_kg == pytest.approx(dh / mw / 1e6, abs=6e-4), fuel.name

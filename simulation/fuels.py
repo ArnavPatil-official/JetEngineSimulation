@@ -138,6 +138,18 @@ SPECIES_ATOMS: Dict[str, Tuple[int, int]] = {
 # Pre-defined Fuel Surrogates
 # ---------------------------------------------------------------------------
 
+# LHV_METHOD (Phase 6, P6.2): surrogate lower heating values are COMPUTED, not
+# cited: complete combustion of the surrogate mixture to CO2 + H2O(vapour) at
+# 298.15 K, 1 atm, with species enthalpies from the production CRECK mechanism
+# (data/creck_c1c16_full.yaml), per kg of surrogate (mole fractions below).
+# The mechanism's thermo is ideal-gas, so these are gas-phase-fuel LHVs (no heat
+# of vaporisation; a liquid-fuel LHV is lower by roughly 0.3-0.4 MJ/kg).
+# Reproduced by tests/test_phase6_registration.py. Per unit mass iso-octane has
+# the higher LHV, so ATJ is highest; the earlier uncited values had the reverse
+# order. These scalars are used only for energy-weighted lifecycle CO2e
+# (optimize_blend.py); the thermal cycle uses Cantera species thermo directly,
+# and the reporting-only efficiency proxies in integrated_engine.py use their
+# own constant 43 MJ/kg.
 # Conventional Jet-A1: Pure n-dodecane surrogate
 # This is the most common single-component representation for conventional jet fuel
 # C12H26: M_C = 12*12 = 144 g/mol, M_H = 26*1 = 26 g/mol, M_total = 170 g/mol
@@ -147,7 +159,7 @@ JET_A1 = FuelSurrogate(
     species={
         SP_N_DODECANE: 1.0,
     },
-    LHV_MJ_per_kg=44.1,  # n-dodecane LHV
+    LHV_MJ_per_kg=44.462,  # CRECK thermo, see LHV_METHOD (was 44.1, uncited)
     carbon_fraction=0.847  # C12H26 carbon mass fraction
 )
 
@@ -161,7 +173,7 @@ HEFA_SPK = FuelSurrogate(
         SP_N_DODECANE: 0.85,  # Dominant straight-chain component
         SP_ISO_OCTANE: 0.15,  # Represents iso-paraffinic content
     },
-    LHV_MJ_per_kg=44.0,  # Slightly lower than pure dodecane due to iso-octane
+    LHV_MJ_per_kg=44.478,  # CRECK thermo, see LHV_METHOD (was 44.0, uncited)
     carbon_fraction=0.846  # Weighted average
 )
 
@@ -176,7 +188,7 @@ FT_SPK = FuelSurrogate(
         SP_N_DECANE:   0.35,  # Medium-chain paraffinic component
         SP_ISO_OCTANE: 0.15,  # Iso-paraffinic fraction
     },
-    LHV_MJ_per_kg=43.9,
+    LHV_MJ_per_kg=44.520,  # CRECK thermo, see LHV_METHOD (was 43.9, uncited)
     carbon_fraction=0.846
 )
 
@@ -190,7 +202,7 @@ ATJ_SPK = FuelSurrogate(
         SP_ISO_OCTANE: 0.80,  # Dominant branched component
         SP_N_DODECANE: 0.20,  # Minor straight-chain component
     },
-    LHV_MJ_per_kg=43.5,  # Lower due to higher iso-octane content
+    LHV_MJ_per_kg=44.571,  # CRECK thermo, see LHV_METHOD (was 43.5, uncited)
     carbon_fraction=0.843
 )
 
