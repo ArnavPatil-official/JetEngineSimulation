@@ -149,6 +149,9 @@ def main():
                         help="--tag v5 only: registered pilot budget (P6.1 Step 4)")
     parser.add_argument("--free", nargs="*", default=None,
                         help="--tag v5 only: fitted parameters kept after the pilot profile")
+    parser.add_argument("--a2-select", action="store_true",
+                        help="--tag v5 only: amendment A2 selection between the registered "
+                             "full fit and a polish from the pilot optimum")
     parser.add_argument("--beta", type=float, default=1.0,
                         help="Combustor air fraction (Phase 3.4): fraction of core "
                              "air burned at phi; sourced range 0.7-0.8 "
@@ -159,7 +162,8 @@ def main():
         # Phase 6 thrust-matched calibration over the registered calibration
         # group (scripts/optimization/lto_v5.py; outputs/phase6/p61_registration.json)
         import lto_v5
-        res = lto_v5.run_calibration(pilot=args.pilot, free=args.free)
+        res = (lto_v5.run_a2_selection() if args.a2_select
+               else lto_v5.run_calibration(pilot=args.pilot, free=args.free))
         print(json.dumps({k: res[k] for k in ("stage", "free", "params", "sse",
                                                "calibration_weighted_mape_pct",
                                                "n_unreachable", "jtj_condition_box_scaled")},

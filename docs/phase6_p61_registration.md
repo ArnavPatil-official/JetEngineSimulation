@@ -10,6 +10,19 @@ budget, identifiability rule, baselines, metrics, margin and thresholds
 **verbatim** (`scripts/validation/phase6_register_p61.py` refuses to write A1
 if any of them differs from R0). Changes from R0 are listed in §0.
 
+## 0a. Amendment A2 (2026-09-26, after the registered full fit, before any held-out read)
+
+The registered full fit (`outputs/calibration_v5.json`) ended at calibration
+SSE 0.009845 (MAPE 6.94 %), a worse local optimum than the pilot's on the same
+data (SSE 0.000460, MAPE 1.80 %). A1 had no rule for this. Approved by the user:
+the v5 calibration is the **lower-calibration-SSE of two registered polishes**
+(least_squares, full budget ≤100) over the full-fit free set — from the TPE best
+trial (the polish already recorded in `calibration_v5.json`) and from the pilot
+optimum; ties go to the former. Output `outputs/calibration_v5_A2.json`, used by
+the full profile, held-out test, P6.2 bands and P6.4 sensitivity. Everything
+else in this registration is unchanged. Only calibration-group fuel flow
+informed A2. Machine-readable: `outputs/phase6/p61_amendment_A2.json`.
+
 ## 0. Changes from R0 (A1)
 
 1. **β dropped — single-zone combustor.** All core air enters one HP

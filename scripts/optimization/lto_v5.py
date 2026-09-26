@@ -584,7 +584,9 @@ def profile(obj: Objective, free: list[str], opt: dict, grid_points: int, inner_
 OUT_DIR = ROOT / "outputs" / "phase6"
 PILOT_FIT = OUT_DIR / "p61_pilot_fit.json"
 PILOT_PROFILE = OUT_DIR / "identifiability_profile_v5_pilot"
-FULL_FIT = ROOT / "outputs" / "calibration_v5.json"
+FULL_FIT = ROOT / "outputs" / "calibration_v5.json"          # registered full fit (record)
+AMENDMENT_A2 = OUT_DIR / "p61_amendment_A2.json"
+V5_FIT = ROOT / "outputs" / "calibration_v5_A2.json"        # selected v5 calibration (A2)
 FULL_PROFILE = ROOT / "outputs" / "identifiability_profile_v5"
 
 
@@ -644,11 +646,77 @@ def run_calibration(pilot: bool, free: list[str] | None = None, n_workers: int =
     return res
 
 
+def select_optimum(candidates: list[dict]) -> dict:
+    """Amendment A2 rule: lowest calibration SSE; ties go to the earlier candidate."""
+    return min(candidates, key=lambda c: c["sse"])
+
+
+def run_a2_selection(n_workers: int = 8) -> dict:
+    """Amendment A2: polish from the pilot optimum with the full budget and keep
+    the lower-SSE of that and the registered full fit (calibration group only)."""
+    import datetime as dt
+    import json
+    amend = json.loads(AMENDMENT_A2.read_text())
+    if amend.get("amendment") != "A2":
+        raise ValueError(f"{AMENDMENT_A2} is not amendment A2")
+    if V5_FIT.exists():
+        raise SystemExit(f"{V5_FIT} exists; refusing to overwrite")
+    reg = load_registration()
+    split = load_split()
+    full = json.loads(FULL_FIT.read_text())
+    pilot = json.loads(PILOT_FIT.read_text())
+    free = full["free"]
+    rows = calibration_rows(split)
+    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
+                    n_workers=n_workers)
+    obj = Objective(model, rows)
+    t0 = dt.datetime.now()
+    try:
+        res = polish(obj, free, [pilot["params"][k] for k in free], reg["fit"]["full"]["polish_max_nfev"])
+        lo, hi = _box(free)
+        js = res.jac * (hi - lo)
+        candidates = [
+            {"name": "registered_full_fit", "start": "TPE best trial (outputs/calibration_v5.json)",
+             "params": full["params"], "sse": full["sse"],
+             "polish": full["polish"], "jtj_condition_box_scaled": full["jtj_condition_box_scaled"]},
+            {"name": "pilot_start_polish", "start": "pilot optimum (outputs/phase6/p61_pilot_fit.json)",
+             "params": obj.params(free, res.x), "sse": float(res.fun @ res.fun),
+             "polish": {"status": int(res.status), "message": res.message, "nfev": int(res.nfev)},
+             "jtj_condition_box_scaled": float(np.linalg.cond(js.T @ js))},
+        ]
+        best = select_optimum(candidates)
+        pred = model.predict(best["params"], rows)
+    finally:
+        model.close()
+    rows_out = rows.drop(columns=["CO (g/kg)", "HC (g/kg)", "NOx (g/kg)"]).join(pred)
+    out = {
+        "stage": "full (A2 selection)", "amendment": str(AMENDMENT_A2.relative_to(ROOT)),
+        "registration": "outputs/phase6/p61_registration.json (A1) + A2", "free": free,
+        "selected": best["name"], "params": best["params"], "sse": best["sse"],
+        "jtj_condition_box_scaled": best["jtj_condition_box_scaled"], "candidates": candidates,
+        "started": t0.isoformat(timespec="seconds"),
+        "finished": dt.datetime.now().isoformat(timespec="seconds"),
+        "fixed_central": reg["fixed_central"], "fit_bounds": FIT_BOUNDS,
+        "calibration_weighted_mape_pct": weighted_mape(pred["ff"], rows, pred["status"]),
+        "n_rows": len(rows), "n_unreachable": int((pred["status"] == "unreachable").sum()),
+        "unreachable_rows": rows_out.loc[pred["status"] == "unreachable",
+                                         ["Unique ID", "Model", "Mode", "Target Thrust (kN)", "reason"]
+                                         ].to_dict("records"),
+        "m_rated_at_F_REF_kg_s": best["params"].get("W_ref"),
+        "note": "in-sample calibration fit (calibration group only); not validation",
+    }
+    stem = V5_FIT.with_suffix("")
+    _write_new(V5_FIT, _json(out))
+    pd.DataFrame(obj.log).to_csv(f"{stem}_evaluations.csv", index=False)
+    rows_out.to_csv(f"{stem}_rows.csv", index=False)
+    return out
+
+
 def run_profile(stage: str, n_workers: int = 8) -> dict:
     import json
     reg = load_registration()
     split = load_split()
-    fit_path = PILOT_FIT if stage == "pilot" else FULL_FIT
+    fit_path = PILOT_FIT if stage == "pilot" else V5_FIT
     out = PILOT_PROFILE if stage == "pilot" else FULL_PROFILE
     if out.with_suffix(".json").exists():
         raise SystemExit(f"{out}.json exists; refusing to overwrite")
@@ -745,7 +813,7 @@ def run_holdout(n_workers: int = 8) -> dict:
     for p in (HOLDOUT_CSV, HOLDOUT_SUMMARY, HOLDOUT_JSON):
         if p.exists():
             raise SystemExit(f"{p} exists; refusing to overwrite")
-    fitted = json.loads(FULL_FIT.read_text())
+    fitted = json.loads(V5_FIT.read_text())
     cal = calibration_rows(split)
     held = attach_groups(load_rows(split["heldout_records"], with_targets=True),
                          split["heldout_groups"])
@@ -791,7 +859,7 @@ def run_holdout(n_workers: int = 8) -> dict:
     a3_modes = {mo: bool(np.sign(tr_d[mo]["slope"]) == np.sign(tr_m[mo]["slope"])) for mo in tr_d}
     result = {
         "registration": "outputs/phase6/p61_registration.json (A1)",
-        "calibration": str(FULL_FIT.relative_to(ROOT)),
+        "calibration": str(V5_FIT.relative_to(ROOT)),
         "fitted_params": fitted["params"],
         "W_ref_vs_handset": {"fitted_rated_core_airflow_AE3_kg_s": fitted["params"].get("W_ref"),
                              "handset_v4_kg_s": 79.9,

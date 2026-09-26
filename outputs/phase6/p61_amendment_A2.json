@@ -1,0 +1,12 @@
+{
+  "amendment": "A2",
+  "amends": "outputs/phase6/p61_registration.json (A1), section fit",
+  "registered": "2026-09-26",
+  "approved_by": "user (Arnav), interactive session 2026-09-26, after the registered full fit and before any held-out target was read",
+  "trigger": "The registered full fit (outputs/calibration_v5.json: TPE 150 trials seed 42, least_squares from the best trial) ended at calibration SSE 0.009845 (MAPE 6.94 %), a worse local optimum than the pilot optimum on the same calibration data (outputs/phase6/p61_pilot_fit.json: SSE 0.000460, MAPE 1.80 %). A1 has no rule for this case.",
+  "information_used": "calibration-group fuel flow only (the two fits above); no held-out target has been read",
+  "rule": "The v5 calibration is the lower-calibration-SSE of two least_squares polishes (registered polish settings: trf, bounds, x_scale = box widths, diff_step 1e-4, max_nfev = fit.full.polish_max_nfev = 100) over the full-fit free set: (1) from the registered full fit's TPE best trial -- this is the polish already recorded in outputs/calibration_v5.json and is taken as recorded; (2) from the pilot optimum (outputs/phase6/p61_pilot_fit.json params). Ties (equal SSE) go to candidate (1). Both candidates are reported.",
+  "unchanged": "split, weighting, objective, fitted set and box, fixed values and ranges, identifiability rule (the full profile starts from the selected optimum), baselines, metrics, margin and thresholds (A1-A4), P6.2 band method (refits start from the selected optimum)",
+  "output": "outputs/calibration_v5_A2.json (write-once); consumed by the full profile, held-out validation, P6.2 bands and P6.4 mechanism sensitivity. outputs/calibration_v5.json is kept as the registered-fit record.",
+  "entry_point": ".venv/bin/python scripts/optimization/calibrate_lto.py --tag v5 --a2-select"
+}

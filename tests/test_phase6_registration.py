@@ -116,3 +116,18 @@ def test_surrogate_lhv_reproduces_from_creck_thermo():
             dh += x * (h(sp) + (c + hh / 4) * h("O2") - c * h("CO2") - hh / 2 * h("H2O"))
             mw += x * g.molecular_weights[g.species_index(sp)]
         assert fuel.LHV_MJ_per_kg == pytest.approx(dh / mw / 1e6, abs=6e-4), fuel.name
+
+
+def test_a2_selection_rule_and_consumers():
+    """Amendment A2: lowest calibration SSE wins, ties go to the registered fit;
+    every downstream v5 consumer reads the selected calibration."""
+    a2 = json.loads(v5.AMENDMENT_A2.read_text())
+    assert a2["amendment"] == "A2" and "no held-out target" in a2["information_used"]
+    reg_fit, pilot = {"name": "registered_full_fit", "sse": 0.5}, {"name": "pilot_start_polish", "sse": 0.1}
+    assert v5.select_optimum([reg_fit, pilot])["name"] == "pilot_start_polish"
+    assert v5.select_optimum([reg_fit, dict(pilot, sse=0.5)])["name"] == "registered_full_fit"
+    assert v5.V5_FIT != v5.FULL_FIT
+    for script in ("scripts/validation/p62_parameter_bands.py",
+                   "scripts/validation/mechanism_sensitivity.py"):
+        text = (ROOT / script).read_text()
+        assert "v5.V5_FIT" in text and "FULL_FIT" not in text, script
