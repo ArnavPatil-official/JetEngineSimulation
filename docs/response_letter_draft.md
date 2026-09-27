@@ -6,6 +6,14 @@ Point-by-point reply to both reviewers. Every number cites
 and commit). Text in [brackets] is where the final Google-Docs edit inserts
 manuscript section/line references.
 
+> **SUPERSEDED IN PART BY PHASE 6 (2026-09-26) — do not send as written.**
+> The Reviewer 2 point 1, point 2 and point 4d sections below rest on v4
+> results that Phase 6 withdrew or replaced (marked inline). Take every number
+> from the regenerated `outputs/ARTIFACT_MANIFEST.md` (row ids below) and the
+> v4 → v5 mapping in `docs/number_crosswalk_v5.md`; the reply to each reviewer
+> item is mapped in `docs/manuscript_checklist_final.md`. The other sections
+> still stand as drafted.
+
 ---
 
 ## Preamble — voluntary disclosures
@@ -46,6 +54,14 @@ trustworthy revision.
 
 ## Reviewer 2, point 1 — "validation" vs calibration
 
+> **SUPERSEDED (Phase 6).** The 2.50 % "held-out validation" below is
+> **withdrawn**: it was a rated-thrust rescaling rule, not a test of the cycle
+> (finding F-A, manifest V4). The replacement is the thrust-matched held-out
+> test against two naive baselines (V3): the model beats constant TSFC but
+> **does not beat rated-thrust rescaling**, and the TSFC–OPR sign check fails
+> at approach. β = 0.8 is dropped (single-zone combustor, V7). Calibration:
+> V1; identifiability: V2.
+
 **Was:** 11.3% MAPE on 4 LTO points presented as validation, with a t-test
 (t = 1.04, p = 0.3734) supporting "not statistically distinguishable."
 
@@ -74,6 +90,12 @@ Hypotheses that failed along the way (part-power OPR as the bias cause) are
 stated as falsified in [§3.x].
 
 ## Reviewer 2, point 2 — "learnable parameters": what did they converge to?
+
+> **SUPERSEDED (Phase 6).** The fitted set is now W_ref, a, k_π, k_ṁ, all
+> identified (V1, V2); η_b and pressure loss are fixed with cited ranges, β is
+> dropped, and every fixed value carries a cited range and a band (V7, V8;
+> `outputs/parameter_provenance.md` Phase 6 P6.2). φ is solved from thrust, not
+> fitted. The v4 values quoted below are archived.
 
 **Was:** η_c and η_CMB described as learnable, with no converged values.
 
@@ -111,6 +133,13 @@ H/C ratios are now computed from composition (2.167–2.227); uncited DCN
 values are dropped.
 
 ## Reviewer 2, point 4d — do the blends actually differ?
+
+> **SUPERSEDED (Phase 6).** The comparison below was at fixed φ (unequal
+> thrust). Replace with the matched-thrust results: B1 (blends move fuel flow
+> and TSFC by at most 0.16 %, below the V8 bands, so no performance ranking;
+> each 50 % SAF blend is lower than Jet-A1 on lifecycle CO₂e), B2 (variance
+> shares), B3 (CORSIA rank stability), E4 (heat loss), E3 (NOx paths at v5
+> states, now low-side proxies).
 
 The revision reframes this honestly with a variance decomposition
 [manifest: variance_decomposition]: at a fixed operating point, blend
