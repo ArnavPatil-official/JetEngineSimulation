@@ -15,4 +15,5 @@ registered, running or finished.
 |---|---|---|
 | P7.0 fuel targets | `4b8eeda` | done (preserved) |
 | P7.1 surrogate check | `a44c131` | done (preserved). Dooley 2012: LHV pass; H and aromatics **fail** |
-| P7.2 registration + v6 wrapper + runner | (this commit) | registered, not yet run |
+| P7.2 registration + v6 wrapper + runner | `271656e` | registered; calib queue launched 11:29 (snapshot 271656e) |
+| P7.3 registration + blend code | (next commit) | registered; smoke check (v5 params, 2 draws, temp dir) before commit, not a result |
