@@ -158,15 +158,19 @@ Prefer established repo budgets unless a compute-only benchmark justifies a
 change; record it before any performance comparison. No optional early stopping
 chosen after observing which arm wins.
 
-**Data-access decision:** a concise question has been sent to the user about
-viscosity access. Record the actual answer before the P7.4 registration. If no
-answer arrives after a reasonable opportunity, use the stated recommended
-assumption: every WIND field label, including viscosity, is available only at
-the sampled training points. Do not provide full held-out viscosity/derivatives
-to physics alone and call it a sparse-data comparison. Training-only learned
-or differentiable interpolated viscosity is permissible if registered with its
+**Data-access decision — explicitly confirmed by Arnav 2026-09-27:**
+Every WIND field label, including viscosity, is available only at the sampled
+training points. Do not provide full held-out viscosity or derivatives to
+physics alone and call it a sparse-data comparison. Training-only learned or
+differentiable interpolated viscosity is permissible if registered with its
 information budget and tested; use identical information access in both arms.
 Geometry and physical wall conditions are not held-out flow measurements.
+Prefer a fixed terminal-epoch checkpoint to avoid an extra validation-label
+budget. If validation is used, all labels consumed for model selection must
+come from the sampled fraction, with its sub-split declared before training;
+otherwise the claimed data fraction would be misleading. Held-out test labels
+remain unavailable for scalers, viscosity closure, checkpoint selection or
+training/stopping decisions.
 
 Physics must be written as explicit equations in the registration:
 - Planar, compressible conservative momentum and energy fluxes with variable
