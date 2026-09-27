@@ -454,3 +454,42 @@ provenance: use Claude Opus via `scripts/run_claude_from_plan.sh`. Follow §9 wh
 an actual finding triggers a gate. Finish independent authorized evidence work where
 possible, then report the precise result and decision needed; do not invent sources
 or thresholds after looking at held-out outcomes.
+
+## 12. Closure at freeze (P6.9, 2026-09-26)
+
+§1 above is kept as the state at `0f3321b`. This table is its closure: the repo
+state of each item with its commit, and the manuscript status. "Repo" rows are
+closed by code, data or an artifact; manuscript text is **external: pending**
+for every item (`docs/manuscript_checklist_final.md`) and is not claimed done.
+Row ids V/B/E/P refer to `outputs/ARTIFACT_MANIFEST.md`.
+
+| # | Repo | Commit(s) | Manuscript |
+|---|---|---|---|
+| R1.1 | n/a (text; native equations + second-machine PDF check) | — | pending |
+| R1.2 | closed — compressor docstring | `592cc20` | pending |
+| R1.3 | n/a (text) | — | pending |
+| R1.4 | closed — B1 matched-thrust effects, E4 heat-loss bound | `395466d`, `219de8d` | pending |
+| R1.5–R1.7 | n/a (text) | — | pending |
+| R1.8 | closed — E9: HyChem surrogates +2.55/+3.42 % fuel vs CRECK at fixed calibration (above bands; mostly heating value) — **the A-1/A-2 question stays in the text** | `4308ffa` | pending |
+| R1.9 | closed — compressor loss taxonomy docstring | `592cc20` | pending |
+| R1.10 | closed — ξ = 0 by structural argument; E4 size | `847857c`, `219de8d` | pending |
+| R1.11 | closed — turbine loss docstring | `592cc20` | pending |
+| R1.12 | closed — `docs/model_map.md` (generated) | `f0024f9` | pending (figure) |
+| R1.13 | closed — production path equilibrium, no kinetics; kinetics only in E3 | `1bffa26`, `e02b22b` | pending (title) |
+| R1.14 | closed — model map; PINN record P1–P8 | `9ae1c23`, `f0024f9` | pending |
+| R2.1 | closed — manifest regenerated from artifacts (Highlights source) | `f0024f9` | pending |
+| R2.2a | closed — t-test removed | `d300222` | pending |
+| R2.2b | closed — F-A (V4); thrust-matched held-out test V3: model 1.82 % vs B0 2.19 % vs B1 1.08 %; **A2 fail (no skill over B1), A3 fail (approach)** as registered | `f2dead8`, `a48e484` | pending |
+| R2.3a | **partly closed** — LHVs computed (E10); compositions remain illustrative H/C-matched binaries (no literature source) | `b55e55a` | pending |
+| R2.3b | closed — CORSIA Doc 06 ranges (E1) | `12de3dc` | pending |
+| R2.4a | n/a (text) | — | pending |
+| R2.4b | closed in code before Phase 4 (per §1; commit not traced) | — | pending |
+| R2.4c | closed — β dropped, fixed values with cited ranges (V7), four fitted parameters identified (V2), bands (V8) | `3f0b940`, `90e56e8`, `c9a6034` | pending |
+| R2.4d | closed — stdout scraper removed | `ca965eb` | pending |
+| R2.5 | closed — blends at matched thrust; no cycle ranking; lifecycle ranking vs Jet-A1 only (B1–B3) | `395466d` | pending |
+
+Freeze checks at `4eae2fd`: pytest 190 passed / 1 skipped; emissions exit 0;
+3 mechanisms validate; protected hashes 40/40; fresh-clone reproduction of 10
+manifest rows matches (long rows not re-run). Known, documented debts outside the
+v5 path: `make_saf_blend` mixes on a mole basis (v4 path only); `LocalFuelBlend`
+docstring says mass fractions; efficiency proxies use a constant 43 MJ/kg.
