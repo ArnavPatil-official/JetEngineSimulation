@@ -171,7 +171,15 @@ nvpm:
     thrust_variable: "F_pct, engine thrust setting in percent"
     validity: {F_pct_gt: 30.0, dH_pct_lt: 0.6}
   caep11_via_teoh2022_S2:
+    status: EXCLUDED (amendment P7-A1, 2026-09-27, before any blend or nvPM result was computed)
+    reason: >-
+      The form below was read from a text rendering of the Teoh et al. (2022) SI,
+      not from the typeset equation. As rendered, it gives k_fuel_N > 1 for fuel
+      hydrogen above 13.8 % at low thrust (e.g. 1.63 at idle, H = 14.3 %), i.e.
+      MORE nvPM from a cleaner fuel, contradicting the same source and Durand
+      et al. (2021). A sign or term was likely lost in rendering. Not used
+      until verified against the typeset equation or ICAO primary text.
     source: [teoh2022]
-    form: "k_fuel_N = exp((0.99 * F_frac - 1.05) * (13.8 - H_fuel_pct))"
+    form: "k_fuel_N = exp((0.99 * F_frac - 1.05) * (13.8 - H_fuel_pct))   # as rendered; unverified"
     thrust_variable: "F_frac, thrust as a fraction of rated (F/F00)"
     validity: {H_fuel_pct_min: 13.4, H_fuel_pct_max: 14.3}
