@@ -1,0 +1,177 @@
+# Phase 7 fuel representation — measured target properties, published surrogates,
+# and pre-set acceptance tolerances. Written 2026-09-27 BEFORE any surrogate
+# property was computed (the tolerances below are not tuned to the results).
+#
+# Why this file exists: through v5 the Jet-A1 fuel was pure n-dodecane, a
+# paraffin whose heating value (44.46 MJ/kg, CRECK thermo) is SAF-like. Real
+# Jet A/A-1 contains aromatics and cycloparaffins, has ~13.8 % hydrogen by mass
+# and ~43.1 MJ/kg net heat of combustion. With a paraffinic "Jet-A1", the
+# model could not distinguish SAF from fossil fuel (P6.3: <= 0.16 % fuel flow).
+#
+# Every number carries its source. "measured" = fuel property measurement;
+# "assumption" = a value adopted by the cited study, not a measurement.
+
+sources:
+  colket2017: >-
+    Colket, M., Heyne, J., Rumizen, M., et al. (2017). Overview of the National
+    Jet Fuels Combustion Program. AIAA Journal 55, 1087-1104.
+    doi:10.2514/1.J055361
+  hychem_A2: >-
+    Stanford HyChem fuel data sheet, A2 (Jet A) POSF 10325,
+    https://web.stanford.edu/group/haiwanglab/HyChem/fuels/A2_spec.html
+    (cites Colket et al. 2017 and T. Edwards, AFRL, 2015)
+  hychem_C1: >-
+    Stanford HyChem fuel data sheet, C1 (Gevo ATJ) POSF 11498,
+    https://web.stanford.edu/group/haiwanglab/HyChem/fuels/C1_spec.html
+    (cites Colket et al. 2017 and T. Edwards, AFRL, 2015)
+  dooley2010: >-
+    Dooley, S., Won, S.H., Chaos, M., et al. (2010). A jet fuel surrogate
+    formulated by real fuel properties. Combustion and Flame 157(12), 2333-2339.
+    doi:10.1016/j.combustflame.2010.07.001 (1st-generation Jet-A POSF 4658
+    surrogate; 42.7/33.0/24.3 mol % composition as quoted by Dooley et al.,
+    "Development of reduced kinetic models for petroleum-derived and alternative
+    jet fuels", 2014 conference paper, Fig. 5 caption)
+  dooley2012a: >-
+    Dooley, S., Won, S.H., Heyne, J., et al. (2012). The experimental evaluation
+    of a methodology for surrogate fuel formulation to emulate gas phase
+    combustion kinetic phenomena. Combustion and Flame 159(4), 1444-1466.
+    doi:10.1016/j.combustflame.2011.11.002 (2nd-generation Jet-A POSF 4658
+    surrogate)
+  malewicki2013: >-
+    Malewicki, T., Gudiyella, S., Brezinsky, K. (2013). Experimental and modeling
+    study on the oxidation of Jet A and the n-dodecane/iso-octane/n-propylbenzene/
+    1,3,5-trimethylbenzene surrogate fuel. Combustion and Flame 160(1), 17-30.
+    doi:10.1016/j.combustflame.2012.09.013 (states the dooley2012a mole
+    fractions 40.4/29.5/22.8/7.3)
+  dooley2012b: >-
+    Dooley, S., Won, S.H., Jahangirian, S., et al. (2012). The combustion
+    kinetics of a synthetic paraffinic jet aviation fuel and a fundamentally
+    formulated, experimentally validated surrogate fuel. Combustion and Flame
+    159(10), 3014-3020. doi:10.1016/j.combustflame.2012.04.010 (FT S-8 POSF
+    4734 surrogate)
+  liang2025: >-
+    Liang, Y., Wang, J. (2025). Surrogate formulation for HEFA sustainable
+    aviation fuels: a new approach based on pyrolysis experiments. Combustion
+    and Flame 280, 114366. doi:10.1016/j.combustflame.2025.114366
+  teoh2022: >-
+    Teoh, R., Schumann, U., Voigt, C., et al. (2022). Targeted use of sustainable
+    aviation fuel to maximize climate benefits. Environmental Science &
+    Technology 56(23), 17246-17255. doi:10.1021/acs.est.2c05781 ; Supporting
+    Information Eqs. S1 (Brem et al. 2015 relation) and S2 (ICAO CAEP/11
+    fuel-composition correction)
+  brem2015: >-
+    Brem, B.T., Durdina, L., Siegerist, F., et al. (2015). Effects of fuel
+    aromatic content on nonvolatile particulate emissions of an in-production
+    aircraft gas turbine. Environmental Science & Technology (2015).
+    doi:10.1021/acs.est.5b04167 (coefficients as quoted in teoh2022 SI)
+  durand2021: >-
+    Durand, E., Lobo, P., Crayford, A., Sevcenco, Y., Christie, S. (2021). Impact
+    of fuel hydrogen content on non-volatile particulate matter emitted from an
+    aircraft auxiliary power unit measured with standardised reference systems.
+    Fuel 287, 119637. doi:10.1016/j.fuel.2020.119637 (nvPM number and mass fall
+    systematically with fuel hydrogen content, independent of fuel composition)
+  starck2016: >-
+    Starck, L., Pidol, L., Jeuland, N., et al. (2014/2016). Production of
+    Hydroprocessed Esters and Fatty Acids (HEFA) - Optimisation of Process Yield.
+    Oil & Gas Science and Technology 71, 10. doi:10.2516/ogst/2014007
+    (Table 3: Jet A-1 specification, net specific energy >= 42.8 MJ/kg,
+    aromatics <= 26.5 vol %)
+  nist_dodecane: >-
+    NIST Chemistry WebBook, SRD 69, dodecane (CAS 112-40-3), phase-change data:
+    enthalpy of vaporization 61.4 kJ/mol at 299 K (Viton et al. 1996); TRC
+    average 61 +/- 1 kJ/mol.
+
+# Measured (or study-adopted) target properties of the real fuels.
+targets:
+  JetA_A2_POSF10325:
+    kind: measured
+    source: [hychem_A2, colket2017]
+    average_formula: {C: 11.4, H: 21.7}
+    mw_g_mol: 158.6
+    lhv_liquid_MJ_kg: 43.1
+    class_mass_pct: {n_paraffin: 20.0, iso_paraffin: 29.4, cycloparaffin: 31.9, aromatics: 18.7}
+  ATJ_C1_POSF11498:
+    kind: measured
+    source: [hychem_C1, colket2017]
+    average_formula: {C: 12.5, H: 27.1}
+    mw_g_mol: 178.0
+    lhv_liquid_MJ_kg: 43.9
+    class_mass_pct: {n_paraffin: 0.0, iso_paraffin: 99.6, cycloparaffin: 0.0, aromatics: 0.4}
+  JetA1_hydrogen_reference:
+    kind: assumption
+    source: [teoh2022]
+    h_mass_pct: 13.8
+  neat_SAF_hydrogen_reference:
+    kind: assumption
+    source: [teoh2022]
+    h_mass_pct: 15.30
+  JetA1_spec:
+    kind: specification
+    source: [starck2016]
+    lhv_min_MJ_kg: 42.8
+    aromatics_max_vol_pct: 26.5
+
+# Heat of vaporization used ONLY to put the gas-phase (CRECK thermo) heating
+# value on the liquid-fuel basis of the measured targets for the check below.
+# The cycle itself is unchanged: it uses gas-phase species enthalpies for every
+# fuel, which overstates heat release by ~0.36 MJ/kg for all fuels alike.
+heat_of_vaporization_MJ_kg:
+  value: 0.360     # 61.4 kJ/mol / 170.34 g/mol, n-dodecane
+  source: [nist_dodecane]
+
+# Published surrogates, as mole fractions of CRECK species. Mass-fraction
+# formulations are converted exactly (see note on HEFA).
+surrogates:
+  JetA_dooley2012:          # production Jet A surrogate from Phase 7 on
+    source: [dooley2012a, malewicki2013]
+    target_fuel: "Jet-A POSF 4658"
+    validate_against: JetA_A2_POSF10325
+    mole_fractions: {NC12H26: 0.404, IC8H18: 0.295, NPBENZ: 0.228, TMBENZ: 0.073}
+  JetA_dooley2010:          # alternative published Jet A surrogate (fuel-representation spread)
+    source: [dooley2010]
+    target_fuel: "Jet-A POSF 4658"
+    validate_against: JetA_A2_POSF10325
+    mole_fractions: {NC10H22: 0.427, IC8H18: 0.330, C7H8: 0.243}
+  FT_dooley2012:
+    source: [dooley2012b]
+    target_fuel: "FT S-8 POSF 4734"
+    validate_against: neat_SAF_hydrogen_reference
+    mole_fractions: {NC12H26: 0.519, IC8H18: 0.481}
+  HEFA_liang2025:
+    source: [liang2025]
+    target_fuel: "HEFA-SPK (three fuels)"
+    validate_against: neat_SAF_hydrogen_reference
+    # published as 73 wt % n-dodecane / 27 wt % isododecane; both C12H26, so
+    # mass and mole fractions are identical
+    mole_fractions: {NC12H26: 0.73, IC12H26: 0.27}
+  ATJ_C1matched:
+    source: [hychem_C1]
+    target_fuel: "Gevo ATJ POSF 11498"
+    validate_against: ATJ_C1_POSF11498
+    # NOT a published surrogate. Formulated here from two iso-paraffins
+    # (CRECK IC12H26, IC16H34) so that the mixture's carbon number equals the
+    # measured average formula C12.5: x_C16 = (12.5 - 12)/4 = 0.125. The
+    # hydrogen count then follows (27.0 vs measured 27.1). The fuel is 99.6 %
+    # iso-paraffin (hychem_C1), so an all-iso-paraffin surrogate is consistent.
+    mole_fractions: {IC12H26: 0.875, IC16H34: 0.125}
+
+# Pre-set acceptance tolerances for the surrogate property check (P7.1).
+tolerances:
+  h_mass_pct_abs: 0.3          # |surrogate H mass % - target| <= 0.3 points
+  lhv_liquid_basis_abs_MJ_kg: 0.4   # |(LHV_gas - dHvap) - measured LHV| <= 0.4 MJ/kg
+  aromatics_mass_pct_abs: 6.0  # Jet A surrogates only: |aromatic mass % - 18.7|
+
+# Empirical nvPM relations (applied only inside their stated validity).
+nvpm:
+  brem2015_via_teoh2022_S1:
+    source: [teoh2022, brem2015]
+    form: "dEI_n_pct = (alpha0 + alpha1 * F_pct) * dH_pct"
+    alpha0: -114.21
+    alpha1: 1.06
+    thrust_variable: "F_pct, engine thrust setting in percent"
+    validity: {F_pct_gt: 30.0, dH_pct_lt: 0.6}
+  caep11_via_teoh2022_S2:
+    source: [teoh2022]
+    form: "k_fuel_N = exp((0.99 * F_frac - 1.05) * (13.8 - H_fuel_pct))"
+    thrust_variable: "F_frac, thrust as a fraction of rated (F/F00)"
+    validity: {H_fuel_pct_min: 13.4, H_fuel_pct_max: 14.3}
