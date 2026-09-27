@@ -117,12 +117,18 @@ in the clone:** the registered full fit, the full identifiability profile and th
 P6.2 bands (`--long`, ~3 h); their committed artifacts are consumed as-is by B1
 and E9.
 
-## Outstanding gates
+## P6.9 freeze (user-approved 2026-09-26)
 
-- **P6.9 freeze — awaiting the user.** Repo acceptance checks pass. The plan's
-  merge `phase4` → `main` and tag `v5.0` are held for explicit approval: the
-  predictive gates A2 (no skill over rated-thrust rescaling) and A3 (approach
-  sign) failed as registered results, P6.4 did not support "mechanism choice
-  does not matter", and every manuscript item in
-  `docs/manuscript_checklist_final.md` is external: pending.
-- Not run: the `--long` reproduction rows (~3 h).
+- Response-letter draft marked superseded where it cites withdrawn v4 results (`6e2b479`).
+- `docs/plan.md` §12: closure table for every reviewer item with its commit (`006584d`).
+- `phase4` fast-forwarded into `main` and tagged `v5.0` locally (see the tag message).
+  Not pushed to `origin`.
+
+## Outstanding (not repo gates)
+
+- Manuscript: every row of `docs/manuscript_checklist_final.md` is external: pending
+  (text edits, native equations + second-machine PDF check, Highlights from the
+  manifest, title per decision 3, citations, model-map figure).
+- Scientific follow-ups the user may choose: recalibrate with a HyChem surrogate
+  (P6.4); a literature source for surrogate compositions (R2.3a).
+- Not run: the `--long` fresh-clone reproduction rows (~3 h).
