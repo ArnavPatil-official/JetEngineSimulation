@@ -133,3 +133,68 @@ artifact (v6 outputs, P7.2/P7.3 registrations, run records); the Python v6
 source path (`integrated_engine.py`, all tracked `simulation/**/*.py`,
 `scripts/optimization/lto_v5.py`, `lto_v6.py`). Verify with
 `verify_protected_hashes.py --phase8`.
+
+## Amendment P8-A1 (2026-09-29, before any cross-family data or benchmark)
+
+Requested by Arnav after reviewing the registration. Known when written: the
+v6 baselines of section 1 and the P8.0 profile (97 % of a steady solve is
+Cantera HP equilibrium; 25 cycle evaluations per solve). No ICAO data beyond
+`data/icao_engine_data.csv` has been downloaded, and no benchmark arm has run.
+
+### A1.1 G2 criterion 1 replaced (cross-family engine fuel flow)
+
+Baselines, all fitted on the calibration pool only:
+- B0 constant TSFC and B1 F–A rule as registered (B1 over the whole
+  calibration pool, confirmed by Arnav).
+- **B2 (new)**: per mode m, weighted least squares
+  TSFC_i = β0,m + β1,m·OPR_i + β2,m·BPR_i over the calibration-pool rows of
+  that mode, weights = the registered group-balanced row weights w_i
+  (`lto_v5.attach_groups`), TSFC = ICAO fuel flow / target thrust. Prediction:
+  FF = TSFC_hat × target thrust. Linear terms only, no transformation.
+
+Rule, for each b in {B1, B2}: let Δ_b = MAPE_b − MAPE_model (group-weighted,
+percentage points) on the cross-family held-out set. G2.1 passes only if, for
+both B1 and B2:
+1. Δ_b ≥ 0.25 pp (point estimate; the margin is a minimum), and
+2. the 95 % percentile interval of Δ_b from a **paired cluster bootstrap**
+   excludes 0 (lower bound > 0). Bootstrap: 10,000 replicates, NumPy
+   `default_rng(20260929)`; each replicate resamples the held-out groups with
+   replacement (the same draw for the model and every baseline); within a
+   replicate each drawn group has equal weight and records keep their
+   registered within-group weights.
+
+B0, B1 and B2 MAPE and all Δ intervals are reported for the cross-family set
+and, for information, the v6 Trent held-out set (already open since Phase 6).
+G2 criteria 2–4 are unchanged.
+
+### A1.2 Benchmark variants added (section 4)
+
+Arms 2, 3 and 4 are each timed in three variants:
+- **a — identical evaluation sequence.** Same cycle evaluations as arm 1. G0.
+- **b — fewer cycle evaluations per solve.** Any change to how the matched-
+  thrust solve brackets and iterates φ (for example a tighter initial bracket,
+  a secant/Newton-started Brent, removing repeated evaluations at the same φ,
+  reusing the T4-guard evaluations) with the cycle function unchanged and the
+  same xtol/rtol. Warm starts across rows are not used (cold protocol of
+  section 4). **Must pass G0** on all 180 rows and the AE3 point; a variant
+  that fails G0 is reported and its timing is not counted. Cycle evaluations
+  per solve are reported for every arm.
+- **c — b + products-only equilibrium.** The HP equilibrium is solved on a
+  products-only species set taken from the same CRECK thermo
+  (`data/creck_c1c16_full.yaml`): N2, O2, AR, CO2, H2O, CO, H2, OH, H, O,
+  HO2, H2O2 (12 species; CRECK has no other nitrogen species). The inlet
+  mixture enthalpy and element composition come from the full mechanism at
+  (T_in, p); the products-only mixture is set to that enthalpy, pressure and
+  element composition and equilibrated at HP. Everything downstream is
+  unchanged. **Outside G0**, with its own tolerance vs the frozen v6 rows: on
+  all 180 rows and the AE3 point, |ΔFF|/FF ≤ 1e-4 and |ΔT4| ≤ 0.1 K, and the
+  held-out group-weighted MAPE changes by ≤ 0.01 pp. A variant c result is
+  reported as a separate approximation, never as the v6 path.
+
+### A1.3 Toolchain facts recorded (no scientific change)
+
+`xcode-select` points to a broken `/Applications/Xcode.app`, and the default
+Command Line Tools SDK (MacOSX27.0) cannot be linked by the installed linker.
+Builds use `DEVELOPER_DIR=/Library/Developer/CommandLineTools` and
+`CMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`
+(Apple clang 21.0.0). Record the compiler and SDK in every benchmark report.

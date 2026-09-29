@@ -113,8 +113,9 @@ New:
 - `scripts/phase8/profile_v6.py`, `outputs/phase8/profile_v6_*.{txt,json}`.
 - `scripts/phase8/benchmark.py`, `scripts/phase8/v6_optimized.py` (arm 2).
 - `scripts/phase8/g0_parity.py`, `outputs/phase8/g0_parity_*.{csv,json}`.
+- `cpp/environment.yml`, `cpp/conda-lock-osx-arm64.txt`.
 - `cpp/catjet_core/` (CMakeLists, `thermo`, `combustor`, `components`,
-  `nozzle`, `engine`, `batch`, `bindings`, Catch2 tests), `cpp/environment.yml`.
+  `nozzle`, `engine`, `batch`, `bindings`, Catch2 tests).
 - `simulation/catjet_backend.py` — Python wrapper keeping the `V5Model`
   call signature, backend selected by one flag. New file; `lto_v5.py` is not
   edited (a new driver passes the backend).
@@ -139,10 +140,13 @@ New:
 
 ### P8.1 — C++ core at parity (G0) and benchmark
 
-1. Toolchain (**ask Arnav before installing system software**): Miniforge,
-   env `catjet-cpp` from `cpp/environment.yml` pinning libcantera-devel 3.2.0,
-   cmake, eigen, pybind11, catch2. Confirm the built module imports in the
-   `.venv` interpreter; if the ABI does not allow it, stop and report.
+1. Toolchain (approved 2026-09-29): Miniforge in `~/miniforge3`,
+   `auto_activate_base false`, env `catjet-cpp` from `cpp/environment.yml`
+   pinning libcantera-devel 3.2.0 with cmake, eigen and catch2; commit the
+   explicit lockfile `cpp/conda-lock-osx-arm64.txt`. Compiler: Command Line
+   Tools with the MacOSX26.5 SDK (registration amendment P8-A1.3). pybind11
+   and the Python interpreter come from `.venv`. Confirm the built module
+   imports in `.venv`; if the ABI does not allow it, stop and report.
 2. Hello-world: HP equilibrium of the v6 fuel/air at the AE3 combustor inlet
    in C++ matches Python Cantera to 1e-12.
 3. Port compressor/fan, burner (v6 HP equilibrium + η_b scaling + dilution
@@ -152,7 +156,9 @@ New:
    exactly (port the algorithm; never loosen the tolerance).
 5. G0 (registered): C++ reproduces every numeric column of the 93 calibration
    rows and 87 held-out rows and the AE3 design point at rtol 1e-9.
-6. Benchmark arms 1–4 on W1–W4 as registered; publish the report.
+6. Benchmark arms 1–4 on W1–W4 as registered, arms 2–4 in variants a/b/c
+   (P8-A1.2: b = fewer evaluations per solve, must pass G0; c = products-only
+   equilibrium, own tolerance, outside G0); publish the report.
 
 ### P8.2 — composition-carrying state and enthalpy turbine (G1)
 
