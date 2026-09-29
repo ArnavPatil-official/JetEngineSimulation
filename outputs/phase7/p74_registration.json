@@ -1,0 +1,563 @@
+{
+  "phase": "P7.4",
+  "registered": "2026-09-27",
+  "study": "P7.4 new LE-PINN study: Ma-form RANS residual + current-loss weights, data efficiency (NOT P4.3 attempt 4; nothing is promoted to the production cycle)",
+  "registered_before": "any training or scoring of this study. Known: P4.3 attempts 1-3 and their diagnoses, the P6.5 audit. Compute-only benchmark (timing, no scores) before the budget below was fixed (see compute.benchmark).",
+  "data_access": {
+    "question": "sent to the user by the interactive session before this dispatch (viscosity access)",
+    "answer_recorded": "no answer is present in the repository, the plan or this executor's input (headless dispatch, started 2026-09-27 11:16, cannot receive messages); the plan's stated recommended assumption is therefore applied",
+    "assumption": "every WIND field label, including viscosity (mu_l, mu_t), is available ONLY at the sampled training rows, identically for both arms. The physics arm gets no held-out viscosity or derivative. mu_t is a network output trained on WIND mu_t at the training rows only (a training-only learned viscosity; information budget = the run's rows, the same as the data-only arm, which learns the same six outputs). Molecular viscosity is Sutherland's law of the predicted T (a closure, not a label). Geometry (grid coordinates, wall shape and normals), the WIND file's freestream reference constants and the physical wall conditions are not held-out flow measurements."
+  },
+  "data": {
+    "source": "WIND S-A RANS solution of the Sajben weak-shock case (sajben.cgd/.cfl, NPARC archive): one flow case; fields rho, u, v, p, T, mu_l, mu_t; no measured Reynolds stresses, no k",
+    "rows": "every grid node except the inflow column i = 0: 80 x 51 = 4080",
+    "heldout_test": "fixed 20 % of the 4080 rows (816 rows), numpy default_rng(7401).permutation; never used in training, scalers, selection or stopping",
+    "denominator_100pct": "the 3264-row training POOL = all 4080 rows minus the held-out test rows. Fractions 2, 5, 10, 25, 100 % of this pool: f002=65, f005=163, f010=326, f025=816, f100=3264 rows",
+    "validation": "none registered (final-epoch checkpoint)",
+    "experiment": "data/raw/data.Mach46.txt wall pressures: external scoring only; never used to select, checkpoint or stop",
+    "labels_used": "rho, u, v, p, T, mu_t at the run's training rows (mu_l is not used)"
+  },
+  "split": {
+    "file": "outputs/phase7/p74_split.json",
+    "sha256": "8a791c9d3da67957c4b780ca718de5b7580a1a1fe0797430bd0ba45632276de6",
+    "test_sha256": "829b84f45acbec299c14dfadee152710b5465e978ed39b2de1d229bca654dc58",
+    "pool_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4"
+  },
+  "design": {
+    "fractions": {
+      "f002": 0.02,
+      "f005": 0.05,
+      "f010": 0.1,
+      "f025": 0.25,
+      "f100": 1.0
+    },
+    "arms": {
+      "physics": "L = lambda_data L_data + lambda_phys L_phys + lambda_bc L_bc with the detached current-loss weights (le_pinn_ma.ma_weights)",
+      "dataonly": "L = L_data (weight 1)"
+    },
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "n_runs": 30,
+    "pairing": "for each (seed, fraction) the physics and data-only runs share the training rows, scalers, initial weights (torch.manual_seed(seed) immediately before model construction), architecture, optimizer, schedule and epoch budget; the only difference is the loss"
+  },
+  "physics": {
+    "equations": "le_pinn_ma module docstring (planar steady compressible RANS, conservative fluxes, variable mu_eff = Sutherland(T) + mu_t, Boussinesq stress combined with the molecular stress in ONE flux, heat flux cp (mu/Pr + mu_t/Pr_t) grad T, EOS p = rho R T)",
+    "Pr": 0.72,
+    "Pr_t": 0.9,
+    "sutherland": {
+      "C1": 1.458e-06,
+      "S_K": 110.4
+    },
+    "gamma_R": "from the WIND reference record (gamma 1.4, R 286.96)",
+    "not_modelled": "isotropic 2/3 rho k (S-A gives no k; k is not in H either): an approximation, not an exact Ma replication",
+    "derivatives": "autograd w.r.t. physical coordinates (exact chain rule through the input normalisation and output de-standardisation)",
+    "scaling": "residuals / (rho_r a_r / L), (rho_r a_r^2 / L), (rho_r a_r^3 / L), (rho_r a_r^2 for EOS); rho_r, a_r, T_r = WIND reference; L = throat height",
+    "L_phys": "sum over {continuity, x_mom, y_mom, energy, eos} of the mean squared scaled residual over the collocation points",
+    "L_bc": "mean (u/a_r)^2 + mean (v/a_r)^2 + mean ((L/T_r) dT/dn)^2 over both walls' nodes (i >= 1); n = unit normal of the actual wall from its coordinates (upper wall curved)",
+    "L_data": "mean squared error of the six standardised outputs over the training rows",
+    "weights": "Ma et al. (2026) Eqs. 30-33 (p. 5) in the forms fixed by the Phase 7 plan: lambda_data = .1 + .9 sigmoid((Lphys + Lbc - Ldata)/(Ldata + eps)); lambda_phys = .1 + .9 sigmoid((Ldata - Lphys)/(Lphys + eps)); lambda_bc = .1 + .9 sigmoid((Ldata - Lbc)/(Lbc + eps)); eps = 1e-8; recomputed every epoch from the current losses and DETACHED (no gradient through the weights)",
+    "collocation": "fixed pool per seed: uniform draws in continuous grid-index space (xi in [1, 80], eta in [0, 50]) mapped by bilinear interpolation of the grid coordinates (le_pinn_ma.collocation_points, default_rng(7500 + seed)); follows the grid's wall clustering; geometry only",
+    "boundary_points": "the 80 lower-wall and 80 upper-wall grid nodes i = 1..80"
+  },
+  "model": {
+    "architecture": "dual network (global 2->400, 6 hidden x 400 -> 6; boundary 2->100, 6 hidden x 100 -> 2 (p, T) fused within fusion_delta of a wall), tanh, Xavier-uniform weights, zero biases",
+    "width": 400,
+    "n_hidden": 6,
+    "b_width": 100,
+    "b_hidden": 6,
+    "fusion_delta_m": 0.0005,
+    "activation": "tanh",
+    "inputs": "physical (x, y), normalised inside the model to [-1, 1] by the GEOMETRY bounding box (x_min..x_max, 0..y_max of the grid coordinates; no flow data)",
+    "outputs": "standardised [rho, u, v, p, T, log1p(mu_t / mu_ref)]; mean/std from the run's TRAINING rows only (shared by the paired arms, which use the same rows); mu_t = mu_ref expm1(.) clamped >= 0"
+  },
+  "training": {
+    "epochs": 5000,
+    "optimizer": "AdamW",
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "lr_schedule": "CosineAnnealingLR(T_max = epochs, eta_min = lr * eta_min_factor), stepped per epoch",
+    "eta_min_factor": 0.01,
+    "grad_clip": 1.0,
+    "batching": "full batch over the run's training rows every epoch",
+    "n_collocation": 3264,
+    "collocation_batch": null,
+    "collocation_seed_offset": 7500,
+    "collocation_batch_seed_offset": 7600,
+    "weight_eps": 1e-08,
+    "checkpoint_every": 250,
+    "history_every": 10,
+    "log_every": 50,
+    "checkpoint_selection": "final epoch; no validation set, no early stopping, no held-out or experimental data",
+    "restart_policy": "infrastructure restarts resume from the last atomic checkpoint (model, optimizer, scheduler, RNG states) with an identical configuration hash; a changed configuration is refused; a non-finite loss or any other error ends the run as FAILED with no retry"
+  },
+  "work_dir": "outputs/phase7/p74_work",
+  "runs": [
+    {
+      "run_id": "p74_s42_f002_physics",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "physics",
+      "n_train_rows": 65,
+      "train_ids_sha256": "38fff07a390992a9a647e254d1a4c8e283821bf3fe0f81bd45e73005a7221549",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f002_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f002_physics.json"
+    },
+    {
+      "run_id": "p74_s42_f002_dataonly",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "dataonly",
+      "n_train_rows": 65,
+      "train_ids_sha256": "38fff07a390992a9a647e254d1a4c8e283821bf3fe0f81bd45e73005a7221549",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f002_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f002_dataonly.json"
+    },
+    {
+      "run_id": "p74_s43_f002_physics",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "physics",
+      "n_train_rows": 65,
+      "train_ids_sha256": "dc382df4efa805cbf3117b777ad457cc82c08758fe0ab7f83adabc497f152422",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f002_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f002_physics.json"
+    },
+    {
+      "run_id": "p74_s43_f002_dataonly",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "dataonly",
+      "n_train_rows": 65,
+      "train_ids_sha256": "dc382df4efa805cbf3117b777ad457cc82c08758fe0ab7f83adabc497f152422",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f002_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f002_dataonly.json"
+    },
+    {
+      "run_id": "p74_s44_f002_physics",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "physics",
+      "n_train_rows": 65,
+      "train_ids_sha256": "2caa5ff7bf4715eed60b36d3d0dc57b9adbe58e7bb62d1602e6584065cdf752b",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f002_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f002_physics.json"
+    },
+    {
+      "run_id": "p74_s44_f002_dataonly",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.02,
+      "fraction_key": "f002",
+      "arm": "dataonly",
+      "n_train_rows": 65,
+      "train_ids_sha256": "2caa5ff7bf4715eed60b36d3d0dc57b9adbe58e7bb62d1602e6584065cdf752b",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f002_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f002_dataonly.json"
+    },
+    {
+      "run_id": "p74_s42_f005_physics",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "physics",
+      "n_train_rows": 163,
+      "train_ids_sha256": "1d04e14e7ef4d2353771bae939af711ca86e652924fd87799dfed42c8315ed72",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f005_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f005_physics.json"
+    },
+    {
+      "run_id": "p74_s42_f005_dataonly",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "dataonly",
+      "n_train_rows": 163,
+      "train_ids_sha256": "1d04e14e7ef4d2353771bae939af711ca86e652924fd87799dfed42c8315ed72",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f005_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f005_dataonly.json"
+    },
+    {
+      "run_id": "p74_s43_f005_physics",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "physics",
+      "n_train_rows": 163,
+      "train_ids_sha256": "e82aa624cc144899813921cdf783128c107ffafd7fb38a496c4814a98e3a0bb5",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f005_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f005_physics.json"
+    },
+    {
+      "run_id": "p74_s43_f005_dataonly",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "dataonly",
+      "n_train_rows": 163,
+      "train_ids_sha256": "e82aa624cc144899813921cdf783128c107ffafd7fb38a496c4814a98e3a0bb5",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f005_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f005_dataonly.json"
+    },
+    {
+      "run_id": "p74_s44_f005_physics",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "physics",
+      "n_train_rows": 163,
+      "train_ids_sha256": "0e226d6e8936921988b04897aa393439dec61b1afc9fa2f7805f029837d4b665",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f005_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f005_physics.json"
+    },
+    {
+      "run_id": "p74_s44_f005_dataonly",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.05,
+      "fraction_key": "f005",
+      "arm": "dataonly",
+      "n_train_rows": 163,
+      "train_ids_sha256": "0e226d6e8936921988b04897aa393439dec61b1afc9fa2f7805f029837d4b665",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f005_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f005_dataonly.json"
+    },
+    {
+      "run_id": "p74_s42_f010_physics",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "physics",
+      "n_train_rows": 326,
+      "train_ids_sha256": "b8942e485216e2230186fe9c3e71941f4f8c48d07b87df0426a0aa4930345e37",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f010_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f010_physics.json"
+    },
+    {
+      "run_id": "p74_s42_f010_dataonly",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "dataonly",
+      "n_train_rows": 326,
+      "train_ids_sha256": "b8942e485216e2230186fe9c3e71941f4f8c48d07b87df0426a0aa4930345e37",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f010_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f010_dataonly.json"
+    },
+    {
+      "run_id": "p74_s43_f010_physics",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "physics",
+      "n_train_rows": 326,
+      "train_ids_sha256": "e6c6ad50b5c1f2933e7a4076f528536bbc35e200a8f80483125e6a4515472673",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f010_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f010_physics.json"
+    },
+    {
+      "run_id": "p74_s43_f010_dataonly",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "dataonly",
+      "n_train_rows": 326,
+      "train_ids_sha256": "e6c6ad50b5c1f2933e7a4076f528536bbc35e200a8f80483125e6a4515472673",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f010_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f010_dataonly.json"
+    },
+    {
+      "run_id": "p74_s44_f010_physics",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "physics",
+      "n_train_rows": 326,
+      "train_ids_sha256": "abd4bc80385f7c6fa70c58b6464eb89ee0eb869a1f06bda92623bc0d9dda8830",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f010_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f010_physics.json"
+    },
+    {
+      "run_id": "p74_s44_f010_dataonly",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.1,
+      "fraction_key": "f010",
+      "arm": "dataonly",
+      "n_train_rows": 326,
+      "train_ids_sha256": "abd4bc80385f7c6fa70c58b6464eb89ee0eb869a1f06bda92623bc0d9dda8830",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f010_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f010_dataonly.json"
+    },
+    {
+      "run_id": "p74_s42_f025_physics",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "physics",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e14ab16899a58bc7e9fa4c982a76290ef4f3426ad5e2339910d3e40c08219ab5",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f025_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f025_physics.json"
+    },
+    {
+      "run_id": "p74_s42_f025_dataonly",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "dataonly",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e14ab16899a58bc7e9fa4c982a76290ef4f3426ad5e2339910d3e40c08219ab5",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f025_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f025_dataonly.json"
+    },
+    {
+      "run_id": "p74_s43_f025_physics",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "physics",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e60b322776797b7551d5a3ecf0949f6606f3d98189c0e8605cda23e79ee656c5",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f025_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f025_physics.json"
+    },
+    {
+      "run_id": "p74_s43_f025_dataonly",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "dataonly",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e60b322776797b7551d5a3ecf0949f6606f3d98189c0e8605cda23e79ee656c5",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f025_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f025_dataonly.json"
+    },
+    {
+      "run_id": "p74_s44_f025_physics",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "physics",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e14da433da694aca5284228fecb999e1991911fb61ce43f000dc175596017dc5",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f025_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f025_physics.json"
+    },
+    {
+      "run_id": "p74_s44_f025_dataonly",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 0.25,
+      "fraction_key": "f025",
+      "arm": "dataonly",
+      "n_train_rows": 816,
+      "train_ids_sha256": "e14da433da694aca5284228fecb999e1991911fb61ce43f000dc175596017dc5",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f025_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f025_dataonly.json"
+    },
+    {
+      "run_id": "p74_s42_f100_physics",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "physics",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f100_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f100_physics.json"
+    },
+    {
+      "run_id": "p74_s42_f100_dataonly",
+      "seed": 42,
+      "init_seed": 42,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "dataonly",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s42_f100_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s42_f100_dataonly.json"
+    },
+    {
+      "run_id": "p74_s43_f100_physics",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "physics",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f100_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f100_physics.json"
+    },
+    {
+      "run_id": "p74_s43_f100_dataonly",
+      "seed": 43,
+      "init_seed": 43,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "dataonly",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s43_f100_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s43_f100_dataonly.json"
+    },
+    {
+      "run_id": "p74_s44_f100_physics",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "physics",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f100_physics.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f100_physics.json"
+    },
+    {
+      "run_id": "p74_s44_f100_dataonly",
+      "seed": 44,
+      "init_seed": 44,
+      "fraction": 1.0,
+      "fraction_key": "f100",
+      "arm": "dataonly",
+      "n_train_rows": 3264,
+      "train_ids_sha256": "210a3af0e7cb2d23af12b2df2d4ab6348485702028d9bcba6a49e27fcbf9b2f4",
+      "checkpoint": "models/le_pinn_ma_p74_s44_f100_dataonly.pt",
+      "record": "outputs/phase7/p74_runs/p74_s44_f100_dataonly.json"
+    }
+  ],
+  "scoring": {
+    "script": "scripts/validation/report_sajben_ma.py (runs only when all 30 runs are complete)",
+    "experimental": "upper and lower wall P/P_in shape-L2 against data.Mach46.txt with the existing scorer (scripts/validation/sajben_validation.py: build_sajben_grid 60 x 25 from sajben.x.fmt, compute_wall_cp_errors with the throat-height mapping), existing bands < 0.10 pass / 0.10-0.25 partial / > 0.25 fail; degenerate (flat) predictions flagged",
+    "primary_scalar": "worse of the two walls: max(l2_upper, l2_lower)",
+    "wind_heldout": "on the 816 held-out WIND rows: relative L2 ||pred - ref|| / ||ref|| and RMSE for each of rho, u, v, p, T; declared aggregate = mean of the five relative L2; viscosity separately: relative L2 and RMSE of mu_t and of mu_eff = Sutherland(T_pred) + mu_t vs WIND mu_l + mu_t",
+    "labels": "WIND held-out = in-case spatial interpolation on the same flow case; experiment = external comparison on the same geometry and condition; no cross-case or cross-geometry claim"
+  },
+  "claim": {
+    "per_fraction": "three seed scores per arm on the PRIMARY scalar (worse-wall experimental shape-L2)",
+    "seed_spread": "max(sampleSD(physics), sampleSD(data-only)), ddof = 1, per fraction",
+    "benefit": "mean(data-only primary) - mean(physics primary) > seed spread, at >= 2 of the fractions {2, 5, 10} %",
+    "reported_regardless": "per-seed paired differences, mean/SD per arm, all five fractions, both the experimental and the WIND held-out evaluations, bands, degenerate flags, final training-side losses, failures",
+    "completeness": "a terminal claim requires all 30 registered runs COMPLETE (exit 0, record, checkpoint hash); the report refuses otherwise",
+    "no_selection": "no wall, metric, seed, checkpoint, fraction or run is chosen after outcomes; no held-out score chooses hyperparameters, splits, stopping rules or winning runs",
+    "failure": "a new-study failure is a result, not permission for another unregistered attempt"
+  },
+  "compute": {
+    "device": "cpu",
+    "dtype": "float32",
+    "torch_threads_per_run": 2,
+    "max_concurrent_runs": 5,
+    "max_threads": 10,
+    "note": "the supervisor never runs more than max_threads torch threads at once; the v6 calibration/blend queues use 6 process workers of their own",
+    "benchmark": {
+      "kind": "compute-only benchmark (timing); smoke runs with temporary outputs under /tmp; no held-out, experimental or training-loss comparison was computed or read",
+      "when": "2026-09-27 ~11:40, while the v6 calibration job (6 workers) was running",
+      "host": "Apple M3 Pro (5 performance + 6 efficiency cores), CPU float32",
+      "runs": {
+        "p74_s42_f100_physics_t4": {
+          "epochs": 6,
+          "seconds": 21.07117795944214,
+          "s_per_epoch_incl_setup": 3.5118629932403564
+        },
+        "p74_s42_f100_dataonly_t4": {
+          "epochs": 20,
+          "seconds": 4.134626150131226,
+          "s_per_epoch_incl_setup": 0.20673130750656127
+        },
+        "p74_s42_f002_physics_t4": {
+          "epochs": 6,
+          "seconds": 20.13740086555481,
+          "s_per_epoch_incl_setup": 3.3562334775924683
+        },
+        "p74_s42_f100_physics_t2": {
+          "epochs": 6,
+          "seconds": 24.899528980255127,
+          "s_per_epoch_incl_setup": 4.1499214967091875
+        }
+      },
+      "reading": "physics epoch ~3.0 s at 4 threads and ~3.7 s at 2 threads (full 3264-point collocation pool, second derivatives); data-only epoch ~0.2 s. Thread scaling is poor, so 2 threads per run with up to 5 concurrent runs (10 threads) is the most throughput per core. Projected: 15 physics runs x 5000 epochs ~ 5-8 h each, 3 waves -> ~20-26 h wall clock; data-only ~20 min each.",
+      "decision": "KEEP the established budget (5000 full-batch epochs, physics on a 3264-point pool every epoch = the P4.3 attempt-3 physics point count). The benchmark justifies only the thread/concurrency layout, not a budget change."
+    }
+  },
+  "report_outputs": [
+    "outputs/phase7/p74_scores.csv",
+    "outputs/phase7/p74_report.json",
+    "outputs/phase7/p74_report.md"
+  ],
+  "commands": {
+    "launch": "bash scripts/run_phase7.sh launch pinn",
+    "run_in_snapshot": ".venv/bin/python scripts/validation/train_sajben_ma.py --run-id <run_id>",
+    "report_in_snapshot": ".venv/bin/python scripts/validation/report_sajben_ma.py",
+    "queue_order": [
+      "p74_s42_f002_physics",
+      "p74_s42_f002_dataonly",
+      "p74_s43_f002_physics",
+      "p74_s43_f002_dataonly",
+      "p74_s44_f002_physics",
+      "p74_s44_f002_dataonly",
+      "p74_s42_f005_physics",
+      "p74_s42_f005_dataonly",
+      "p74_s43_f005_physics",
+      "p74_s43_f005_dataonly",
+      "p74_s44_f005_physics",
+      "p74_s44_f005_dataonly",
+      "p74_s42_f010_physics",
+      "p74_s42_f010_dataonly",
+      "p74_s43_f010_physics",
+      "p74_s43_f010_dataonly",
+      "p74_s44_f010_physics",
+      "p74_s44_f010_dataonly",
+      "p74_s42_f025_physics",
+      "p74_s42_f025_dataonly",
+      "p74_s43_f025_physics",
+      "p74_s43_f025_dataonly",
+      "p74_s44_f025_physics",
+      "p74_s44_f025_dataonly",
+      "p74_s42_f100_physics",
+      "p74_s42_f100_dataonly",
+      "p74_s43_f100_physics",
+      "p74_s43_f100_dataonly",
+      "p74_s44_f100_physics",
+      "p74_s44_f100_dataonly",
+      "p74_report"
+    ],
+    "inspect": "bash scripts/run_phase7.sh status; outputs/phase7/runs/pinn/<run_id>/attempt_<n>.log"
+  },
+  "inputs_sha256": {
+    "data/raw/cfd_datasets/nasa/transdif01/sajben.cgd": "f73a0b21784bd66032cf259cabec0dc197523c76fc5fa4b2e62df749867e5355",
+    "data/raw/cfd_datasets/nasa/transdif01/sajben.cfl": "0c6313f21d3080563b1c68cbf31fc1f1a9dc3f5a71c43a4ffe284916e0e31074",
+    "data/raw/data.Mach46.txt": "88bfff4ede4518e98b35bcdbbbf4a239966efbd68f319b71a4182c6a5a79b4ce",
+    "data/raw/sajben.x.fmt": "c96e76fc7a1440bf6e4c2b44edcc519fa52e2c72ffdffbf6069e62a6eeb7b7ab",
+    "simulation/nozzle/wind_cff.py": "bf39b0f547d376761b0f293d5cd2dcb0f30c41df70a0452b305795ad45b7bd65"
+  }
+}

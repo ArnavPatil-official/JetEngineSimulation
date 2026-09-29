@@ -1,0 +1,29 @@
+{
+  "kind": "compute-only benchmark (timing); smoke runs with temporary outputs under /tmp; no held-out, experimental or training-loss comparison was computed or read",
+  "when": "2026-09-27 ~11:40, while the v6 calibration job (6 workers) was running",
+  "host": "Apple M3 Pro (5 performance + 6 efficiency cores), CPU float32",
+  "runs": {
+    "p74_s42_f100_physics_t4": {
+      "epochs": 6,
+      "seconds": 21.07117795944214,
+      "s_per_epoch_incl_setup": 3.5118629932403564
+    },
+    "p74_s42_f100_dataonly_t4": {
+      "epochs": 20,
+      "seconds": 4.134626150131226,
+      "s_per_epoch_incl_setup": 0.20673130750656127
+    },
+    "p74_s42_f002_physics_t4": {
+      "epochs": 6,
+      "seconds": 20.13740086555481,
+      "s_per_epoch_incl_setup": 3.3562334775924683
+    },
+    "p74_s42_f100_physics_t2": {
+      "epochs": 6,
+      "seconds": 24.899528980255127,
+      "s_per_epoch_incl_setup": 4.1499214967091875
+    }
+  },
+  "reading": "physics epoch ~3.0 s at 4 threads and ~3.7 s at 2 threads (full 3264-point collocation pool, second derivatives); data-only epoch ~0.2 s. Thread scaling is poor, so 2 threads per run with up to 5 concurrent runs (10 threads) is the most throughput per core. Projected: 15 physics runs x 5000 epochs ~ 5-8 h each, 3 waves -> ~20-26 h wall clock; data-only ~20 min each.",
+  "decision": "KEEP the established budget (5000 full-batch epochs, physics on a 3264-point pool every epoch = the P4.3 attempt-3 physics point count). The benchmark justifies only the thread/concurrency layout, not a budget change."
+}

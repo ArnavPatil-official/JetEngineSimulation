@@ -151,6 +151,26 @@ def pinn_jobs() -> list[Job]:
     return jobs
 
 
+def pinn_max_threads() -> int:
+    reg_path = HERE / "outputs" / "phase7" / "p74_registration.json"
+    if reg_path.exists():
+        return int(json.loads(reg_path.read_text())["compute"]["max_threads"])
+    return int(os.environ.get("P7_MAX_THREADS", "10"))
+
+
+def queues_unfinished(repo: Path, names: list[str]) -> bool:
+    """True while any job of the named queues is not in a terminal state
+    (a queue whose supervisor has not recorded its jobs yet counts as unfinished)."""
+    for q in names:
+        sup = repo / RUNS_REL / q / "supervisor.json"
+        if not sup.exists():
+            return True
+        jobs = json.loads(sup.read_text()).get("jobs", {})
+        if not jobs or any(job_state(repo, q, j) not in ("COMPLETE", "FAILED", "GATE_CLOSED") for j in jobs):
+            return True
+    return False
+
+
 def queues() -> dict:
     calib_out = _p7("calibration_v6.json", "calibration_v6_evaluations.csv", "calibration_v6_rows.csv")
     prof_out = _p7("identifiability_profile_v6.json", "identifiability_profile_v6.csv",
@@ -177,7 +197,10 @@ def queues() -> dict:
                 imports=calib_out + prof_out + hold_out, gate=gate_blends, threads=6,
                 check=check_json_key("outputs/phase7/p73_blends_v6.json", "claims")),
         ]},
-        "pinn": {"max_threads": None, "jobs": pinn_jobs()},
+        # PINN runs never oversubscribe the Mac: while any calib/blends job is
+        # unfinished, `reserve_threads` of the cap stay free for those queues.
+        "pinn": {"max_threads": None, "jobs": pinn_jobs(),
+                 "reserve_for": ["calib", "blends"], "reserve_threads": 6},
     }
 
 
@@ -415,7 +438,7 @@ class Supervisor:
             self.stop = True
         for s in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             signal.signal(s, _term)
-        cap = self.spec["max_threads"] or int(os.environ.get("P7_MAX_THREADS", "10"))
+        base_cap = self.spec["max_threads"] or pinn_max_threads()
         last_beat = time.time()
         while True:
             for name, (proc, _n, _l) in list(self.running.items()):
@@ -428,6 +451,8 @@ class Supervisor:
                 self.heartbeat("stopped by signal; running attempts will be recovered on restart")
                 return 1
             used = sum(j.threads for j in self.spec["jobs"] if j.name in self.running)
+            cap = base_cap - (self.spec.get("reserve_threads", 0)
+                              if queues_unfinished(self.repo, self.spec.get("reserve_for", [])) else 0)
             waiting = False
             for job in self.spec["jobs"]:
                 st = job_state(self.repo, self.queue, job.name)
@@ -475,7 +500,9 @@ def write_status_md(repo: Path) -> None:
     for qd in sorted(p for p in base.glob("*") if p.is_dir()):
         sup = qd / "supervisor.json"
         beat = json.loads(sup.read_text()) if sup.exists() else {}
-        for jd in sorted(p for p in qd.glob("*") if p.is_dir()):
+        names = sorted({p.name for p in qd.glob("*") if p.is_dir()} | set(beat.get("jobs", {})))
+        for name in names:
+            jd = qd / name
             st = job_state(repo, qd.name, jd.name)
             det = ""
             for s in ("COMPLETE", "FAILED", "GATE_CLOSED"):
@@ -488,7 +515,7 @@ def write_status_md(repo: Path) -> None:
                 alive = pid_alive(rec["pid"])
                 st = "RUNNING" if alive else "INTERRUPTED (no exit record)"
                 det = f"pid {rec['pid']} since {rec['started']}"
-            lines.append(f"| {qd.name} | {jd.name} | {st} | {len(attempts(jd))} | {det} |")
+            lines.append(f"| {qd.name} | {jd.name} | {st} | {len(attempts(jd)) if jd.exists() else 0} | {det} |")
         if beat:
             lines.append(f"| {qd.name} | (supervisor) | pid {beat.get('supervisor_pid')} "
                          f"{'alive' if pid_alive(beat.get('supervisor_pid', -1)) else 'not running'} | | "
