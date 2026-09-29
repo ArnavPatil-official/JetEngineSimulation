@@ -68,6 +68,11 @@ All rows are negative or partial results; none is a production number.
 - `outputs/phase7_execution_status.md`
 - `outputs/phase7/`
 
+## Phase 8 records (registration artifacts, profiles, benchmarks, parity checks). Not manuscript sources until a crosswalk cites them
+
+- `outputs/phase8_execution_status.md`
+- `outputs/phase8/`
+
 ## Historical calibrations (inputs to the v3/v4 evidence and reproduction paths; superseded by V1)
 
 - `outputs/calibration_trent1000_ae3.json`

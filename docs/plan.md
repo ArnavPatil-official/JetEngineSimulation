@@ -1,294 +1,235 @@
-# Phase 7 — fuel representation and new LE-PINN study
+# Phase 8 — physics-first revision
 
-Date: 2026-09-27. Branch `phase7`, baseline `a44c131` (from main `c847f5a`).
-This implements the user's Phase 7 continuation instructions after the device
-link dropped. P7.0 and P7.1 are already committed; preserve their outcomes.
-Completed Phase 6 plan: `docs/plan_phase6_completed.md`. This plan authorizes
-repo work and Mac-local study execution only; no manuscript edits, outreach,
-remote publishing, merge or release tag. The turbine PINN remains retired.
+Date: 2026-09-29. Branch `phase8`, from the Phase 7 freeze `7524a7a`.
+Completed Phase 7 plan: `docs/plan_phase7_completed.md`; closure in
+`outputs/phase7_execution_status.md`. Full design document (the source of this
+plan; read it for equations and rationale): Claude doc "CAT-JET Phase 8 —
+Physics-First Revision Plan",
+https://claude.ai/code/artifact/53b56f20-5553-4edb-96d3-8c36b12513a5.
+Where the two differ, this file and `docs/phase8_registration.md` govern.
+
+This plan authorizes repo work and Mac-local computation for the **STS slice
+(D1)** only: P8.0, P8.1, P8.2, P8.3 and the first P8.6 database sources.
+P8.4 onward are listed for order and gates; they need a plan revision before
+execution. No manuscript edits, outreach, remote publishing, merge or tag.
 
 ## Objective
 
-Recalibrate the thrust-matched cycle with the registered Dooley 2012 Jet A
-surrogate (calibration **v6**), evaluate the requested mass-basis blends with
-paired sensitivity draws, and run a separately registered Sajben LE-PINN
-study of the corrected RANS formulation and data efficiency. Report every
-registered outcome, including failures. Phase number 7 and calibration version
-6 are distinct; keep artifact names unambiguous.
+Turn the v6 thrust-matched cycle into a component-level model in this order:
+C++ port with identical results (G0), then physics upgrades each verified
+alone (G1), then staged calibration and source-level validation (G2), and
+only then synthetic data, MLX residual models and robust SAF optimization (G3).
+
+The target is honest: v6 held-out fuel flow (87 rows, 9 groups) is 1.830 %
+group-weighted MAPE, B0 2.189 %, B1 1.076 %. The model loses to the B1
+thrust-ratio rule. The old "~11 % MAPE" is the pre-Phase-1 in-sample figure and
+must not be quoted as a baseline. v6 A1 failed: all four knobs (W_ref,
+a_thrust, k_pi, k_mdot) are penalty-dependent. P8.4 exists to retire them.
+
+## Decisions (answered by Arnav, 2026-09-29)
+
+- **D1** STS slice before the deadline (check the 2027 Regeneron STS date):
+  C++ parity port, benchmark, composition-carrying state, enthalpy turbine,
+  choking nozzle, first database sources. Everything else is reported as work
+  in progress.
+- **D2** Write the off-design matching solver in C++; verify it code-to-code
+  against pyCycle's high-bypass turbofan example.
+- **D3** Add other ICAO engine families. Keep the registered v6 Trent split;
+  add a cross-family held-out set (whole families held out).
+- **D4** The reactor network becomes the claimed NOx/CO path only if it beats
+  the V6 ICAO-derived correlation on held-out engines.
+- **D5** Rig data from other machines calibrates non-dimensional loss and
+  discharge relations only, never Trent-specific values.
+- **D6 (changed)** Phase 7 froze without P7.4. A nozzle PINN returns only as
+  model M3 under a Phase 8 registration, if time allows. The turbine PINN stays
+  retired. `phase7-p74-wip` is unreviewed code, not a registration.
 
 ## Constraints
 
-- Register and commit each procedure before its first computation/training run.
-  The user supplied preliminary blend values as diagnostics, not registered
-  results. State that these were known when the P7.3 claim rule was specified.
-- Preserve v1-v5 outputs, all old model weights and the P7.0/P7.1 registration
-  and results. Chemical mechanism YAML is read-only. Never overwrite an old
-  checkpoint. Use new write-once names and checkpoint/completion hashes.
-- Work through the Mac executor, never rely on a suspended device VM. All long
-  jobs must survive link loss: detached supervisor, caffeinate, durable logs,
-  PID/start-time records, exit codes and verified completion markers.
-- Do not automatically promote a new PINN to the production cycle. This is a
-  new study, not P4.3 attempt 4. Historical negative results remain in the record.
-- Keep the Jet A hydrogen/aromatics failures visible. The published surrogate
-  targets POSF4658; the P7.1 comparison target is POSF10325. A published
-  composition is not proof of matching this other fuel. The two-surrogate
-  difference is a sensitivity measure, not a complete uncertainty bound.
-- Mass blend percentages are not volumetric certification limits. Neat SAF is
-  contextual. Do not imply operational approval of any blend from this study.
-- No held-out target, experimental wall-Cp or preliminary PINN score may choose
-  hyperparameters, splits, stopping rules or winning runs after registration.
-- No incomplete batch can be reported as a terminal study result.
+- Register and commit each procedure before its first computation (benchmark,
+  gates, splits, calibration stages). A failed gate stops the steps below it
+  and is recorded, never tuned away.
+- Protected: everything in `outputs/phase8/protected_sha256_phase8.json`
+  (Phase 7 list + v6 evidence + the Python v6 source path). The Python v6 path
+  (`integrated_engine.py`, `simulation/`, `scripts/optimization/lto_v5.py`,
+  `lto_v6.py`) is the A0 reference and is **not edited** in Phase 8. New
+  physics lives in the C++ core; the optimized-Python benchmark arm lives in a
+  new module under `scripts/phase8/`.
+- Chemical mechanism YAML, `data/icao_engine_data.csv` and `models/*.pt` are
+  read-only. Never reuse a v1–v6 artifact name; new outputs go under
+  `outputs/phase8/`, write-once.
+- Each physics upgrade reduces to the v6 answer in its simplifying limit and
+  is added alone, so every change in results is attributable.
+- New parameters need a dataset that constrains them and must pass the A1
+  profile rule including the penalty guard; otherwise they return to a cited
+  fixed value (range rule).
+- Simulated/CFD rows never enter a validation set. Validation uses Tier 4
+  experimental rows only. No held-out row is opened before its split is
+  registered with a hash.
+- Keep all Phase 7 negative results visible (A1/A2/A3 FAIL, P7.3 gate
+  closed, P7.4 not run, Dooley 2012 H/aromatics failures).
+- `.DS_Store` belongs to the user. Ask before any push to origin.
+- Phase 7 detached jobs are finished; there is nothing to leave running. Check
+  `ps` for other executors in this tree before editing.
 
 ## Repo Context
 
-P7.0 (`4b8eeda`) is `data/fuel_properties_v7.yaml`: property targets, surrogates,
-tolerances and nvPM validity. P7.1 (`a44c131`) added `simulation/fuels_v7.py`,
-7 tests, and `outputs/phase7/p71_surrogate_check.{csv,md}`. Dooley2012 passes
-LHV but fails H/aromatics; preserve those results. CAEP/11 nvPM correction is
-excluded by P7-A1 and stays excluded. V5Model accepts composition dictionaries.
+The v6 production path: `scripts/optimization/lto_v6.py` builds
+`lto_v5.V5Model` with the Dooley 2012 Jet A surrogate; each row calls
+`integrated_engine.IntegratedTurbofanEngine.run_at_thrust` (single-zone HP
+equilibrium combustor, η_b scales the temperature rise, constant-cp analytic
+turbine, fully expanded nozzle, φ solved by bracketed `brentq` with
+xtol 1e-12, rtol 4ε; the warm-start guess only narrows the bracket).
+Knobs: `lto_v5.mode_state` (W_ref, a_thrust, k_pi, k_mdot). Frozen v6
+parameters: `outputs/phase7/calibration_v6.json`. Frozen v6 rows:
+`calibration_v6_rows.csv` (93) and `holdout_icao_validation_v6.csv` (87).
+AE3 = Trent 1000-AE3, record `02P23RR126`, a calibration engine.
+Reproduction harness: `scripts/reproduce_check.py` (P6.8, rtol compare).
 
-The Phase6 selected calibration is `outputs/calibration_v5_A2.json`. Its split,
-A1 registration and A2 selection rule are in `outputs/phase6/`. V5 A1 passed,
-A2/A3 failed (no demonstrated skill over both baselines), A4 passed. Do not
-silently restate v5 as a predictive success.
-
-WIND supplies one weak-shock Sajben S-A RANS field (rho,u,v,p,T,mu_l,mu_t), not
-a multi-condition dataset and not measured Reynolds stresses or turbulent k.
-`outputs/sajben_data_audit.md` and `docs/le_pinn_vs_ma2025.md` give the prior
-limitations. The experiment remains an external scoring set only.
+Environment: Apple M3 Pro, 11 cores, 18 GB. `.venv` Python with
+cantera 3.2.0, torch 2.9.1 (CPU), optuna 4.6.0. **No cmake or conda is
+installed**; Homebrew is.
 
 ## Relevant Files
 
-READ: `data/fuel_properties_v7.yaml`, `simulation/fuels_v7.py`,
-`outputs/phase7/p71_surrogate_check.*`, `outputs/phase6/p61_registration.json`,
-`outputs/phase6/p61_amendment_A2.json`, `outputs/calibration_v5_A2.json`,
-`outputs/p62_bands_v5.csv`, `scripts/optimization/lto_v5.py`,
-`scripts/optimization/blend_matched_thrust_v5.py`,
-`simulation/nozzle/le_pinn.py`, `simulation/nozzle/wind_cff.py`,
-`scripts/validation/sajben_split.py`, `scripts/validation/sajben_validation.py`,
-`scripts/validation/train_sajben.py`, `docs/le_pinn_vs_ma2025.md`.
+Existing (read; edit only where stated):
+- `integrated_engine.py`, `simulation/**`, `scripts/optimization/lto_v5.py`,
+  `lto_v6.py` — A0 reference, read-only in Phase 8.
+- `scripts/reproduce_check.py` — pattern for the G0 comparison (not edited).
+- `scripts/validation/verify_protected_hashes.py` — add a `--phase8` flag.
+- `scripts/build_manifest.py` — add a Phase 8 records entry so new
+  `outputs/phase8/` files are registered (orphan test); regenerate, never
+  hand-edit, `outputs/ARTIFACT_MANIFEST.md` and `docs/model_map.md`.
+- `requirements.txt` — add Python dependencies as each step needs them
+  (pybind11, pyarrow, emcee; mlx only at P8.10).
+- `outputs/phase7/*_v6.*`, `outputs/phase6/split_p61.json`,
+  `data/icao_engine_data.csv`, `data/A2NOx.yaml`, `data/fuel_properties_v7.yaml`.
 
-CREATE (supporting paths may be enumerated in each committed registration):
-- `docs/phase7_registration.md`, `outputs/phase7/p72_registration.json`,
-  `outputs/phase7/p73_registration.json`, `outputs/phase7/p74_registration.json`.
-- `scripts/optimization/lto_v6.py`, `scripts/optimization/blend_matched_thrust_v6.py`.
-- `simulation/nozzle/le_pinn_ma.py`, `scripts/validation/train_sajben_ma.py`,
-  `scripts/validation/report_sajben_ma.py` and focused tests.
-- `scripts/run_phase7.sh` (or a small Python supervisor with shell entry point),
-  `outputs/phase7_execution_status.md`, per-job logs under `outputs/logs/phase7/`.
-- New v6 outputs and new-study checkpoints with explicit version/study/seed/fraction.
-
-MODIFY only as necessary while preserving old behavior:
-`scripts/optimization/lto_v5.py` reusable helpers;
-`scripts/build_manifest.py`, `docs/model_map.md`, `outputs/ARTIFACT_MANIFEST.md`,
-`REPRODUCE.md`, new v5-to-v6 number crosswalk and integrity/provenance tests.
-No old training entry point may change its historical default residual/weights.
+New:
+- `docs/phase8_registration.md` — P8.0 registration (baseline, ledger
+  template, gates G0–G3, benchmark protocol).
+- `docs/phase8_parameter_ledger.md` — the living parameter ledger.
+- `outputs/phase8/protected_sha256_phase8.json`, `scripts/phase8/freeze_protected_phase8.py`.
+- `scripts/phase8/profile_v6.py`, `outputs/phase8/profile_v6_*.{txt,json}`.
+- `scripts/phase8/benchmark.py`, `scripts/phase8/v6_optimized.py` (arm 2).
+- `scripts/phase8/g0_parity.py`, `outputs/phase8/g0_parity_*.{csv,json}`.
+- `cpp/catjet_core/` (CMakeLists, `thermo`, `combustor`, `components`,
+  `nozzle`, `engine`, `batch`, `bindings`, Catch2 tests), `cpp/environment.yml`.
+- `simulation/catjet_backend.py` — Python wrapper keeping the `V5Model`
+  call signature, backend selected by one flag. New file; `lto_v5.py` is not
+  edited (a new driver passes the backend).
+- `data/empirical/` (schema SQL, vocabulary, SQLite file, CSV exports),
+  `scripts/phase8/empirical_db.py`.
+- `tests/test_phase8_*.py`.
+- `outputs/phase8_execution_status.md`.
 
 ## Implementation Phases
 
-### P7.2 — register and launch v6 calibration first
+### P8.0 — registration (no computation except the profile)
 
-Commit machine-readable procedure, inputs/hashes, outputs and commands before
-running. Reuse the Phase6 split, four free parameters and bounds, objective,
-weighting, fixed central values, optimizer settings and full budget. Fuel is
-Dooley2012 composition from the frozen YAML. Preserve the fixed eta_b proxy
-convention explicitly; do not silently change other physics while replacing fuel.
+1. Freeze `outputs/phase8/protected_sha256_phase8.json`: the Phase 7 list,
+   all committed `outputs/phase7/` v6 and registration artifacts, and the
+   Python v6 source path. Add `--phase8` to `verify_protected_hashes.py`.
+2. Commit `docs/phase8_registration.md` (v6 baseline numbers, parameter-ledger
+   template, gates G0–G3, benchmark protocol, workloads) **before** any
+   benchmark or parity run.
+3. cProfile the Python v6 `run_at_thrust` at the AE3 take-off point with the
+   frozen v6 parameters and fuel. Commit the profile and a short summary of
+   where the time goes. This is diagnostic, not a benchmark arm.
 
-Candidates: (1) seeded TPE150 trials then least_squares polish at max_nfev100;
-(2) polish from v5 A2 optimum with the same max_nfev100. Keep lower calibration
-SSE; exact ties go to (1). Record both. Do not label candidate2 as a new pilot.
-Then run the full A1 profile (17 points, nuisance max_nfev40, existing rule),
-and report nuisance convergence/caps and grid resolution. A parameter cannot
-be called identified because a numerical error was converted to a penalty.
+### P8.1 — C++ core at parity (G0) and benchmark
 
-Run held-out B0/B1 and A2-A4 with unchanged definitions/thresholds. Report all
-three per mode, calibration airflow and v5-to-v6 changes. No held-out tuning.
-If A1 fails or the existing B0 escalation triggers, record the result and stop
-its dependent production study; independent LE-PINN work may continue.
-The existing engine-model split must also protect any newly reported NOx fit.
+1. Toolchain (**ask Arnav before installing system software**): Miniforge,
+   env `catjet-cpp` from `cpp/environment.yml` pinning libcantera-devel 3.2.0,
+   cmake, eigen, pybind11, catch2. Confirm the built module imports in the
+   `.venv` interpreter; if the ABI does not allow it, stop and report.
+2. Hello-world: HP equilibrium of the v6 fuel/air at the AE3 combustor inlet
+   in C++ matches Python Cantera to 1e-12.
+3. Port compressor/fan, burner (v6 HP equilibrium + η_b scaling + dilution
+   mixing as coded), analytic turbine, nozzle; unit-test each at 1e-12 against
+   the Python functions.
+4. Port the thrust-matched φ solve, reproducing SciPy `brentq` iterates
+   exactly (port the algorithm; never loosen the tolerance).
+5. G0 (registered): C++ reproduces every numeric column of the 93 calibration
+   rows and 87 held-out rows and the AE3 design point at rtol 1e-9.
+6. Benchmark arms 1–4 on W1–W4 as registered; publish the report.
 
-### P7.3 — register and run matched-thrust blends
+### P8.2 — composition-carrying state and enthalpy turbine (G1)
 
-Jet A plus HEFA/FT/ATJ at 10,20,30,50 mass%, neat SAF as context. Compare at
-AE3 ICAO take-off (primary), approach and idle; any climb calculation uses
-85% rated thrust and is explicitly extrapolated (no climb data in the CSV).
-For each point report fuel flow, TSFC, T4, phi, correlation NOx and lifecycle
-CO2e with each method's limits.
+GasState (T, P, Y) at every station, properties from Cantera; enthalpy
+mixing; liquid fuel vaporisation enthalpy (v7 value). HP/IP/LP turbines on
+h(T,Y) with a polytropic path (~50 pressure steps), cooling-air re-entry
+(NGV before the rotor, rotor after), cooling fractions by the range rule.
+G1 checks: constant-cp limit reproduces v6 T5, p5 to 1e-10; energy closure
+< 1e-10 of ṁh; polytropic integral converges as steps double. Scaled maps
+come with P8.4.
 
-Reuse the **64 fixed-parameter draws** from P6.2, with the **selected v6 fitted
-parameters held fixed** for all draws/fuels. Do not carry over the per-draw v5
-refitted parameters. Use common draws for paired differences. Label these as
-conditional fixed-calibration sensitivity bands, not refit-conditioned P6.2
-bands or statistical confidence intervals.
+### P8.3 — choking nozzles at fixed area (G1)
 
-Before results, specify exact pair list and per-quantity denominators/spread:
-SAF fractions vs Jet A, and like-fraction pathways against each other. Apply
-user rule: central difference must be nonzero, at least **95%** of the 64
-paired draw differences must agree in sign, and its absolute magnitude must
-exceed the same-mode, same-quantity central Dooley2012-versus-Dooley2010
-spread at unchanged v6 calibration. No claim for zero/equal differences or
-out-of-domain quantities. Publish all pass/fail comparisons, including neat
-context separately. Do not assume the diagnostic 0.44% spread survives v6.
+Separate core and bypass convergent nozzles, quasi-1D, frozen composition,
+real-gas critical point (max ρu on the isentrope), Cd and Cv, pressure thrust
+when choked. G1 checks: reduces to v6 fully expanded when unchoked with
+Cd = Cv = 1; ṁ and F continuous at the critical pressure ratio.
 
-Lifecycle: same CORSIA sources/scenario draws as P6.3, correct energy-weighted
-mixture LCEF and component contributions `ff * sum(mass_i * LHV_i * LCEF_i)`.
-Register the LHV basis (liquid-basis targets versus gas-phase cycle) explicitly;
-never count the vaporization correction twice or hide the common dodecane
-vaporization approximation for other species.
+### P8.6 — empirical database (starts in parallel with P8.1)
 
-nvPM number: Brem relation only; H_ref13.8 and H_SAF15.30 mass%, linearly
-mass-blended. Enforce F>30% and deltaH<0.6 strictly; 50% and neat SAF exceed
-that hydrogen interval and get an explicit unavailable status, not a number.
-Report take-off and optional85% climb as extrapolated-engine-condition
-screening, not validated engine nvPM. No approach/idle use, no fabricated
-absolute nvPM EI without a measured baseline, no CO2-to-nvPM equivalence.
+SQLite long format per the design document (tables source, experiment,
+operating_point, observation, digitisation, split), controlled vocabulary and
+quality classes registered first. QA tests: SI round-trips, corrected-flow
+recomputation, duplicate detection, plausibility. First three sources: NASA
+CR-168189 (E3 HPT rig), one Langley nozzle report (TP-2991, TP-3411 or NTRS
+19870014999), one NASA cold-air turbine report (e.g. TN D-6967). Confirm each
+report number and table on acquisition. Download the full ICAO databank and
+list candidate families for D3 **without opening any held-out rows**; the
+cross-family split is registered before any family's rows are scored.
 
-### P7.4 — new LE-PINN study: register and test before training
+### Later (need a plan revision before execution)
 
-Design: fractions {2,5,10,25,100}% x {physics,data-only} x seeds{42,43,44}:
-30 runs. Declare exactly what the denominator of '100%' is while retaining a
-separate held-out WIND set. Commit row IDs, split/fraction RNG seeds and
-hashes, nested subsets per seed, shared subsets/init/architecture/budget per
-paired arm, training-only scalers and all hyperparameters before training.
-Use a fixed held-out WIND test set, independent validation for selection only
-if registered, and never use experimental taps to select/checkpoint/stop.
-Register epochs, optimizer, LR schedule, collocation rule, boundary-point rule,
-normalization, checkpoint selection and restart/resume policy before running.
-Prefer established repo budgets unless a compute-only benchmark justifies a
-change; record it before any performance comparison. No optional early stopping
-chosen after observing which arm wins.
-
-**Data-access decision — explicitly confirmed by Arnav 2026-09-27:**
-Every WIND field label, including viscosity, is available only at the sampled
-training points. Do not provide full held-out viscosity or derivatives to
-physics alone and call it a sparse-data comparison. Training-only learned or
-differentiable interpolated viscosity is permissible if registered with its
-information budget and tested; use identical information access in both arms.
-Geometry and physical wall conditions are not held-out flow measurements.
-Prefer a fixed terminal-epoch checkpoint to avoid an extra validation-label
-budget. If validation is used, all labels consumed for model selection must
-come from the sampled fraction, with its sub-split declared before training;
-otherwise the claimed data fraction would be misleading. Held-out test labels
-remain unavailable for scalers, viscosity closure, checkpoint selection or
-training/stopping decisions.
-
-Physics must be written as explicit equations in the registration:
-- Planar, compressible conservative momentum and energy fluxes with variable
-  viscosity and correct chain-rule derivatives in physical coordinates.
-- Boussinesq deviatoric Reynolds stress using the WIND/learned eddy viscosity.
-  Explain that S-A supplies no turbulent k or independent R_ij measurements.
-  Do not count turbulent stress twice: either molecular viscous flux plus
-  explicit Boussinesq stress, or equivalent combined mu_eff flux.
-- State heat conduction/turbulent Prandtl closure, dissipation, EOS and any
-  unavailable isotropic-k approximation. Do not call those exact Ma replication.
-- No-slip and adiabatic wall loss using the curved wall's actual normal.
-- tanh; Ma Eqs30-33 current-loss weights, detached from loss gradients unless
-  another convention is explicitly registered and justified. Exact forms:
-  lambda_data=.1+.9*sigmoid((Lphys+Lbc-Ldata)/(Ldata+epsilon));
-  lambda_phys=.1+.9*sigmoid((Ldata-Lphys)/(Lphys+epsilon));
-  lambda_bc=.1+.9*sigmoid((Ldata-Lbc)/(Lbc+epsilon)).
-  The existing audit's shorthand 'sum of other two' is not correct for all
-  three equations; correct that wording with a precise citation.
-
-Verify implementation on manufactured differentiable fields BEFORE training:
-variable-mu gradient terms survive, constant/uniform limits hold, turbulence
-is counted once, unit/coordinate scaling is correct, wall normal flux and
-weight equations are correct, and withheld labels cannot enter training.
-Full WIND-derived stress gradients cannot be covertly supplied as targets.
-
-Scoring: experimental upper/lower wall-Cp shape-L2 with existing bands;
-primary scalar = worse of the two walls. WIND held-out relative L2/RMSE per
-rho,u,v,p,T plus declared aggregate, viscosity separately. Label in-case spatial
-interpolation versus external experimental comparison; no cross-case claim.
-
-Claim: for each fraction use three seed scores per arm; define seed spread
-before training as max(sampleSD(physics),sampleSD(data-only)), ddof1. Physics
-benefit requires mean(data-only primary score)-mean(physics primary score) to
-exceed that spread at >=2 of {2,5,10}%. Report per-seed paired differences,
-mean/SD, all five fractions and both kinds of evaluation even on failure.
-Do not select a favorable wall, metric, seed or checkpoint after outcomes.
-
-### P7.5 — runner, reporting and provenance
-
-Build/test the durable runner early enough to launch independent calibration
-and ML queues without oversubscribing the Mac. Commit numerical registrations
-before their jobs start. Persist a frozen source revision/config hash per run;
-active training must not import changing source. Use locked run directories,
-atomic checkpoint saves, explicit completion markers with hashes, and a report
-that rejects missing/failed runs. Preserve partial launch logs as evidence.
-
-After prerequisites/tests pass, actually launch the Mac jobs; do not stop at
-writing a script. Record PIDs, start times, source SHA, config/input hashes,
-queue order, logs and commands to inspect/resume. Automatic continuation from
-calibration to profile/holdout/blends and from 30 training runs to reporting
-must enforce scientific and completeness gates. Infrastructure recovery may
-resume exact registered jobs; never silently change seeds/budgets or rerun a
-bad scientific outcome as if it had not happened.
-
-Update manifest/model map/crosswalk with completed artifacts only. Pending
-jobs must be visibly pending; never replace old completed evidence with empty
-new files. Retain P7.1 failed checks and all old negative surrogate results.
-If long jobs are still running at handoff, the runner must finish downstream
-reports autonomously and keep status truthful; do not call Phase7 complete.
-
-## File-Level Edits
-
-- New v6 wrapper reuses tested v5 fit/profile/holdout primitives with explicit
-  fuel/output/registration arguments; no global path monkeypatch that could
-  overwrite v5 evidence. Add tests for fuel threading and output isolation.
-- New blend wrapper uses `fuels_v7.mass_blend` and the specified frozen-v6 draw
-  convention; test mass/energy accounting, domain exclusions and claim rule.
-- New LE-PINN module/entry points preserve legacy defaults and scorers; tests
-  enforce flux mathematics, leak-free splits and complete-run provenance.
-- Runner and status own durable execution/completion. Manifest builder consumes
-  completed summaries rather than stdout. New crosswalk states version/basis.
+P8.4 off-design matching (retires the knobs), P8.5 reactor network,
+P8.7–P8.8 staged calibration and locked-source validation (G2),
+P8.9–P8.12 synthetic data, MLX residual models, active learning (G3),
+P8.13–P8.15 UQ, robust SAF optimization, freeze.
 
 ## Commands to Run
 
-Executor: `bash scripts/run_claude_from_plan.sh --force-model opus` on the Mac.
-Use `.venv/bin/python`. Before launch, write the exact numeric/training/report
-commands in each registration and `outputs/phase7_execution_status.md`.
-Run `.venv/bin/python -m pytest tests/ -v`,
-`.venv/bin/python scripts/test_emissions.py`,
-`.venv/bin/python scripts/validation/verify_protected_hashes.py` plus extended
-v5/P7.0/P7.1 hashes, and relevant Cantera validation after physical-path edits.
+- `.venv/bin/python -m pytest tests/ -v`
+- `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase7`
+- `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase8`
+- `.venv/bin/python scripts/test_emissions.py` after any combustor/emissions change
+- `.venv/bin/python scripts/phase8/profile_v6.py`
+- From P8.1: `ctest` in `cpp/build`, `.venv/bin/python scripts/phase8/g0_parity.py`,
+  `.venv/bin/python scripts/phase8/benchmark.py --arm N --workload WN`
 
 ## Tests
 
-Existing suite floor: Phase6 190 passed/1 skipped + P7.1 seven tests.
-Add only meaningful tests for new numerical contracts, reproducibility and
-failure guards as specified above. Training smoke tests must be labeled
-non-study implementation checks, use temporary outputs and cannot influence
-registered hyperparameters via test-set scores. Do not run long studies in pytest.
+Floor at the freeze commit: record the count in
+`outputs/phase8_execution_status.md`. Add tests only for new numerical
+contracts: C++ vs Python component parity, G0 comparator, G1 limit and closure
+checks, nozzle continuity at choking, database QA. No long benchmark or study
+inside pytest.
 
-## Acceptance Criteria
+## Acceptance Criteria (STS slice)
 
-1. Registrations precede computations, v1-v5/P7.0/P7.1 preserved.
-2. V6 uses the exact fuel, split, full budgets and candidate-selection rule;
-   A1-A4 and model/B0/B1 reported without tuning against holdout.
-3. P7.3 uses paired fixed-parameter draws and frozen v6 parameters; all claims
-   pass the specified sign/spread rule or are explicitly rejected. nvPM domain
-   exclusions and LHV bases are visible and tested.
-4. New-study physics passes manufactured-field tests and has no privileged
-   held-out labels; all30 registered runs are required for a terminal claim.
-5. Long jobs execute durably on the Mac, with inspectable source/config/input
-   provenance and incomplete-run guards. Completion is never inferred from PID
-   disappearance or a wrapper's zero exit alone.
-6. Tests/emissions/mechanisms/hashes pass; completed artifacts have manifest,
-   crosswalk and model-map provenance. Running work is stated as running.
+1. Registration and protected list committed before any benchmark/parity run.
+2. G0 passes at rtol 1e-9 on all 180 rows and the AE3 point, or its failure is
+   recorded and P8.2 does not start.
+3. Benchmark report covers arms 1–4 and W1–W4 with medians of 5 after 1
+   warm-up, solves/s, peak memory, named machine, and the cProfile breakdown;
+   if arm 2 closes most of the gap, the report says so.
+4. P8.2 and P8.3 each pass their G1 checks alone.
+5. Database schema, vocabulary and QA tests committed, with ≥ 3 sources
+   entered and the D3 family list recorded without held-out rows opened.
+6. Tests and protected hashes pass; `outputs/phase8_execution_status.md`
+   states truthfully what is done, running and not started.
 
 ## Rollback Notes
 
-Retain separate new artifact names and existing main/v5.0. Revert named Phase7
-commits or reverse archive moves if requested. No destructive reset, no deleting
-failed-run evidence, no old-model overwrite. Leave unrelated `.DS_Store` untouched.
+Phase 8 work is additive on `phase8`. Revert named commits; never reset.
+`main` = v5.0, `phase7` = freeze `7524a7a` and `phase7-p74-wip` stay as they
+are. No overwrite of protected files or old models.
 
 ## Escalation Guidance
 
-High complexity across calibration and differentiable RANS: Claude Opus executor.
-Resolve ordinary defects directly within scope. Report a real calibration gate,
-unavailable required data, or unresolved physical closure precisely. Continue
-independent authorized work. New-study PINN failure is a result, not permission
-for another unregistered attempt. Do not request blanket plan approval again;
-the user's continuation specifies the work, and routine registration details
-are made concrete here before execution.
+Stop and report: G0 cannot be met without loosening tolerance; the Cantera C++
+build cannot be imported from `.venv`; a planned source is unavailable or has
+no usable tables; any step needs a dependency not yet approved; a gate fails.
