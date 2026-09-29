@@ -1,0 +1,67 @@
+{
+  "primary_group_weighted_mape_pct": {
+    "model": 1.8297515498972197,
+    "B0": 2.1886504344831437,
+    "B1": 1.0763401571313587
+  },
+  "A2": {
+    "margin_pp": 0.25,
+    "verdict": "FAIL: no demonstrated skill"
+  },
+  "A3": {
+    "icao": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": -1.1461908799409693e-05,
+        "partial_slope_given_F": 3.382848723372188e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -9.530195668951011e-05,
+        "partial_slope_given_F": 6.518873592178805e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 4.603836779966398e-05,
+        "partial_slope_given_F": 2.137357776630343e-05
+      }
+    },
+    "model": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": 9.571675284067329e-06,
+        "partial_slope_given_F": 6.547241899439929e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -5.6149073540470934e-05,
+        "partial_slope_given_F": 1.969735690308199e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 2.5650522834978867e-05,
+        "partial_slope_given_F": 9.413297402624485e-05
+      }
+    },
+    "sign_agrees": {
+      "APPROACH": false,
+      "IDLE": true,
+      "TAKE-OFF": true
+    },
+    "verdict": "FAIL"
+  },
+  "A4": {
+    "checks": {
+      "columns_present": true,
+      "every_row_predicted": true,
+      "tsfc_varies_per_mode": true,
+      "equal_thrust_different_opr_differ": true,
+      "n_equal_thrust_groups": 12
+    },
+    "verdict": "PASS"
+  },
+  "blend_gate": {
+    "open": false,
+    "reason": "A1 FAIL"
+  }
+}

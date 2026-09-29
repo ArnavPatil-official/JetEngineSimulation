@@ -1,0 +1,12 @@
+{
+  "selected": "polish_from_v5_A2",
+  "params": {
+    "W_ref": 103.28521124594644,
+    "a_thrust": 1.109824302894461,
+    "k_pi": 1.3464432287630141,
+    "k_mdot": 0.41381164627320915
+  },
+  "sse": 0.0004570833141686023,
+  "calibration_weighted_mape_pct": 1.7848700776636122,
+  "n_unreachable": 0
+}

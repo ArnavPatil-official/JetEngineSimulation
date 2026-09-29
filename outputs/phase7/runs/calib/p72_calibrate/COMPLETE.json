@@ -1,0 +1,12 @@
+{
+  "attempt": 1,
+  "exit_code": 0,
+  "completed": "2026-09-27T11:40:21-04:00",
+  "commit": "271656e41497d349c3f8ad32912d8b413140bac7",
+  "config_hash": "99cb452abc6b78d29393538c28abddb83b5f8f44b5dee6d627679de8213074ef",
+  "outputs_sha256": {
+    "outputs/phase7/calibration_v6.json": "8e41b4102ae5a9c76e5d3a8d725be2a73dae2b7d08e2568eb3a61d6df4034dd2",
+    "outputs/phase7/calibration_v6_evaluations.csv": "1f3752a6c81f9b3f67594cde456c3ce24b5b1dbb9b29566873f31fe02adc0724",
+    "outputs/phase7/calibration_v6_rows.csv": "e80ed0dd6585da830df75af42ce9ea1783e237af90aa095a9386a886332b86d1"
+  }
+}

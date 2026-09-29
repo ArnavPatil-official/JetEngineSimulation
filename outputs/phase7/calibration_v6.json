@@ -1,0 +1,130 @@
+{
+  "stage": "v6 calibration (P7.2)",
+  "registration": "outputs/phase7/p72_registration.json",
+  "calibration_version": 6,
+  "fuel": {
+    "surrogate": "JetA_dooley2012",
+    "source": "data/fuel_properties_v7.yaml (frozen; P7.0 4b8eeda / P7.1 a44c131)",
+    "mole_fractions": {
+      "NC12H26": 0.404,
+      "IC8H18": 0.295,
+      "NPBENZ": 0.228,
+      "TMBENZ": 0.073
+    },
+    "target_fuel_of_surrogate": "Jet-A POSF 4658",
+    "P7.1_check_target": "NJFCP A-2 POSF 10325",
+    "P7.1_outcomes_preserved": "LHV pass (43.38 vs 43.1 MJ/kg liquid basis); hydrogen FAIL (14.12 vs 13.77 %); aromatics FAIL (26.1 vs 18.7 %). A published composition for POSF 4658 is not proof of matching POSF 10325.",
+    "cycle_basis": "gas-phase species enthalpies (CRECK thermo) in the HP equilibrium, as for every v1-v5 fuel; no vaporisation correction in the cycle"
+  },
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "selected": "polish_from_v5_A2",
+  "params": {
+    "W_ref": 103.28521124594644,
+    "a_thrust": 1.109824302894461,
+    "k_pi": 1.3464432287630141,
+    "k_mdot": 0.41381164627320915
+  },
+  "sse": 0.0004570833141686023,
+  "jtj_condition_box_scaled": 214.44854864804466,
+  "candidates": [
+    {
+      "name": "tpe_then_polish",
+      "start": "TPE(150, seed 42) best trial",
+      "best_trial": {
+        "params": {
+          "W_ref": 122.8919929782723,
+          "a_thrust": 1.034336958365241,
+          "k_pi": 0.4857711851150005,
+          "k_mdot": 0.9335391482670107
+        },
+        "sse": 0.010943521505020029,
+        "number": 141
+      },
+      "params": {
+        "W_ref": 127.77863419048956,
+        "a_thrust": 1.222297652109746,
+        "k_pi": 0.48780901671405147,
+        "k_mdot": 0.9487037562683966
+      },
+      "sse": 0.008350832298918885,
+      "polish": {
+        "status": 3,
+        "message": "`xtol` termination condition is satisfied.",
+        "nfev": 29,
+        "sse": 0.008350832298918885,
+        "accepted": true
+      },
+      "jtj_condition_box_scaled": 600974064.1896452,
+      "n_evaluations": 247
+    },
+    {
+      "name": "polish_from_v5_A2",
+      "start": "v5 A2 optimum (outputs/calibration_v5_A2.json)",
+      "params": {
+        "W_ref": 103.28521124594644,
+        "a_thrust": 1.109824302894461,
+        "k_pi": 1.3464432287630141,
+        "k_mdot": 0.41381164627320915
+      },
+      "sse": 0.0004570833141686023,
+      "polish": {
+        "status": 2,
+        "message": "`ftol` termination condition is satisfied.",
+        "nfev": 5
+      },
+      "jtj_condition_box_scaled": 214.44854864804466,
+      "n_evaluations": 25
+    }
+  ],
+  "started": "2026-09-27T11:29:36",
+  "finished": "2026-09-27T11:40:21",
+  "fixed_central": {
+    "combustor_pressure_loss": 0.045,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9,
+    "eta_fan": 0.9,
+    "fpr_rated": 1.45,
+    "combustor_heat_loss_fraction": 0.0,
+    "eta_b": {
+      "TAKE-OFF": 0.999893720535389,
+      "APPROACH": 0.999833722706198,
+      "IDLE": 0.9981516090869106
+    }
+  },
+  "fit_bounds": {
+    "W_ref": [
+      60.0,
+      140.0
+    ],
+    "a_thrust": [
+      0.0,
+      2.0
+    ],
+    "k_pi": [
+      0.2,
+      1.5
+    ],
+    "k_mdot": [
+      0.2,
+      1.5
+    ]
+  },
+  "calibration_weighted_mape_pct": 1.7848700776636122,
+  "n_rows": 93,
+  "n_unreachable": 0,
+  "unreachable_rows": [],
+  "calibration_airflow": {
+    "W_ref_rated_core_airflow_at_F_REF_kg_s": 103.28521124594644,
+    "F_REF_kN": 310.9
+  },
+  "base_registration_fit": {
+    "n_trials": 150,
+    "polish_max_nfev": 100
+  },
+  "note": "in-sample calibration fit (calibration group only); not validation"
+}

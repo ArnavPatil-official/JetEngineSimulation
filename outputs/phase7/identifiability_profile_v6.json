@@ -1,0 +1,153 @@
+{
+  "sse_min": 0.0004570833141686023,
+  "sse_min_source": "fit",
+  "n_eff": 27,
+  "verdicts": {
+    "W_ref": {
+      "D_at_lower_edge": 183.74401444940588,
+      "D_at_upper_edge": 178.1460424399052,
+      "interval_95": [
+        100.0,
+        110.0
+      ],
+      "interval_width_frac_of_box": 0.125,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 105.0,
+      "IDENTIFIED": false,
+      "IDENTIFIED_existing_rule": true,
+      "verdict_grid_values": [
+        60.0,
+        100.0,
+        105.0,
+        110.0,
+        140.0
+      ],
+      "verdict_points_penalised": [
+        60.0,
+        140.0
+      ],
+      "penalty_dependent": true,
+      "n_grid_points_with_unreachable_rows": 10,
+      "n_inner_fits_at_cap": 0,
+      "inner_fits_at_cap_values": [],
+      "verdict_points_at_cap": [],
+      "grid_step": 5.0
+    },
+    "a_thrust": {
+      "D_at_lower_edge": 140.30683026875673,
+      "D_at_upper_edge": 93.8837135219929,
+      "interval_95": [
+        1.0928815913982977,
+        1.145787037336307
+      ],
+      "interval_width_frac_of_box": 0.026452722969004694,
+      "interval_contains_no_grid_point": false,
+      "grid_argmin": 1.125,
+      "IDENTIFIED": false,
+      "IDENTIFIED_existing_rule": true,
+      "verdict_grid_values": [
+        0.0,
+        1.0,
+        1.125,
+        1.25,
+        2.0
+      ],
+      "verdict_points_penalised": [
+        0.0
+      ],
+      "penalty_dependent": true,
+      "n_grid_points_with_unreachable_rows": 1,
+      "n_inner_fits_at_cap": 0,
+      "inner_fits_at_cap_values": [],
+      "verdict_points_at_cap": [],
+      "grid_step": 0.125
+    },
+    "k_pi": {
+      "D_at_lower_edge": 109.45954045701747,
+      "D_at_upper_edge": 53.27054924336718,
+      "interval_95": [
+        1.3225306625095583,
+        1.3528720908050638
+      ],
+      "interval_width_frac_of_box": 0.02333956022731189,
+      "interval_contains_no_grid_point": false,
+      "grid_argmin": 1.3375,
+      "IDENTIFIED": false,
+      "IDENTIFIED_existing_rule": true,
+      "verdict_grid_values": [
+        0.2,
+        1.25625,
+        1.3375,
+        1.41875,
+        1.5
+      ],
+      "verdict_points_penalised": [
+        0.2
+      ],
+      "penalty_dependent": true,
+      "n_grid_points_with_unreachable_rows": 1,
+      "n_inner_fits_at_cap": 1,
+      "inner_fits_at_cap_values": [
+        0.525
+      ],
+      "verdict_points_at_cap": [],
+      "grid_step": 0.08125000000000004
+    },
+    "k_mdot": {
+      "D_at_lower_edge": 82.78548703471826,
+      "D_at_upper_edge": 200.4074999454506,
+      "interval_95": [
+        0.36250000000000004,
+        0.525
+      ],
+      "interval_width_frac_of_box": 0.12499999999999997,
+      "interval_contains_no_grid_point": true,
+      "grid_argmin": 0.44375000000000003,
+      "IDENTIFIED": false,
+      "IDENTIFIED_existing_rule": true,
+      "verdict_grid_values": [
+        0.2,
+        0.36250000000000004,
+        0.44375000000000003,
+        0.525,
+        1.5
+      ],
+      "verdict_points_penalised": [
+        1.5
+      ],
+      "penalty_dependent": true,
+      "n_grid_points_with_unreachable_rows": 7,
+      "n_inner_fits_at_cap": 0,
+      "inner_fits_at_cap_values": [],
+      "verdict_points_at_cap": [],
+      "grid_step": 0.08125000000000004
+    }
+  },
+  "stage": "v6 full profile (P7.2 A1)",
+  "fit": "calibration_v6.json",
+  "free": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "rule": "IDENTIFIED iff D >= 3.841 at both box edges (95 % profile interval interior to the box) AND the interval width <= 50 % of the box width",
+  "penalty_guard": "A parameter is NOT called IDENTIFIED if any verdict-deciding grid point (both box edges and the grid points bracketing each 95 % interval end, or the grid minimum and its neighbours when no grid point lies inside) has a returned inner optimum with any unreachable (penalised) calibration row, or an unknown count. Such a parameter is reported as 'penalty_dependent' and A1 fails. The count is taken from the objective log at the returned optimum (re-evaluated once if absent).",
+  "threshold": 3.841,
+  "grid_points": 17,
+  "inner_max_nfev": 40,
+  "identified": [],
+  "not_identified": [
+    "W_ref",
+    "a_thrust",
+    "k_pi",
+    "k_mdot"
+  ],
+  "A1": "FAIL",
+  "n_inner_fits": 68,
+  "n_inner_fits_at_cap": 1,
+  "n_points_with_unreachable_rows": 19,
+  "jtj_condition_box_scaled_at_fit": 214.44854864804466,
+  "started": "2026-09-27T11:40:22",
+  "finished": "2026-09-27T12:35:15"
+}

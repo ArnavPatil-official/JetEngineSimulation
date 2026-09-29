@@ -1,0 +1,50 @@
+{
+  "job": "p72_profile",
+  "queue": "calib",
+  "attempt": 1,
+  "pid": 91758,
+  "supervisor_pid": 89341,
+  "started": "2026-09-27T11:40:21-04:00",
+  "commit": "271656e41497d349c3f8ad32912d8b413140bac7",
+  "snapshot": "/Users/arnavpatil/Documents/JetEngineSimulation_phase7_snapshots/271656e41497d349c3f8ad32912d8b413140bac7",
+  "snapshot_record": {
+    "commit": "271656e41497d349c3f8ad32912d8b413140bac7",
+    "tree": "25850da623e0bfb64390220d3b7bf8e7ccc60947",
+    "created": "2026-09-27T11:29:35-04:00",
+    "archive_sha256": "3208155e47fc4a59cfff94b78e9745efc91aadde64d5b03b6fa3fd5dd8b734c8"
+  },
+  "argv": [
+    "scripts/optimization/lto_v6.py",
+    "profile"
+  ],
+  "cwd": "/Users/arnavpatil/Documents/JetEngineSimulation_phase7_snapshots/271656e41497d349c3f8ad32912d8b413140bac7",
+  "env": {},
+  "threads": 6,
+  "config": {
+    "name": "p72_profile",
+    "argv": [
+      "scripts/optimization/lto_v6.py",
+      "profile"
+    ],
+    "outputs": [
+      "outputs/phase7/identifiability_profile_v6.json",
+      "outputs/phase7/identifiability_profile_v6.csv",
+      "outputs/phase7/identifiability_profile_v6_progress.log"
+    ],
+    "requires": [
+      [
+        "calib",
+        "p72_calibrate"
+      ]
+    ],
+    "imports": [],
+    "env": {},
+    "threads": 6
+  },
+  "config_hash": "c3572617ec09258168ccb5b8ed146fa2773792d3578a0244342c472355c25e1c",
+  "registration_sha256": {
+    "outputs/phase7/p72_registration.json": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c"
+  },
+  "imported_inputs_sha256": {},
+  "inspect": "tail -f /Users/arnavpatil/Documents/JetEngineSimulation/outputs/phase7/runs/calib/p72_profile/attempt_1.log"
+}
