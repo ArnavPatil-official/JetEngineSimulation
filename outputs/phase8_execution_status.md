@@ -12,9 +12,33 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 
 | Step | Commit | State |
 |---|---|---|
-| P8.0 protected list (184 files) + registration | (this commit) | registered |
-| P8.0 cProfile of Python v6 `run_at_thrust` | — | not started |
+| P8.0 protected list (184 files) + registration | `53e58b0` | registered |
+| P8.0 cProfile of Python v6 `run_at_thrust` | (this commit) | done (diagnostic); see below |
 | P8.1 toolchain | — | not started; needs Arnav's OK to install Miniforge/cmake |
 | P8.1 C++ port, G0, benchmark | — | not started |
 | P8.2, P8.3 | — | not started |
 | P8.6 database | — | not started |
+
+## P8.0 profile (AE3 take-off, frozen v6, `outputs/phase8/profile_v6_ae3_takeoff*.{txt,json}`)
+
+The solved fuel flow matches the frozen `calibration_v6_rows.csv` row to 1e-9.
+- Steady-state solve: **0.334 s**, 25 cycle evaluations (36 `cycle` calls,
+  14 Brent residuals). **97 %** of it is inside `combustor.run`, i.e. Cantera
+  HP equilibrium plus property calls on the CRECK mechanism. One isolated HP
+  `equilibrate` takes 14.6 ms, so each cycle is about one equilibrium solve.
+  Python orchestration (compressor, turbine, nozzle, Brent, bookkeeping)
+  is about 3 %.
+- First solve in a new worker: 2.52 s, dominated by one-time Solution
+  parsing (`_fresh_solutions` 1.46 s, `_calculate_fuel_air_ratio` 0.73 s).
+- cProfile cannot see Cantera's compiled methods; their time is attributed
+  to the calling Python function. The first run of the script labelled that
+  time as "simulation/ modules"; those uncommitted outputs were replaced by a
+  rerun with corrected labels and the equilibrate timing (same code path).
+
+Consequence for the benchmark (to be tested, not assumed): a line-for-line
+C++ port of v6 can remove at most the ~3 % Python share per solve, because
+the same Cantera equilibrium dominates in both. Faster per-solve times need
+fewer cycle evaluations per solve or cheaper equilibrium, and any such change
+must still pass G0. Throughput gains come from parallelism (arm 4) and from
+avoiding per-worker Solution parsing. This is the plan's "C++ speedup is small"
+risk, now measured.

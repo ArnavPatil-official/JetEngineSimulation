@@ -39,21 +39,40 @@ MODE = "TAKE-OFF"
 
 
 def bucket(filename: str, func: str) -> str:
-    if "cantera" in filename:
-        return "cantera (Python wrapper + compiled calls)"
-    if func.startswith("<method 'equilibrate'") or "cantera" in func:
-        return "cantera (Python wrapper + compiled calls)"
+    """cProfile cannot see Cantera's compiled (Cython) methods: their time is
+    counted as tottime of the Python function that calls them. The buckets say so."""
+    if filename.endswith("combustor.py") and func == "_fresh_solutions":
+        return "combustor._fresh_solutions: Cantera Solution parsing (one-time per worker)"
+    if filename.endswith("combustor.py") and func == "run":
+        return "combustor.run: Cantera equilibrate/property calls (compiled, not profiled separately)"
+    if filename.endswith("integrated_engine.py") and func == "_calculate_fuel_air_ratio":
+        return "integrated_engine._calculate_fuel_air_ratio (first call builds a Solution)"
     if filename.endswith("integrated_engine.py"):
-        return "integrated_engine.py"
+        return "integrated_engine.py other Python"
     if "/simulation/" in filename:
-        return "simulation/ modules"
-    if "scipy" in filename:
+        return "simulation/ other Python"
+    if "scipy" in filename or "_brentq" in func:
         return "scipy"
     if "numpy" in filename:
         return "numpy"
-    if func.startswith("<built-in method builtins.print") or "write" in func:
-        return "print / stdout"
+    if "builtins.print" in func:
+        return "print"
     return "other"
+
+
+def time_equilibrate(combustor, n: int = 25) -> float:
+    """Median wall time of one HP equilibrate on the combustor's own Solution at
+    the AE3 take-off inlet (after the profiled solves), to split combustor.run."""
+    gas, pristine = combustor._solutions[0]
+    ts = []
+    for _ in range(n):
+        gas.state = pristine
+        gas.TP = 901.545, 43.7724e5
+        gas.set_equivalence_ratio(0.3388, "NC12H26", "O2:1.0, N2:3.76")
+        t0 = time.perf_counter()
+        gas.equilibrate("HP")
+        ts.append(time.perf_counter() - t0)
+    return float(sorted(ts)[n // 2])
 
 
 def summarize(prof: cProfile.Profile, wall_s: float) -> dict:
@@ -124,6 +143,7 @@ def main() -> int:
         summaries[kind] = summarize(prof, wall) | {"ff_kg_s": res["ff"], "ff_rel_diff_vs_frozen": rel}
         names[kind].write_text(report(prof))
 
+    eq_s = time_equilibrate(v5._ENGINE.combustor_creck)
     sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                          text=True, check=True).stdout.strip()
     import cantera
@@ -140,9 +160,15 @@ def main() -> int:
                     "parameters and fuel, phi_guess None, in-process worker path",
         "ff_frozen_kg_s": ff_frozen,
         "profiles": summaries,
+        "equilibrate_HP_median_s": eq_s,
+        "note": "cProfile does not see Cantera's compiled methods; their time is inside "
+                "combustor.run and _fresh_solutions. equilibrate_HP_median_s times one HP "
+                "equilibrate (n-dodecane stand-in, CRECK, at the AE3 take-off inlet, phi 0.3388) on the "
+                "combustor's own Solution, so combustor.run time / cycles can be compared with it.",
         "files": {k: str(p.relative_to(ROOT)) for k, p in names.items()},
     }
     summary_path.write_text(json.dumps(out, indent=2) + "\n")
+    print(f"one HP equilibrate: {1e3 * eq_s:.2f} ms")
     for kind, s in summaries.items():
         print(f"{kind}: wall {s['wall_s']:.3f} s; " + ", ".join(
             f"{k} {100 * v:.1f} %" for k, v in s["share_by_bucket"].items()))

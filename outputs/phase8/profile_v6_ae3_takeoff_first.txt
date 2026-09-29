@@ -1,0 +1,96 @@
+         4029 function calls (4023 primitive calls) in 2.519 seconds
+
+   Ordered by: cumulative time
+   List reduced from 224 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    2.519    2.519 /Users/arnavpatil/Documents/JetEngineSimulation/scripts/optimization/lto_v5.py:340(solve_task)
+        1    0.000    0.000    2.519    2.519 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1767(run_at_thrust)
+       36    0.000    0.000    2.519    0.070 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1823(cycle)
+       25    0.001    0.000    2.519    0.101 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1420(run_full_cycle)
+       25    0.000    0.000    2.510    0.100 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:954(run_combustor)
+       18    0.000    0.000    2.442    0.136 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1836(runs)
+       25    0.318    0.013    1.782    0.071 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:101(run)
+       25    1.464    0.059    1.464    0.059 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:57(_fresh_solutions)
+       25    0.727    0.029    0.727    0.029 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:818(_calculate_fuel_air_ratio)
+        1    0.000    0.000    0.077    0.077 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/scipy/optimize/_zeros_py.py:712(brentq)
+        1    0.000    0.000    0.077    0.077 {built-in method scipy.optimize._zeros._brentq}
+        9    0.000    0.000    0.077    0.009 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/scipy/optimize/_zeros_py.py:93(f_raise)
+       14    0.000    0.000    0.077    0.005 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1846(residual)
+        1    0.000    0.000    0.005    0.005 <frozen importlib._bootstrap>:1349(_find_and_load)
+        1    0.000    0.000    0.005    0.005 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+        1    0.000    0.000    0.004    0.004 <frozen importlib._bootstrap>:911(_load_unlocked)
+        1    0.000    0.000    0.004    0.004 <frozen importlib._bootstrap_external>:989(exec_module)
+        2    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+      7/1    0.001    0.000    0.003    0.003 {built-in method builtins.exec}
+        1    0.000    0.000    0.003    0.003 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/fuels.py:1(<module>)
+        1    0.000    0.000    0.003    0.003 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:1264(wrap)
+        1    0.000    0.000    0.003    0.003 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:921(_process_class)
+       25    0.001    0.000    0.002    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:917(run_compressor)
+        1    0.000    0.000    0.001    0.001 <frozen importlib._bootstrap_external>:1062(get_code)
+        4    0.001    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:760(_get_field)
+       25    0.001    0.000    0.001    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/compressor/compressor.py:57(compute_outlet_state)
+        1    0.000    0.000    0.001    0.001 <frozen importlib._bootstrap_external>:1183(get_data)
+        1    0.001    0.001    0.001    0.001 {built-in method _io.open_code}
+        6    0.000    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:449(_create_fn)
+        1    0.000    0.000    0.001    0.001 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:568(_init_fn)
+       51    0.000    0.000    0.000    0.000 {built-in method builtins.sum}
+      125    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:861(<genexpr>)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap_external>:751(_compile_bytecode)
+        1    0.000    0.000    0.000    0.000 {built-in method marshal.loads}
+     1212    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+       17    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:328(estimate_co)
+       25    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1151(run_nozzle)
+       17    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:2241(clip)
+        1    0.000    0.000    0.000    0.000 {method 'read' of '_io.BufferedReader' objects}
+      150    0.000    0.000    0.000    0.000 {method 'index' of 'list' objects}
+
+
+         4029 function calls (4023 primitive calls) in 2.519 seconds
+
+   Ordered by: internal time
+   List reduced from 224 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       25    1.464    0.059    1.464    0.059 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:57(_fresh_solutions)
+       25    0.727    0.029    0.727    0.029 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:818(_calculate_fuel_air_ratio)
+       25    0.318    0.013    1.782    0.071 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/combustor/combustor.py:101(run)
+       25    0.001    0.000    0.002    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:917(run_compressor)
+       25    0.001    0.000    0.001    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/compressor/compressor.py:57(compute_outlet_state)
+        4    0.001    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:760(_get_field)
+        1    0.001    0.001    0.001    0.001 {built-in method _io.open_code}
+       25    0.001    0.000    2.519    0.101 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1420(run_full_cycle)
+      7/1    0.001    0.000    0.003    0.003 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {built-in method marshal.loads}
+     1212    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+      125    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:861(<genexpr>)
+        1    0.000    0.000    0.000    0.000 {method 'read' of '_io.BufferedReader' objects}
+      150    0.000    0.000    0.000    0.000 {method 'index' of 'list' objects}
+       25    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1151(run_nozzle)
+       25    0.000    0.000    2.510    0.100 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:954(run_combustor)
+        1    0.000    0.000    0.003    0.003 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:921(_process_class)
+       36    0.000    0.000    2.519    0.070 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1823(cycle)
+        1    0.000    0.000    2.519    2.519 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1767(run_at_thrust)
+       89    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+        1    0.000    0.000    0.004    0.004 <frozen importlib._bootstrap>:911(_load_unlocked)
+       25    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:403(__exit__)
+       50    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:91(as_composition_string)
+       25    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:1018(run_turbine_analytic)
+        1    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:250(_recursive_repr)
+       12    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:701(_is_type)
+       17    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/numpy/_core/_methods.py:98(_clip)
+        1    0.000    0.000    0.077    0.077 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/scipy/optimize/_zeros_py.py:712(brentq)
+        8    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:683(_is_classvar)
+        1    0.000    0.000    0.003    0.003 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/fuels.py:1(<module>)
+        1    0.000    0.000    2.519    2.519 /Users/arnavpatil/Documents/JetEngineSimulation/scripts/optimization/lto_v5.py:340(solve_task)
+       25    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/simulation/fan.py:58(run)
+        1    0.000    0.000    0.001    0.001 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:568(_init_fn)
+      100    0.000    0.000    0.000    0.000 {built-in method numpy.array}
+        3    0.000    0.000    0.000    0.000 {built-in method posix.stat}
+        8    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/dataclasses.py:691(_is_initvar)
+       17    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/.venv/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:41(_wrapit)
+      319    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+       17    0.000    0.000    0.000    0.000 /Users/arnavpatil/Documents/JetEngineSimulation/integrated_engine.py:328(estimate_co)
+       51    0.000    0.000    0.000    0.000 {built-in method builtins.sum}
+
+

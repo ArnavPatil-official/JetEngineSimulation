@@ -1,0 +1,241 @@
+{
+  "stage": "P8.0 cProfile (diagnostic; not a benchmark arm)",
+  "registration": "docs/phase8_registration.md",
+  "commit": "53e58b0a177cfe4e58e2790131725f87a5014429",
+  "machine": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.12.4",
+    "cantera": "3.2.0",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3"
+  },
+  "workload": "AE3 (02P23RR126) TAKE-OFF, target 310.9 kN, frozen v6 parameters and fuel, phi_guess None, in-process worker path",
+  "ff_frozen_kg_s": 2.3921069223435443,
+  "profiles": {
+    "first": {
+      "wall_s": 2.519403374986723,
+      "profiled_total_s": 2.5193450019999997,
+      "share_by_bucket": {
+        "combustor._fresh_solutions: Cantera Solution parsing (one-time per worker)": 0.5811829070006825,
+        "integrated_engine._calculate_fuel_air_ratio (first call builds a Solution)": 0.2883750317734372,
+        "combustor.run: Cantera equilibrate/property calls (compiled, not profiled separately)": 0.12621962563585407,
+        "other": 0.0021174074990782067,
+        "integrated_engine.py other Python": 0.001324194978199338,
+        "simulation/ other Python": 0.0005189503616861126,
+        "print": 0.00011246812158519926,
+        "numpy": 0.00010229682707029264,
+        "scipy": 4.7117802407278246e-05
+      },
+      "top15_tottime": [
+        {
+          "func": "combustor.py:57(_fresh_solutions)",
+          "ncalls": 25,
+          "tottime_s": 1.4642002520000001,
+          "cumtime_s": 1.464219085
+        },
+        {
+          "func": "integrated_engine.py:818(_calculate_fuel_air_ratio)",
+          "ncalls": 25,
+          "tottime_s": 0.7265161950000001,
+          "cumtime_s": 0.7271558330000001
+        },
+        {
+          "func": "combustor.py:101(run)",
+          "ncalls": 25,
+          "tottime_s": 0.317990783,
+          "cumtime_s": 1.7822991270000001
+        },
+        {
+          "func": "integrated_engine.py:917(run_compressor)",
+          "ncalls": 25,
+          "tottime_s": 0.0012845410000000002,
+          "cumtime_s": 0.0024725430000000002
+        },
+        {
+          "func": "compressor.py:57(compute_outlet_state)",
+          "ncalls": 25,
+          "tottime_s": 0.001165624,
+          "cumtime_s": 0.001165624
+        },
+        {
+          "func": "dataclasses.py:760(_get_field)",
+          "ncalls": 4,
+          "tottime_s": 0.0010834590000000002,
+          "cumtime_s": 0.001368751
+        },
+        {
+          "func": "~:0(<built-in method _io.open_code>)",
+          "ncalls": 1,
+          "tottime_s": 0.0008712920000000001,
+          "cumtime_s": 0.0008712920000000001
+        },
+        {
+          "func": "integrated_engine.py:1420(run_full_cycle)",
+          "ncalls": 25,
+          "tottime_s": 0.00081539,
+          "cumtime_s": 2.518596499
+        },
+        {
+          "func": "~:0(<built-in method builtins.exec>)",
+          "ncalls": 7,
+          "tottime_s": 0.0007654150000000001,
+          "cumtime_s": 0.0027886250000000003
+        },
+        {
+          "func": "~:0(<built-in method marshal.loads>)",
+          "ncalls": 1,
+          "tottime_s": 0.00034091600000000003,
+          "cumtime_s": 0.00034091600000000003
+        },
+        {
+          "func": "~:0(<built-in method builtins.print>)",
+          "ncalls": 1212,
+          "tottime_s": 0.000283346,
+          "cumtime_s": 0.000283346
+        },
+        {
+          "func": "integrated_engine.py:861(<genexpr>)",
+          "ncalls": 125,
+          "tottime_s": 0.00023512100000000003,
+          "cumtime_s": 0.000443119
+        },
+        {
+          "func": "~:0(<method 'read' of '_io.BufferedReader' objects>)",
+          "ncalls": 1,
+          "tottime_s": 0.0002155,
+          "cumtime_s": 0.0002155
+        },
+        {
+          "func": "~:0(<method 'index' of 'list' objects>)",
+          "ncalls": 150,
+          "tottime_s": 0.00021399800000000002,
+          "cumtime_s": 0.00021399800000000002
+        },
+        {
+          "func": "integrated_engine.py:1151(run_nozzle)",
+          "ncalls": 25,
+          "tottime_s": 0.00020054,
+          "cumtime_s": 0.000242209
+        }
+      ],
+      "ff_kg_s": 2.3921069223426437,
+      "ff_rel_diff_vs_frozen": 3.764766276503906e-13
+    },
+    "steady": {
+      "wall_s": 0.33402758301235735,
+      "profiled_total_s": 0.333990791,
+      "share_by_bucket": {
+        "combustor.run: Cantera equilibrate/property calls (compiled, not profiled separately)": 0.9703381192926365,
+        "integrated_engine._calculate_fuel_air_ratio (first call builds a Solution)": 0.013681784417822467,
+        "integrated_engine.py other Python": 0.008510165778792387,
+        "simulation/ other Python": 0.0039024069978025235,
+        "other": 0.001713343647250442,
+        "print": 0.0008685958050861348,
+        "numpy": 0.0006590930227175038,
+        "combustor._fresh_solutions: Cantera Solution parsing (one-time per worker)": 0.00022979974917931197,
+        "scipy": 9.669128871280765e-05
+      },
+      "top15_tottime": [
+        {
+          "func": "combustor.py:101(run)",
+          "ncalls": 25,
+          "tottime_s": 0.32408399600000004,
+          "cumtime_s": 0.324247669
+        },
+        {
+          "func": "integrated_engine.py:818(_calculate_fuel_air_ratio)",
+          "ncalls": 25,
+          "tottime_s": 0.00456959,
+          "cumtime_s": 0.005182003
+        },
+        {
+          "func": "integrated_engine.py:917(run_compressor)",
+          "ncalls": 25,
+          "tottime_s": 0.001384542,
+          "cumtime_s": 0.0026449990000000003
+        },
+        {
+          "func": "compressor.py:57(compute_outlet_state)",
+          "ncalls": 25,
+          "tottime_s": 0.001231289,
+          "cumtime_s": 0.001231289
+        },
+        {
+          "func": "integrated_engine.py:1420(run_full_cycle)",
+          "ncalls": 25,
+          "tottime_s": 0.00047414500000000004,
+          "cumtime_s": 0.333543668
+        },
+        {
+          "func": "~:0(<built-in method builtins.print>)",
+          "ncalls": 1212,
+          "tottime_s": 0.000290103,
+          "cumtime_s": 0.000290103
+        },
+        {
+          "func": "integrated_engine.py:861(<genexpr>)",
+          "ncalls": 125,
+          "tottime_s": 0.000240711,
+          "cumtime_s": 0.000461336
+        },
+        {
+          "func": "~:0(<method 'index' of 'list' objects>)",
+          "ncalls": 150,
+          "tottime_s": 0.000226378,
+          "cumtime_s": 0.000226378
+        },
+        {
+          "func": "integrated_engine.py:954(run_combustor)",
+          "ncalls": 25,
+          "tottime_s": 0.00017166500000000002,
+          "cumtime_s": 0.329664251
+        },
+        {
+          "func": "integrated_engine.py:1151(run_nozzle)",
+          "ncalls": 25,
+          "tottime_s": 0.000154968,
+          "cumtime_s": 0.000200459
+        },
+        {
+          "func": "integrated_engine.py:1823(cycle)",
+          "ncalls": 36,
+          "tottime_s": 9.766600000000001e-05,
+          "cumtime_s": 0.333696708
+        },
+        {
+          "func": "integrated_engine.py:1018(run_turbine_analytic)",
+          "ncalls": 25,
+          "tottime_s": 8.992e-05,
+          "cumtime_s": 0.000119919
+        },
+        {
+          "func": "combustor.py:57(_fresh_solutions)",
+          "ncalls": 25,
+          "tottime_s": 7.675100000000001e-05,
+          "cumtime_s": 7.675100000000001e-05
+        },
+        {
+          "func": "integrated_engine.py:91(as_composition_string)",
+          "ncalls": 50,
+          "tottime_s": 7.5296e-05,
+          "cumtime_s": 8.9004e-05
+        },
+        {
+          "func": "integrated_engine.py:1767(run_at_thrust)",
+          "ncalls": 1,
+          "tottime_s": 5.492e-05,
+          "cumtime_s": 0.333823708
+        }
+      ],
+      "ff_kg_s": 2.3921069223426437,
+      "ff_rel_diff_vs_frozen": 3.764766276503906e-13
+    }
+  },
+  "equilibrate_HP_median_s": 0.014585500000976026,
+  "note": "cProfile does not see Cantera's compiled methods; their time is inside combustor.run and _fresh_solutions. equilibrate_HP_median_s times one HP equilibrate (n-dodecane stand-in, CRECK, at the AE3 take-off inlet, phi 0.3388) on the combustor's own Solution, so combustor.run time / cycles can be compared with it.",
+  "files": {
+    "first": "outputs/phase8/profile_v6_ae3_takeoff_first.txt",
+    "steady": "outputs/phase8/profile_v6_ae3_takeoff_steady.txt"
+  }
+}
