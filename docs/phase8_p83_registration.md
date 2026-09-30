@@ -27,7 +27,8 @@ G1. The frozen v6 nozzle remains callable for the A0–A2 ladder branches.
   coefficients. The **actual** exit GasState uses
   `h_exit=h0-u_exit²/2` at `(p_exit,Y)`; the kinetic-energy shortfall when
   `Cv<1` stays in gas enthalpy. This form makes both mass flow and force
-  continuous at p* and closes the adiabatic nozzle energy balance.
+  continuous at p* and closes the adiabatic nozzle energy balance. Use a
+  relative enthalpy-inversion tolerance of `1e-13` in Cantera's HP setter.
 - The P8.3 component API reports nozzle mass-flow **capacity** and pressure
   thrust. A v6 upstream flow imposed independently need not equal that
   capacity. P8.4's shaft/map/nozzle matching solves that residual; no
