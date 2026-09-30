@@ -16,7 +16,8 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.0 cProfile of Python v6 `run_at_thrust` | `2a863b3` | done (diagnostic); see below |
 | P8-A1 amendment (G2: B2 + paired cluster bootstrap; benchmark variants b, c) | `4c6df84` | registered before any cross-family data or benchmark |
 | P8.1 toolchain | `c8e63ad` | done: Miniforge 26.7.2 in `~/miniforge3` (auto_activate false, no shell rc change), env `catjet-cpp` (libcantera-devel 3.2.0, cmake 4.4.3, ninja, eigen 5.0.1, catch2 3.16), explicit lockfile; CLT clang 21 + MacOSX26.5 SDK |
-| P8.1 step 2 HP-equilibrium parity (C++ vs Python, 1e-12) | (this commit) | **PASS** on 3 cases (worst T rel 1.6e-14; worst species at 0.16× tol). Attempt 1 failed only a stricter exact-P check that was not the plan rule (P rel 5e-16); kept as `p81_hello_equilibrium_attempt1_exactP.json` |
+| P8.1 step 2 HP-equilibrium parity (C++ vs Python, 1e-12) | `8a1878c` | **PASS** on 3 cases (worst T rel 1.6e-14; worst species at 0.16× tol). Attempt 1 failed only a stricter exact-P check that was not the plan rule (P rel 5e-16); kept as `p81_hello_equilibrium_attempt1_exactP.json` |
+| P8.1 pybind11 import into `.venv` | (this commit) | works, with a required link recipe (below) |
 | P8.1 C++ port, G0, benchmark | — | not started |
 | P8.2, P8.3 | — | not started |
 | P8.6 database | — | not started |
@@ -44,3 +45,22 @@ fewer cycle evaluations per solve or cheaper equilibrium, and any such change
 must still pass G0. Throughput gains come from parallelism (arm 4) and from
 avoiding per-worker Solution parsing. This is the plan's "C++ speedup is small"
 risk, now measured.
+
+## P8.1 toolchain finding: two Cantera builds in one process
+
+The `.venv` pip Cantera wheel (`_cantera.cpython-312-darwin.so`, Cantera built
+in statically, with its own sundials 7.4, yaml-cpp, hdf5 dylibs) exports weak
+definitions of Cantera's C++ symbols. A pybind11 module linked to the shared
+conda `libcantera.3.2.0.dylib` had those symbols bound to the wheel's copies
+(dyld: "_cantera... has weak-def symbol used by libcantera.3.2.0.dylib") and
+the process aborted (SIGABRT) on the module's first `newSolution` whenever
+`cantera` had been imported, in either import order. Alone, the module worked.
+
+Fix (in `cpp/CMakeLists.txt`): Python modules link the static `libcantera.a`,
+compile with hidden visibility and export only `_PyInit_<module>`. With it, the
+probe (`cpp/bindings/probe.cpp`) and pip Cantera coexist in both import orders,
+give bit-identical HP-equilibrium T at the AE3 take-off inlet
+(1700.811664711411), and a C++ `CanteraError` reaches Python as `RuntimeError`.
+The module still binds conda's own `libfmt` (the fmt that `libcantera.a` was
+built against), which is correct. Every future `catjet_core` module must use
+the same recipe; standalone executables may keep the shared library.

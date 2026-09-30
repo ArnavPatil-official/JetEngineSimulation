@@ -12,5 +12,7 @@ SDK="${CATJET_SDK:-$DEVELOPER_DIR/SDKs/MacOSX26.5.sdk}"
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER="$DEVELOPER_DIR/usr/bin/clang++" \
   -DCMAKE_OSX_SYSROOT="$SDK" \
-  -DCANTERA_PREFIX="$PREFIX"
+  -DCANTERA_PREFIX="$PREFIX" \
+  -DPython_EXECUTABLE="$HERE/../.venv/bin/python" \
+  -Dpybind11_DIR="$("$HERE/../.venv/bin/python" -m pybind11 --cmakedir)"
 "$PREFIX/bin/cmake" --build "$HERE/build"

@@ -24,3 +24,31 @@ set(CMAKE_BUILD_RPATH ${CANTERA_PREFIX}/lib)
 # P8.1 step 2: HP equilibrium parity with Python Cantera
 add_executable(hello_equilibrium tools/hello_equilibrium.cpp)
 target_link_libraries(hello_equilibrium PRIVATE cantera_dep)
+
+# Python bindings: interpreter and pybind11 from .venv (cpp/build.sh passes them).
+# The .venv also holds the pip Cantera wheel, whose _cantera.so exports weak
+# definitions of Cantera's own C++ symbols. A module linked to the shared conda
+# libcantera binds to those and aborts (P8.1 toolchain probe). So Python
+# modules link the static libcantera.a, compile with hidden visibility and
+# export only their PyInit symbol: the conda copy of Cantera stays private.
+if(Python_EXECUTABLE)
+  find_package(Python 3.12 EXACT REQUIRED COMPONENTS Interpreter Development.Module)
+  find_package(pybind11 CONFIG REQUIRED)
+  find_library(CANTERA_STATIC libcantera.a PATHS ${CANTERA_PREFIX}/lib NO_DEFAULT_PATH REQUIRED)
+  set(CANTERA_STATIC_DEPS omp sundials_cvodes sundials_idas sundials_nvecserial sundials_core
+      sundials_sunlinsollapackdense sundials_sunlinsollapackband hdf5 fmt yaml-cpp lapack blas)
+  set(CANTERA_STATIC_DEP_PATHS "")
+  foreach(dep ${CANTERA_STATIC_DEPS})
+    find_library(DEP_${dep} ${dep} PATHS ${CANTERA_PREFIX}/lib NO_DEFAULT_PATH REQUIRED)
+    list(APPEND CANTERA_STATIC_DEP_PATHS ${DEP_${dep}})
+  endforeach()
+  add_library(cantera_static_dep INTERFACE)
+  target_include_directories(cantera_static_dep SYSTEM INTERFACE ${CANTERA_PREFIX}/include)
+  target_link_libraries(cantera_static_dep INTERFACE ${CANTERA_STATIC} ${CANTERA_STATIC_DEP_PATHS})
+  target_compile_definitions(cantera_static_dep INTERFACE _LIBCPP_DISABLE_AVAILABILITY)
+
+  pybind11_add_module(catjet_probe bindings/probe.cpp)
+  target_link_libraries(catjet_probe PRIVATE cantera_static_dep)
+  set_target_properties(catjet_probe PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+  target_link_options(catjet_probe PRIVATE "LINKER:-exported_symbol,_PyInit_catjet_probe")
+endif()
