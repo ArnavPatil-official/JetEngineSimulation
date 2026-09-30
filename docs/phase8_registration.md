@@ -227,3 +227,37 @@ coolant and leakage streams), and tip clearance. v2 adds `speed_param`,
 `flow_function`, `PR_reported`, `reaction_p`, `eta_thermo_cooled`,
 `tip_clearance` and their unit conversions. No v1 entry changed; no data had
 been entered. `vocabulary.yaml` v2 sha256 `ba9a9258ebffbd821b11729bc7438369d8ed5588b7f65ce5622cc81e45d79a12`.
+
+## Amendment P8-A2: STS ablation ladder (before the first P8.2 result)
+
+Known at registration: G0 passed on all frozen v6 rows (`74f53c8`); the
+Python v6 profile shows that equilibrium dominates solve time. No P8.2/P8.3
+result, recalibration or upgraded-model held-out score has been run. This
+amendment fixes the sequence and scoring rule; a failed G1 step remains
+reported and stops dependent steps.
+
+| Ladder step | Component change from the preceding step |
+|---|---|
+| A0 | Frozen v6 C++ parity path (G0 reference). |
+| A1 | Composition-carrying GasState, liquid-fuel enthalpy and enthalpy dilution mixing (P8.2). |
+| A2 | Enthalpy polytropic HP/IP/LP turbine and enthalpy cooling-air re-entry (P8.2). |
+| A3 | Fixed-area separate core/bypass convergent nozzles with real-gas choking (P8.3). |
+| A4 | Off-design shaft/map matching (P8.4, after its plan revision and G1). |
+
+At **each** A1–A4 step, refit exactly the four v6 knobs (`W_ref`,
+`a_thrust`, `k_pi`, `k_mdot`) with the frozen P7.2/v6 calibration procedure in
+`scripts/optimization/lto_v6.py`: same initial values, bounds, seed, penalty,
+mode/group weights, fuel, fixed settings and 93 calibration rows. The single
+change is the named C++ physics step. Save the calibration run and parameters
+as new, write-once Phase 8 artifacts with the source commit, config and seed.
+The 87 Trent held-out rows remain outside fitting, warm-start choice and
+component selection. After a step's fitted parameters and G1 result are
+committed, score those rows **once** using the frozen P7.2 held-out procedure
+and report group-weighted MAPE, mode-wise MAPE, B0/B1 comparisons, signs and
+unreachable count. Always publish A2 and A3 scores even if either worsens the
+v6 result. Do not select a ladder step using the held-out score.
+
+The G1 limit/closure checks in section 3 are independent of calibration.
+Where a new parameter lacks a constraining source, use a fixed cited central
+value with a cited range under the parameter-ledger range rule; do not fit it
+to these held-out rows.
