@@ -4,3 +4,6 @@ CLAUDE.md
 scripts/dispatch_claude.py
 __pycache__/
 *.pyc
+
+# Phase 8 C++ build tree (cpp/build.sh)
+cpp/build/

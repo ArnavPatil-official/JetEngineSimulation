@@ -1,0 +1,17 @@
+# Phase 8 C++ core toolchain (docs/plan.md P8.1). C++ libraries and build
+# tools only: the compiler is Apple clang from the Command Line Tools
+# (MacOSX26.5 SDK, registration amendment P8-A1.3), and pybind11 plus the
+# Python interpreter come from .venv. libcantera-devel is pinned to the
+# Python Cantera version (3.2.0) so both use the same thermo and equilibrium
+# solver. Exact package builds: cpp/conda-lock-osx-arm64.txt.
+#   ~/miniforge3/bin/conda env create -f cpp/environment.yml
+#   ~/miniforge3/bin/conda create -n catjet-cpp --file cpp/conda-lock-osx-arm64.txt   (exact)
+name: catjet-cpp
+channels:
+  - conda-forge
+dependencies:
+  - libcantera-devel=3.2.0
+  - cmake
+  - ninja
+  - eigen
+  - catch2=3
