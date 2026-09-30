@@ -1,0 +1,830 @@
+{
+  "gate": "G0 (docs/phase8_registration.md section 3)",
+  "verdict": "PASS",
+  "rule": "math.isclose(rel_tol=1e-09, abs_tol=1e-12) per numeric cell; strings exact; same shape/columns",
+  "commit": "fadc08db8d0f9eb1274f56006dc0cf647af05d99",
+  "uncommitted_source_changes": "?? scripts/phase8/ml/\n?? scripts/phase8/pycycle/\n?? scripts/phase8/wpd_import.py",
+  "machine": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.12.4",
+  "backends": {
+    "cpp": {
+      "wall_s": 120.96752266597468,
+      "checks": {
+        "cal": {
+          "frozen": "outputs/phase7/calibration_v6_rows.csv",
+          "new": "outputs/phase8/g0/calibration_v6_rows_cpp.csv",
+          "rows": 93,
+          "columns": {
+            "Mode": {
+              "numeric": false,
+              "match": true
+            },
+            "Power (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unique ID": {
+              "numeric": false,
+              "match": true
+            },
+            "Pressure Ratio": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Bypass Ratio": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Rated Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model": {
+              "numeric": false,
+              "match": true
+            },
+            "x": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Target Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Group": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "w": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "status": {
+              "numeric": false,
+              "match": true
+            },
+            "reason": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "ff": {
+              "numeric": true,
+              "max_rel_diff": 1.1281552870917722e-12,
+              "match": true
+            },
+            "phi": {
+              "numeric": true,
+              "max_rel_diff": 1.1280038886320266e-12,
+              "match": true
+            },
+            "thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 4.878176578046929e-13,
+              "match": true
+            },
+            "tsfc_mg_Ns": {
+              "numeric": true,
+              "max_rel_diff": 7.66398997027976e-13,
+              "match": true
+            },
+            "T3": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "T4": {
+              "numeric": true,
+              "max_rel_diff": 4.863431234255642e-13,
+              "match": true
+            },
+            "T5": {
+              "numeric": true,
+              "max_rel_diff": 5.753208271501226e-13,
+              "match": true
+            },
+            "p3_bar": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "thrust_core_kN": {
+              "numeric": true,
+              "max_rel_diff": 1.4920487091682816e-12,
+              "match": true
+            },
+            "thrust_bypass_kN": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "m_core": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "pi_c": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "nox_corr_g_s": {
+              "numeric": true,
+              "max_rel_diff": 2.2068764552964875e-12,
+              "match": true
+            }
+          },
+          "match": true
+        },
+        "hold": {
+          "frozen": "outputs/phase7/holdout_icao_validation_v6.csv",
+          "new": "outputs/phase8/g0/holdout_icao_validation_v6_cpp.csv",
+          "rows": 87,
+          "columns": {
+            "Mode": {
+              "numeric": false,
+              "match": true
+            },
+            "Power (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "ICAO Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "NOx (g/kg)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unique ID": {
+              "numeric": false,
+              "match": true
+            },
+            "OPR": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "BPR": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Rated Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model": {
+              "numeric": false,
+              "match": true
+            },
+            "x": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Target Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Group": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "w": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 Calibration Groups": {
+              "numeric": false,
+              "match": true
+            },
+            "Predicted Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 9.44117198307329e-13,
+              "match": true
+            },
+            "Status": {
+              "numeric": false,
+              "match": true
+            },
+            "Reason": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_phi": {
+              "numeric": true,
+              "max_rel_diff": 9.45055427018839e-13,
+              "match": true
+            },
+            "model_T3": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_T4": {
+              "numeric": true,
+              "max_rel_diff": 3.62161622703934e-13,
+              "match": true
+            },
+            "model_T5": {
+              "numeric": true,
+              "max_rel_diff": 4.3040358995578753e-13,
+              "match": true
+            },
+            "model_m_core": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_pi_c": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_nox_corr_g_s": {
+              "numeric": true,
+              "max_rel_diff": 1.8470288373791947e-12,
+              "match": true
+            },
+            "model_thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 3.624134914992894e-13,
+              "match": true
+            },
+            "Model APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 1.4279132955250166e-10,
+              "match": true
+            },
+            "B0 APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            }
+          },
+          "match": true
+        },
+        "hold_summary": {
+          "frozen": "outputs/phase7/holdout_icao_validation_summary_v6.csv",
+          "new": "outputs/phase8/g0/holdout_icao_validation_summary_v6_cpp.csv",
+          "rows": 4,
+          "columns": {
+            "Scope": {
+              "numeric": false,
+              "match": true
+            },
+            "Rows": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unreachable": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 1.5860433005966923e-12,
+              "match": true
+            },
+            "Model record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 7.37541949017341e-12,
+              "match": true
+            },
+            "B0 group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            }
+          },
+          "match": true
+        },
+        "ae3": {
+          "frozen": "outputs/design_point_summary_v5.csv",
+          "new": "outputs/phase8/g0/design_point_summary_v5_cpp.csv",
+          "rows": 3,
+          "columns": {
+            "calibration": {
+              "numeric": false,
+              "match": true
+            },
+            "mode": {
+              "numeric": false,
+              "match": true
+            },
+            "component_config": {
+              "numeric": false,
+              "match": true
+            },
+            "target_thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 5.180326582147217e-15,
+              "match": true
+            },
+            "phi_solved": {
+              "numeric": true,
+              "max_rel_diff": 1.3604918182087723e-14,
+              "match": true
+            },
+            "eta_b": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "pi_c": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "fpr": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "mass_flow_core_kg_s": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "T3_K": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "T4_K": {
+              "numeric": true,
+              "max_rel_diff": 6.889535254198273e-15,
+              "match": true
+            },
+            "T5_K": {
+              "numeric": true,
+              "max_rel_diff": 1.1153379363927356e-14,
+              "match": true
+            },
+            "p5_bar": {
+              "numeric": true,
+              "max_rel_diff": 1.5279925589054653e-14,
+              "match": true
+            },
+            "fuel_flow_kg_s": {
+              "numeric": true,
+              "max_rel_diff": 1.355739470487848e-14,
+              "match": true
+            },
+            "icao_fuel_flow_kg_s": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "fuel_flow_rel_err_pct": {
+              "numeric": true,
+              "max_rel_diff": 2.212916677863324e-12,
+              "match": true
+            },
+            "thrust_core_kN": {
+              "numeric": true,
+              "max_rel_diff": 1.8327141080601257e-14,
+              "match": true
+            },
+            "thrust_bypass_kN": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "TSFC_mg_per_Ns": {
+              "numeric": true,
+              "max_rel_diff": 8.323279318284613e-15,
+              "match": true
+            },
+            "specific_thrust_Ns_kg": {
+              "numeric": true,
+              "max_rel_diff": 5.36294493184819e-15,
+              "match": true
+            },
+            "total_air_mass_flow_kg_s": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "NOx_corr_g_s": {
+              "numeric": true,
+              "max_rel_diff": 2.6517992187971334e-14,
+              "match": true
+            }
+          },
+          "match": true
+        }
+      }
+    },
+    "python": {
+      "wall_s": 17.35288908390794,
+      "checks": {
+        "cal": {
+          "frozen": "outputs/phase7/calibration_v6_rows.csv",
+          "new": "outputs/phase8/g0/calibration_v6_rows_python.csv",
+          "rows": 93,
+          "columns": {
+            "Mode": {
+              "numeric": false,
+              "match": true
+            },
+            "Power (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unique ID": {
+              "numeric": false,
+              "match": true
+            },
+            "Pressure Ratio": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Bypass Ratio": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Rated Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model": {
+              "numeric": false,
+              "match": true
+            },
+            "x": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Target Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Group": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "w": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "status": {
+              "numeric": false,
+              "match": true
+            },
+            "reason": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "ff": {
+              "numeric": true,
+              "max_rel_diff": 9.538826402224823e-13,
+              "match": true
+            },
+            "phi": {
+              "numeric": true,
+              "max_rel_diff": 9.540908412199224e-13,
+              "match": true
+            },
+            "thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 3.901631437772692e-13,
+              "match": true
+            },
+            "tsfc_mg_Ns": {
+              "numeric": true,
+              "max_rel_diff": 5.639345254201847e-13,
+              "match": true
+            },
+            "T3": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "T4": {
+              "numeric": true,
+              "max_rel_diff": 3.817758429199234e-13,
+              "match": true
+            },
+            "T5": {
+              "numeric": true,
+              "max_rel_diff": 4.5270481458884025e-13,
+              "match": true
+            },
+            "p3_bar": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "thrust_core_kN": {
+              "numeric": true,
+              "max_rel_diff": 1.1931984588197593e-12,
+              "match": true
+            },
+            "thrust_bypass_kN": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "m_core": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "pi_c": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "nox_corr_g_s": {
+              "numeric": true,
+              "max_rel_diff": 1.865700624518391e-12,
+              "match": true
+            }
+          },
+          "match": true
+        },
+        "hold": {
+          "frozen": "outputs/phase7/holdout_icao_validation_v6.csv",
+          "new": "outputs/phase8/g0/holdout_icao_validation_v6_python.csv",
+          "rows": 87,
+          "columns": {
+            "Mode": {
+              "numeric": false,
+              "match": true
+            },
+            "Power (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "ICAO Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "NOx (g/kg)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unique ID": {
+              "numeric": false,
+              "match": true
+            },
+            "OPR": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "BPR": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Rated Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model": {
+              "numeric": false,
+              "match": true
+            },
+            "x": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Target Thrust (kN)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Group": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "w": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 Calibration Groups": {
+              "numeric": false,
+              "match": true
+            },
+            "Predicted Fuel Flow (kg/s)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Status": {
+              "numeric": false,
+              "match": true
+            },
+            "Reason": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_phi": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_T3": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_T4": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_T5": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_m_core": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_pi_c": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_nox_corr_g_s": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "model_thrust_kN": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 APE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            }
+          },
+          "match": true
+        },
+        "hold_summary": {
+          "frozen": "outputs/phase7/holdout_icao_validation_summary_v6.csv",
+          "new": "outputs/phase8/g0/holdout_icao_validation_summary_v6_python.csv",
+          "rows": 4,
+          "columns": {
+            "Scope": {
+              "numeric": false,
+              "match": true
+            },
+            "Rows": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Unreachable": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "Model record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B0 record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 group-weighted MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            },
+            "B1 record-level MAPE (%)": {
+              "numeric": true,
+              "max_rel_diff": 0.0,
+              "match": true
+            }
+          },
+          "match": true
+        }
+      }
+    }
+  },
+  "note": "python backend = A0 reproducibility of the frozen artifacts today (reported, not the gate)"
+}
