@@ -17,10 +17,11 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8-A1 amendment (G2: B2 + paired cluster bootstrap; benchmark variants b, c) | `4c6df84` | registered before any cross-family data or benchmark |
 | P8.1 toolchain | `c8e63ad` | done: Miniforge 26.7.2 in `~/miniforge3` (auto_activate false, no shell rc change), env `catjet-cpp` (libcantera-devel 3.2.0, cmake 4.4.3, ninja, eigen 5.0.1, catch2 3.16), explicit lockfile; CLT clang 21 + MacOSX26.5 SDK |
 | P8.1 step 2 HP-equilibrium parity (C++ vs Python, 1e-12) | `8a1878c` | **PASS** on 3 cases (worst T rel 1.6e-14; worst species at 0.16× tol). Attempt 1 failed only a stricter exact-P check that was not the plan rule (P rel 5e-16); kept as `p81_hello_equilibrium_attempt1_exactP.json` |
-| P8.1 pybind11 import into `.venv` | (this commit) | works, with a required link recipe (below) |
+| P8.1 pybind11 import into `.venv` | `ae75c28` | works, with a required link recipe (below) |
 | P8.1 C++ port, G0, benchmark | — | not started |
 | P8.2, P8.3 | — | not started |
-| P8.6 database | — | not started |
+| P8.6 schema + vocabulary v1 + QA code/tests (12) | (this commit) | registered (P8-R1) before any source |
+| P8.6 sources | — | in progress |
 
 ## P8.0 profile (AE3 take-off, frozen v6, `outputs/phase8/profile_v6_ae3_takeoff*.{txt,json}`)
 

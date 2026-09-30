@@ -198,3 +198,20 @@ Command Line Tools SDK (MacOSX27.0) cannot be linked by the installed linker.
 Builds use `DEVELOPER_DIR=/Library/Developer/CommandLineTools` and
 `CMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`
 (Apple clang 21.0.0). Record the compiler and SDK in every benchmark report.
+
+## Registration P8-R1: empirical database vocabulary v1 (2026-09-29, before any source is entered)
+
+- Schema `data/empirical/schema.sql`, sha256 `de9e1e780c660e64afb3d8f667dd3f1545bf7cd80483293ef72602d0f63b9418`.
+- Vocabulary `data/empirical/vocabulary.yaml` (v1), sha256 `f9edeb8d0c29034cfb36e72f95f27f5176ddfc0d5031bca7977afa368df6ef51`:
+  quantities with SI units, unit conversions and plausibility ranges;
+  fidelity tiers 0–4; quality classes A/B/C; sigma kinds; the component
+  stopping rule (≥ 3 independent calibration sources and ≥ 1 locked
+  validation source, independence = distinct `independence_key`).
+- Enforced in the schema: an `experiment` row is tier 4; validation and
+  locked-test splits accept tier 4 only. The database refuses to open if the
+  schema or vocabulary hash differs from the one it was built with.
+- Not yet set, each by amendment before it is used: σ_class(tier, quality)
+  values (before P8.7), the acquisition close date, and every split.
+- QA tolerances (checks for hand inspection, not gates): corrected flow/speed
+  and PR/NPR consistency 0.5 %; cold-air energy balance 2 % against dry-air
+  h(T) from Cantera `air.yaml`.
