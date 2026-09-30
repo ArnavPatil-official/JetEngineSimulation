@@ -3,6 +3,8 @@
 Date: 2026-09-29. Parent plan: `docs/plan.md`; ablation order:
 `docs/phase8_registration.md`, amendment P8-A2 (`421022e`). This file is
 committed before the first P8.2 build, test, calibration or G1 computation.
+The prospective numerical amendment in `docs/phase8_p82_amendment_a1.md`
+supersedes the original pressure-path method below before any computation.
 Known when written: G0 PASS (`74f53c8`), the AE3 frozen v6 parameters, and
 NASA CR-168189 design cooling fractions and rig total cooling flows. No
 P8.2 result has been seen. The existing G0 C++ class and Python v6 code
@@ -64,12 +66,9 @@ remain callable and unchanged by the new physics path.
   Each stage has eta_poly=0.9 from frozen v6 fixed settings and no stage
   pressure loss beyond the modeled expansion. IP/LP cooling defaults zero.
 - Within a stage, Y is frozen. The ideal-gas polytropic relation is
-  `dh=eta_poly*R(Y)*T*d(ln P)`. For target work `W`, find the outlet T from
-  `h_out=h_in-W/m_in` at inlet pressure with Cantera; infer outlet pressure
-  from `ln(P_out/P_in)=[s(T_out,P_in,Y)-s(T_in,P_in,Y)]/(eta_poly*R(Y))`.
-  Trace the path with 50 equal steps in `ln P`, using Cantera entropy
-  inversion at each step. Repeat with 100 steps for convergence. No map
-  efficiencies or geometry scale factors are introduced in P8.2.
+  `dh=eta_poly*R(Y)*T*d(ln P)`. The original method for computing the path
+  was superseded prospectively by `docs/phase8_p82_amendment_a1.md`.
+  No map efficiencies or geometry scale factors are introduced in P8.2.
 - The constant-cp test mode of the same stage API uses supplied `cp,R` and
   the exact limit `T_out=T_in-W/(m*cp)` and
   `P_out=P_in*(T_out/T_in)^(cp/(eta_poly*R))`, identical to the v6 analytic
