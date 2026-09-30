@@ -13,6 +13,7 @@ plausibility ranges and turbine/nozzle sanity, and a cold-air energy balance
 where inlet and exit temperatures and specific work are all given.
 
 Usage:
+    .venv/bin/python scripts/phase8/empirical_db.py build  [--db PATH]
     .venv/bin/python scripts/phase8/empirical_db.py init   [--db PATH]
     .venv/bin/python scripts/phase8/empirical_db.py qa     [--db PATH]
     .venv/bin/python scripts/phase8/empirical_db.py stats  [--db PATH]
@@ -38,6 +39,8 @@ EMP = ROOT / "data" / "empirical"
 SCHEMA = EMP / "schema.sql"
 VOCAB = EMP / "vocabulary.yaml"
 DEFAULT_DB = EMP / "catjet_empirical.sqlite"
+PDF_DIR = EMP / "pdf"                       # not in git; entries carry each PDF's sha256
+ENTRIES = Path(__file__).resolve().parent / "empirical_entries"
 TABLES = ["source", "experiment", "operating_point", "observation", "digitisation", "split"]
 
 
@@ -46,7 +49,16 @@ def sha256_file(path: Path) -> str:
 
 
 def load_vocabulary(path: Path = VOCAB) -> dict:
-    return yaml.safe_load(Path(path).read_text())
+    """PyYAML (YAML 1.1) reads 1.0e7 (no exponent sign) as a string, so every
+    numeric field is converted here; the vocabulary text is not edited."""
+    v = yaml.safe_load(Path(path).read_text())
+    for q in v["quantities"].values():
+        q["range"] = [float(x) for x in q["range"]]
+    for table in v["units"].values():
+        for u, c in table.items():
+            table[u] = [float(x) for x in c] if isinstance(c, list) else float(c)
+    v["reference_state"] = {k: float(x) for k, x in v["reference_state"].items()}
+    return v
 
 
 # ---------------------------------------------------------------- units
@@ -307,6 +319,30 @@ def independent_sources(conn, component: str, role: str | None = None) -> int:
     return int(conn.execute(q, args).fetchone()[0])
 
 
+# ---------------------------------------------------------------- build
+def build(db: Path = DEFAULT_DB, pdf_dir: Path = PDF_DIR) -> list[str]:
+    """Rebuild the database from the entry modules (sorted by name) into a new
+    file, then replace ``db``. The .sqlite is derived: never edit it by hand."""
+    import importlib
+    db = Path(db)
+    tmp = db.with_suffix(".building.sqlite")
+    tmp.unlink(missing_ok=True)
+    conn = connect(tmp, create=True)
+    names = sorted(p.stem for p in ENTRIES.glob("*.py") if p.stem != "__init__")
+    sys.path.insert(0, str(ENTRIES.parent))
+    try:
+        for name in names:
+            importlib.import_module(f"empirical_entries.{name}").enter(conn, sys.modules[__name__], pdf_dir)
+        conn.commit()
+    except Exception:
+        conn.close()
+        tmp.unlink(missing_ok=True)
+        raise
+    conn.close()
+    tmp.replace(db)
+    return names
+
+
 # ---------------------------------------------------------------- export
 def export_csv(conn, out_dir: Path) -> dict[str, str]:
     """One CSV per table (sorted by primary key) plus sha256 of each; used to hash-freeze splits."""
@@ -329,10 +365,13 @@ def export_csv(conn, out_dir: Path) -> dict[str, str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["init", "qa", "stats", "export"])
+    ap.add_argument("cmd", choices=["build", "init", "qa", "stats", "export"])
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--out", type=Path)
     a = ap.parse_args()
+    if a.cmd == "build":
+        print(f"built {a.db} from entries: {', '.join(build(a.db))}")
+        return 0
     if a.cmd == "init":
         connect(a.db, create=True).close()
         print(f"initialised {a.db}")

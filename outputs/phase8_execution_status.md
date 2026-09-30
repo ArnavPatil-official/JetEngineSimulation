@@ -20,8 +20,9 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.1 pybind11 import into `.venv` | `ae75c28` | works, with a required link recipe (below) |
 | P8.1 C++ port, G0, benchmark | — | not started |
 | P8.2, P8.3 | — | not started |
-| P8.6 schema + vocabulary v1 + QA code/tests (12) | (this commit) | registered (P8-R1) before any source |
-| P8.6 sources | — | in progress |
+| P8.6 schema + vocabulary v1 + QA code/tests | `02cb627` (v2 `b7daa51`) | registered (P8-R1) before any source |
+| P8.6 source 1: NASA CR-168189 (E3 HPT cooled rig, Table 5.3.1-II) | (this commit) | entered: 23 test points, 191 observations, class A, QA 0 issues; transcription cross-checked against the table's SI and clearance-adjusted columns |
+| P8.6 sources 2-3 | — | in progress |
 
 ## P8.0 profile (AE3 take-off, frozen v6, `outputs/phase8/profile_v6_ae3_takeoff*.{txt,json}`)
 

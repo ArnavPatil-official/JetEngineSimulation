@@ -27,6 +27,14 @@ def conn(tmp_path):
     c.close()
 
 
+def test_vocabulary_numbers_are_numbers():
+    for spec in VOCAB["quantities"].values():
+        assert all(isinstance(x, float) for x in spec["range"]) and spec["range"][0] < spec["range"][1]
+    for table in VOCAB["units"].values():
+        for conv in table.values():
+            assert all(isinstance(x, float) for x in (conv if isinstance(conv, list) else [conv]))
+
+
 def test_si_round_trip_every_unit():
     for q, spec in VOCAB["quantities"].items():
         for unit in VOCAB["units"][spec["dim"]]:
@@ -146,3 +154,18 @@ def test_database_refuses_changed_vocabulary(tmp_path, monkeypatch):
     monkeypatch.setattr(edb, "VOCAB", changed)
     with pytest.raises(RuntimeError):
         edb.connect(tmp_path / "t.sqlite")
+
+
+def test_build_from_entries_is_complete_and_clean(tmp_path):
+    """Entries rebuild the database with every transcription check passing and no QA error."""
+    names = edb.build(tmp_path / "b.sqlite", pdf_dir=tmp_path / "no_pdfs")
+    assert "nasa_cr_168189" in names
+    c = edb.connect(tmp_path / "b.sqlite")
+    n_ops = c.execute("SELECT COUNT(*) FROM operating_point WHERE experiment_id = "
+                      "'E3-HPT-rig-PW-1983'").fetchone()[0]
+    assert n_ops == 23
+    assert [i for i in edb.run_qa(c) if i.level == "error"] == []
+    # design-point repeat (test point 1): measured cooled efficiency 88.37 %
+    eta = c.execute("SELECT value_si FROM observation WHERE op_id = 'E3-HPT-rig-PW-1983-tp01' "
+                    "AND quantity = 'eta_thermo_cooled'").fetchone()[0]
+    assert eta == pytest.approx(0.8837, abs=1e-12)
