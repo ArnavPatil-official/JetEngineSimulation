@@ -159,13 +159,30 @@ def test_database_refuses_changed_vocabulary(tmp_path, monkeypatch):
 def test_build_from_entries_is_complete_and_clean(tmp_path):
     """Entries rebuild the database with every transcription check passing and no QA error."""
     names = edb.build(tmp_path / "b.sqlite", pdf_dir=tmp_path / "no_pdfs")
-    assert "nasa_cr_168189" in names
+    assert {"nasa_cr_168189", "ge_e3_hpt_168289", "ge_e3_lpt_168290",
+            "ge_e3_core_168069"}.issubset(names)
     c = edb.connect(tmp_path / "b.sqlite")
     n_ops = c.execute("SELECT COUNT(*) FROM operating_point WHERE experiment_id = "
                       "'E3-HPT-rig-PW-1983'").fetchone()[0]
     assert n_ops == 23
+    assert c.execute("SELECT COUNT(*) FROM source").fetchone()[0] == 4
+    assert c.execute("SELECT COUNT(*) FROM operating_point").fetchone()[0] == 47
+    assert c.execute("SELECT COUNT(*) FROM observation").fetchone()[0] == 374
+    assert edb.independent_sources(c, "turbine") == 3
+    assert edb.independent_sources(c, "combustor") == 1
     assert [i for i in edb.run_qa(c) if i.level == "error"] == []
     # design-point repeat (test point 1): measured cooled efficiency 88.37 %
     eta = c.execute("SELECT value_si FROM observation WHERE op_id = 'E3-HPT-rig-PW-1983-tp01' "
                     "AND quantity = 'eta_thermo_cooled'").fetchone()[0]
     assert eta == pytest.approx(0.8837, abs=1e-12)
+    ge_pr = c.execute("SELECT value_si FROM observation WHERE op_id = "
+                      "'GE-E3-HPT-air-rig-1984-design' AND quantity='PR'").fetchone()[0]
+    assert ge_pr == pytest.approx(5.01)
+    lpt_eta = c.execute("SELECT value_si FROM observation WHERE op_id = "
+                        "'GE-E3-LPT-five-stage-rig-1983-run539' AND quantity='eta_tt'").fetchone()[0]
+    assert lpt_eta == pytest.approx(.9261)
+    core_nox = c.execute("SELECT value_si FROM observation WHERE op_id = "
+                         "'GE-E3-core-combustor-1982-DMS197' AND quantity='EI_NOx'").fetchone()[0]
+    assert core_nox == pytest.approx(.0237)
+    assert c.execute("SELECT COUNT(*) FROM observation WHERE op_id LIKE "
+                     "'GE-E3-core-combustor-1982-DMS198%' AND quantity LIKE 'EI_%'").fetchone()[0] == 0
