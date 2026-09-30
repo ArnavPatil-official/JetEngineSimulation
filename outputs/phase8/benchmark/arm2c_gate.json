@@ -1,0 +1,52 @@
+{
+  "gate": "P8-A1 variant c approximation",
+  "verdict": "PASS",
+  "product_species": [
+    "N2",
+    "O2",
+    "AR",
+    "CO2",
+    "H2O",
+    "CO",
+    "H2",
+    "OH",
+    "H",
+    "O",
+    "HO2",
+    "H2O2"
+  ],
+  "rule": "all 180 + AE3: |delta FF|/FF <= 1e-4, |delta T4| <= 0.1 K; held-out group-weighted MAPE change <= 0.01 percentage points",
+  "reference": "outputs/phase8/g0/*_python.csv",
+  "checks": {
+    "calibration": {
+      "match": true,
+      "n_rows": 93,
+      "max_ff_relative": 1.6270443830348689e-09,
+      "max_T4_abs_K": 9.932091415976174e-08,
+      "bad_rows": []
+    },
+    "heldout": {
+      "match": true,
+      "n_rows": 87,
+      "max_ff_relative": 2.2012328045104355e-09,
+      "max_T4_abs_K": 1.417301973560825e-07,
+      "bad_rows": []
+    },
+    "ae3": {
+      "match": true,
+      "ff_relative": 2.0158187003583393e-11,
+      "T4_abs_K": 7.821654435247183e-10
+    },
+    "heldout_mape": {
+      "match": true,
+      "reference_pct": 1.829751549897219,
+      "variant_c_pct": 1.8297515463992227,
+      "absolute_change_percentage_points": 3.49799633703185e-09
+    }
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}
