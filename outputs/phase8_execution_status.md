@@ -2,8 +2,9 @@
 
 Plan: `docs/plan.md` (Phase 8). Registration: `docs/phase8_registration.md`.
 Branch `phase8`, from the Phase 7 freeze `7524a7a`.
-Scope authorized now: the STS slice (D1): P8.0, P8.1, P8.2, P8.3 and the
-first P8.6 database sources.
+Scope authorized now: the STS slice first, plus independent Tracks B, C and D
+under the user's autonomous-execution directive (2026-09-29). P8.4–P8.15
+still require P8-R2 registration and their scientific gates before execution.
 
 **Phase 8 is NOT complete.** The table says what is done, running or not started.
 
@@ -26,6 +27,7 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.6 source 1: NASA CR-168189 (E3 HPT cooled rig, Table 5.3.1-II) | `2a4a0f4` | entered: 23 test points, 191 observations, class A, QA 0 issues; transcription cross-checked against the table's SI and clearance-adjusted columns |
 | P8.6 sources 2-3 | — | **blocked on digitisation**: TN D-6967 and Grey & Wilsted (NACA TR-933/TN-1757) have plotted data only; TP-2991 is a C-D vectoring nozzle (poor fit). See `data/empirical/acquisition_log.md` |
 | P8.6 ICAO databank + D3 family list | `ac88f6c` | 888 records, 133 families by prefix rule; identifier/design/status columns only, no target decoded (`outputs/phase8/icao_edb_families.*`) |
+| Track C1 WebPlotDigitizer importer + instructions | this commit | Three CSV/project repeats; axis calibration and source hashes stored for each observation; Hungarian point matching; sample-SD digitisation uncertainty; 22 focused tests pass. `data/empirical/DIGITISING.md` names the source figures, curves, axes, priority and repeat paths. Digitisation itself is a user-only task and has not started. |
 
 ## P8.0 profile (AE3 take-off, frozen v6, `outputs/phase8/profile_v6_ae3_takeoff*.{txt,json}`)
 
