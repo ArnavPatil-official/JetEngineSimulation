@@ -75,7 +75,8 @@ def machine_info() -> dict:
         "power": _command("pmset", "-g", "batt"),
         "python": platform.python_version(), "cantera": cantera.__version__,
         "numpy": np.__version__, "scipy": scipy.__version__,
-        "compiler": _command("/usr/bin/clang++", "--version"),
+        # the /usr/bin shim follows xcode-select (a broken Xcode.app here)
+        "compiler": _command("/Library/Developer/CommandLineTools/usr/bin/clang++", "--version"),
         "developer_dir": "/Library/Developer/CommandLineTools",
         "sdk": "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk",
         "cpp_compile_flags": "C++17; -ffp-contract=off; hidden symbols; static Cantera (cpp/CMakeLists.txt)",
@@ -429,9 +430,11 @@ def main() -> int:
     model = model_for(a.arm, a.variant, a.workers, data)
     try:
         for rep in range(a.repeats + 1):
+            load_before = os.getloadavg()
             t0 = time.perf_counter()
             records, score = run_workload(model, a.workload, data)
             elapsed = time.perf_counter() - t0
+            load_after = os.getloadavg()
             if first_records is None:
                 first_records = records
             internal = compare(records, first_records, "a")
@@ -443,6 +446,7 @@ def main() -> int:
             if rep:
                 samples.append(elapsed)
             _write_line(progress, {"repeat": rep, "warmup": rep == 0, "wall_s": elapsed,
+                                   "loadavg_before": load_before, "loadavg_after": load_after,
                                    "score": score, "output_match": ok,
                                    "n_unreachable": sum(r["status"] == "unreachable" for r in records)})
             print(f"{run_name} {'warmup' if rep == 0 else f'repeat {rep}'}: "

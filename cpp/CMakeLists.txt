@@ -58,7 +58,8 @@ if(Python_EXECUTABLE)
   endfunction()
 
   catjet_python_module(catjet_probe bindings/probe.cpp)
-  catjet_python_module(catjet_core bindings/catjet_core.cpp catjet_core/v6_engine.cpp)
+  catjet_python_module(catjet_core bindings/catjet_core.cpp catjet_core/v6_engine.cpp
+                       catjet_core/enthalpy_turbine.cpp)
 endif()
 
 # C++ unit tests (Catch2 from the catjet-cpp env)

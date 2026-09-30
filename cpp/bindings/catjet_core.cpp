@@ -3,6 +3,7 @@
 // IntegratedTurbofanEngine in lto_v5.solve_task. Built with the static-Cantera,
 // hidden-symbol recipe (cpp/CMakeLists.txt) so it coexists with the pip wheel.
 #include "../catjet_core/v6_engine.hpp"
+#include "../catjet_core/enthalpy_turbine.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -75,6 +76,63 @@ py::dict to_dict(const CycleResult& r)
     return d;
 }
 
+py::dict to_dict(const GasState& s)
+{
+    py::dict d;
+    d["T"] = s.T; d["P"] = s.P; d["Y"] = s.Y;
+    return d;
+}
+
+py::dict to_dict(const MassStream& s)
+{
+    py::dict d = to_dict(s.state);
+    d["mass_flow"] = s.mass_flow;
+    return d;
+}
+
+py::dict to_dict(const GasProperties& p)
+{
+    py::dict d;
+    d["h"] = p.h; d["s"] = p.s; d["cp"] = p.cp; d["R"] = p.R;
+    d["gamma"] = p.gamma; d["rho"] = p.rho; d["elements"] = p.elements;
+    return d;
+}
+
+py::dict to_dict(const MixResult& m)
+{
+    py::dict d = to_dict(m.stream);
+    d["mass_relative"] = m.mass_relative;
+    d["energy_relative"] = m.energy_relative;
+    d["element_relative"] = m.element_relative;
+    return d;
+}
+
+py::dict to_dict(const ExpansionResult& e)
+{
+    py::dict d = to_dict(e.stream);
+    d["requested_work"] = e.requested_work;
+    d["actual_work"] = e.actual_work;
+    d["energy_relative"] = e.energy_relative;
+    d["element_relative"] = e.element_relative;
+    d["steps"] = e.steps;
+    return d;
+}
+
+py::dict to_dict(const P82CycleResult& r)
+{
+    py::dict d = to_dict(r.cycle);
+    py::dict stations, stages;
+    for (const auto& kv : r.stations) stations[py::str(kv.first)] = to_dict(kv.second);
+    for (const auto& kv : r.stages) stages[py::str(kv.first)] = to_dict(kv.second);
+    d["stations"] = stations;
+    d["stages"] = stages;
+    d["burner_heat_rejection_W"] = r.burner_heat_rejection_W;
+    d["max_mass_relative"] = r.max_mass_relative;
+    d["max_energy_relative"] = r.max_energy_relative;
+    d["max_element_relative"] = r.max_element_relative;
+    return d;
+}
+
 CombustorResult combustor_from(const py::dict& d)
 {
     CombustorResult c{};
@@ -125,6 +183,90 @@ PYBIND11_MODULE(catjet_core, m)
         .def_readwrite("nox_A", &V6Config::nox_A)
         .def_readwrite("nox_B", &V6Config::nox_B)
         .def_readwrite("nox_C", &V6Config::nox_C);
+
+    py::class_<GasState>(m, "GasState")
+        .def(py::init<>())
+        .def(py::init<double, double, std::vector<double>>())
+        .def_readwrite("T", &GasState::T)
+        .def_readwrite("P", &GasState::P)
+        .def_readwrite("Y", &GasState::Y);
+    py::class_<MassStream>(m, "MassStream")
+        .def(py::init<>())
+        .def(py::init<GasState, double>())
+        .def_readwrite("state", &MassStream::state)
+        .def_readwrite("mass_flow", &MassStream::mass_flow);
+    py::class_<GasThermo>(m, "GasThermo")
+        .def(py::init<const std::string&>(), py::arg("mechanism"))
+        .def("from_moles", &GasThermo::from_moles)
+        .def("at_enthalpy", &GasThermo::at_enthalpy)
+        .def("compress", &GasThermo::compress)
+        .def("properties", [](GasThermo& g, const GasState& s) { return to_dict(g.properties(s)); })
+        .def("mix", [](GasThermo& g, const MassStream& a, const MassStream& b, double P) {
+            return to_dict(g.mix(a, b, P));
+        })
+        .def("expand_for_work", [](GasThermo& g, const MassStream& in, double W, double eta,
+                                    int steps, double cp, double R) {
+            return to_dict(g.expand_for_work(in, W, eta, steps, cp, R));
+        }, py::arg("stream"), py::arg("work_W"), py::arg("eta_poly"),
+           py::arg("steps") = 50, py::arg("constant_cp") = 0.0,
+           py::arg("constant_R") = 0.0)
+        .def_property_readonly("n_species", &GasThermo::n_species);
+    py::class_<P82Config>(m, "P82Config")
+        .def(py::init<>())
+        .def_readwrite("base", &P82Config::base)
+        .def_readwrite("vaporization_J_kg", &P82Config::vaporization_J_kg)
+        .def_readwrite("ngv_fraction", &P82Config::ngv_fraction)
+        .def_readwrite("rotor_fraction", &P82Config::rotor_fraction)
+        .def_readwrite("pressure_steps", &P82Config::pressure_steps);
+    py::class_<P82Engine>(m, "P82Engine")
+        .def(py::init<const std::string&>(), py::arg("mechanism"))
+        .def_readwrite("config", &P82Engine::config)
+        .def("run_full_cycle", [](P82Engine& e, const std::string& fuel,
+                                   const std::vector<std::string>& species,
+                                   double phi, double eff, int level) {
+            P82CycleResult r;
+            {
+                py::gil_scoped_release release;
+                r = e.run_full_cycle(fuel, species, phi, eff, level);
+            }
+            return to_dict(r);
+        }, py::arg("fuel"), py::arg("fuel_species"), py::arg("phi"),
+           py::arg("combustor_efficiency"), py::arg("ablation_level") = 2)
+        .def("run_at_thrust", [](P82Engine& e, double target, const std::string& fuel,
+                                  const std::vector<std::string>& species,
+                                  double eff, int level, double lo, double hi,
+                                  double t4max, double xtol, py::object guess) {
+            const double g = guess.is_none() ? -1.0 : guess.cast<double>();
+            py::dict d;
+            try {
+                P82AtThrustResult r;
+                {
+                    py::gil_scoped_release release;
+                    r = e.run_at_thrust(target, fuel, species, eff, level,
+                                         lo, hi, t4max, xtol, g);
+                }
+                d = to_dict(r.result);
+                py::dict tm;
+                for (const auto& kv : r.match.info) tm[py::str(kv.first)] = kv.second;
+                tm["phi"] = r.match.phi; tm["status"] = "converged";
+                tm["target_kN"] = r.match.target_kN;
+                tm["residual_kN"] = r.match.residual_kN;
+                tm["t4_K"] = r.match.t4_K;
+                tm["n_cycle_evaluations"] = r.match.n_cycle_evaluations;
+                d["thrust_match"] = tm; d["status"] = "converged";
+            } catch (const ThrustTargetUnreachable& u) {
+                d["status"] = "unreachable"; d["reason"] = u.reason;
+                d["message"] = std::string(u.what());
+                py::dict inf;
+                for (const auto& kv : u.info) inf[py::str(kv.first)] = kv.second;
+                d["info"] = inf;
+            }
+            return d;
+        }, py::arg("target_kN"), py::arg("fuel"), py::arg("fuel_species"),
+           py::arg("combustor_efficiency"), py::arg("ablation_level") = 2,
+           py::arg("phi_lo") = 0.05, py::arg("phi_hi") = 1.0,
+           py::arg("t4_max_K") = 3800.0 * 5.0 / 9.0,
+           py::arg("phi_xtol") = 1e-12, py::arg("phi_guess") = py::none());
 
     py::class_<V6Engine>(m, "V6Engine")
         .def(py::init<const std::string&>(), py::arg("mechanism"))
