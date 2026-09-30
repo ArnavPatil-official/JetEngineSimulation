@@ -24,7 +24,10 @@ G1. The frozen v6 nozzle remains callable for the A0–A2 ladder branches.
   `m_dot=Cd*A*G(p_exit)`, `u_exit=Cv*u(p_exit)`, and
   `F=m_dot*u_exit+(p_exit-p_ambient)*A`. A zero or reverse pressure head
   produces zero forward flow. Cd and Cv are positive dimensionless
-  coefficients. This form makes both mass flow and force continuous at p*.
+  coefficients. The **actual** exit GasState uses
+  `h_exit=h0-u_exit²/2` at `(p_exit,Y)`; the kinetic-energy shortfall when
+  `Cv<1` stays in gas enthalpy. This form makes both mass flow and force
+  continuous at p* and closes the adiabatic nozzle energy balance.
 - The P8.3 component API reports nozzle mass-flow **capacity** and pressure
   thrust. A v6 upstream flow imposed independently need not equal that
   capacity. P8.4's shaft/map/nozzle matching solves that residual; no
@@ -68,6 +71,9 @@ Use the P8.0 G1 thresholds unchanged:
    fully expanded force to relative `1e-10`.
 4. Separate core/bypass cases have distinct areas and states. Re-run G0
    parity, protected hashes and the full pytest suite after integration.
+   At the fixed-prior coefficients, stagnation enthalpy minus actual exit
+   enthalpy and kinetic energy closes to relative `1e-10`; Y and elemental
+   mass fractions remain unchanged.
 
 The write-once verdict is `outputs/phase8/p83_g1.json` with the source
 commit, mechanism and fixture hashes, all numerical errors and any failed
