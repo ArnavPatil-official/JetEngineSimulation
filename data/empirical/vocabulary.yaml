@@ -2,7 +2,7 @@
 # Registered before any source is entered. Changes after that are amendments
 # recorded in docs/phase8_registration.md. scripts/phase8/empirical_db.py
 # rejects any quantity, unit or class not listed here.
-version: 2   # v2 (P8-R1a): quantities for cooled-turbine rig reports; no v1 entry changed
+version: 3   # v3 (P8-R1b): raw core-test and LPT quantities; prior entries unchanged
 
 reference_state:            # for corrected parameters (standard day)
   T_ref_K: 288.15
@@ -36,6 +36,10 @@ quantities:
   thrust_ratio: {unit: "1",    dim: ratio,       range: [0.5, 1.10], desc: measured thrust / ideal isentropic thrust}
   thrust:       {unit: N,      dim: force,       range: [0, 1.0e6], desc: thrust}
   fuel_flow:    {unit: kg/s,   dim: mass_flow,   range: [0, 20], desc: fuel mass flow}
+  FAR:          {unit: "1",    dim: ratio,       range: [0, 0.1], desc: measured fuel-to-air mass ratio}
+  eta_chemical: {unit: "1",    dim: ratio,       range: [0, 1.0], desc: "combustion efficiency from chemical analysis, not thermodynamic cycle efficiency"}
+  PR_ts:        {unit: "1",    dim: ratio,       range: [1.0, 60], desc: turbine inlet total to exit static pressure ratio}
+  torque_corr:  {unit: N*m,    dim: torque,      range: [0, 1.0e6], desc: "source-defined corrected shaft torque (NASA TN D-6967: torque times epsilon/delta); correction basis in experiment notes"}
   # --- added in v2 (P8-R1a) ---
   speed_param:  {unit: "rad/s/K^0.5", dim: speed_parameter, range: [0, 1.0e3], desc: "speed parameter N/sqrt(Tt_in), inlet total temperature"}
   flow_function: {unit: "kg*K^0.5/(s*Pa)", dim: flow_function, range: [0, 1.0e-2], desc: "flow function mdot*sqrt(Tt_in)/Pt_in (no R, no gamma)"}

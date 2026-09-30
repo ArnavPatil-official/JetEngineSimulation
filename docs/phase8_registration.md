@@ -261,3 +261,29 @@ The G1 limit/closure checks in section 3 are independent of calibration.
 Where a new parameter lacks a constraining source, use a fixed cited central
 value with a cited range under the parameter-ledger range rule; do not fit it
 to these held-out rows.
+
+## Amendment P8-R1b: empirical vocabulary v3 (before new source entry)
+
+Known when written: the first source, NASA CR-168189, is in the database;
+NASA CR-168289 (GE E3 HPT), CR-168290 (GE E3 LPT), CR-168069 (GE E3 core)
+and NASA TN D-6967 have been inspected for their table headings and axis
+definitions. None of their measured rows has been entered or used in a fit.
+The schema is unchanged. Vocabulary v3 adds four quantities needed to record
+the source definitions without treating unlike measurements as equivalent:
+
+- `FAR`: measured fuel/air mass ratio in the core report's Table XIX;
+- `eta_chemical`: efficiency derived from gas chemical analysis in that table,
+  distinct from thermal cycle or turbine efficiency;
+- `PR_ts`: turbine inlet total to exit static pressure ratio in the LPT report
+  and the TN D-6967 plots, distinct from total-to-total `PR`;
+- `torque_corr`: the TN D-6967 plotted torque corrected by its report's
+  temperature/pressure factors, distinct from uncorrected shaft torque.
+
+The first three use existing ratio units; `torque_corr` uses the existing
+torque units and requires its correction basis in the experiment notes.
+Their SI plausibility intervals are in `data/empirical/vocabulary.yaml`.
+The v3 file SHA-256 is
+`126a49c71aab45e80f62ad3d1c554dd99eef03287188852ab199d2ba0d14f7aa`.
+The SQLite file is derived from source-entry modules: rebuild it after this
+amendment, recheck the source-1 row count and QA, and record the new database
+hash in the source-entry commit. No locked split or calibration has been run.
