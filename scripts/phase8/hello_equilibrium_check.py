@@ -9,8 +9,12 @@ equilibrate("HP"). Fuel: the registered v6 Dooley 2012 Jet A surrogate
 (outputs/phase7/p72_registration.json). Cases: the AE3 take-off combustor
 inlet at the v6 solution, plus approach- and idle-like inlets.
 
-Pass rule: |dX| <= 1e-12 |X| for T, h_mass, cp_mass, mean_mw (P must match
-exactly), and |dY_k| <= 1e-12 |Y_k| + 1e-18 for every species.
+Pass rule (plan: "match Python to 1e-12"): |dX| <= 1e-12 |X| for T, P,
+h_mass, cp_mass, mean_mw, and |dY_k| <= 1e-12 |Y_k| + 1e-18 for every species.
+Attempt 1 (outputs/phase8/p81_hello_equilibrium_attempt1_exactP.json) also
+required P to match exactly; equilibrate("HP") returns P as solver output
+(4377239.99999957 vs 4377239.999999568 at AE3, 5e-16 relative), so that
+stricter check failed while every quantity was within 1e-13. Kept as evidence.
 
 Usage: .venv/bin/python scripts/phase8/hello_equilibrium_check.py
 Output (write-once): outputs/phase8/p81_hello_equilibrium.json
@@ -66,8 +70,8 @@ def cpp_side(T, p, phi, fuel) -> dict:
 
 def compare(py: dict, cc: dict) -> dict:
     scal = {}
-    ok = py["P"] == cc["P"] and list(py["Y"]) == list(cc["Y"])
-    for k in ("T", "h_mass", "cp_mass", "mean_mw"):
+    ok = list(py["Y"]) == list(cc["Y"])
+    for k in ("T", "P", "h_mass", "cp_mass", "mean_mw"):
         rel = abs(cc[k] - py[k]) / abs(py[k])
         scal[k] = {"python": py[k], "cpp": cc[k], "rel_diff": rel}
         ok &= rel <= RTOL
@@ -101,7 +105,9 @@ def main() -> int:
     doc = {
         "stage": "P8.1 step 2: C++ vs Python HP equilibrium parity",
         "commit": sha, "mechanism": MECH, "fuel": fuel,
-        "rule": f"|dX| <= {RTOL} |X| for T, h, cp, mean_mw; P exact; |dY| <= {RTOL} |Y| + {YATOL}",
+        "rule": f"|dX| <= {RTOL} |X| for T, P, h, cp, mean_mw; |dY| <= {RTOL} |Y| + {YATOL}",
+        "attempt_1": "outputs/phase8/p81_hello_equilibrium_attempt1_exactP.json (failed only the "
+                     "exact-P check; P rel diff 5e-16)",
         "python_cantera": ct.__version__, "python": platform.python_version(),
         "cpp": {"compiler": clang, "sdk": "MacOSX26.5.sdk", "libcantera": "3.2.0 (conda-forge, "
                 "cpp/conda-lock-osx-arm64.txt)"},
