@@ -215,3 +215,15 @@ Builds use `DEVELOPER_DIR=/Library/Developer/CommandLineTools` and
 - QA tolerances (checks for hand inspection, not gates): corrected flow/speed
   and PR/NPR consistency 0.5 %; cold-air energy balance 2 % against dry-air
   h(T) from Cantera `air.yaml`.
+
+### Amendment P8-R1a: vocabulary v2 (2026-09-29, before any source is entered)
+
+Reading the first source (NASA CR-168189, Leach 1983) showed quantities that
+v1 cannot hold without mislabelling them: the P&W speed parameter N/√T
+(rpm/√°R), the flow function W√T/P (lbm·√°R/(s·psia)), an expansion ratio
+whose total/static basis the report does not state, static-pressure reaction,
+a cooled-turbine thermodynamic efficiency (Σṁ_iΔh_i / Σṁ_iΔh_i′ over primary,
+coolant and leakage streams), and tip clearance. v2 adds `speed_param`,
+`flow_function`, `PR_reported`, `reaction_p`, `eta_thermo_cooled`,
+`tip_clearance` and their unit conversions. No v1 entry changed; no data had
+been entered. `vocabulary.yaml` v2 sha256 `ba9a9258ebffbd821b11729bc7438369d8ed5588b7f65ce5622cc81e45d79a12`.

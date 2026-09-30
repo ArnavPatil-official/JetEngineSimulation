@@ -7,3 +7,5 @@ __pycache__/
 
 # Phase 8 C++ build tree (cpp/build.sh)
 cpp/build/
+# Phase 8 source PDFs (identity recorded as sha256 in the empirical database)
+data/empirical/pdf/

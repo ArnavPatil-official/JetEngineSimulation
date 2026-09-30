@@ -2,7 +2,7 @@
 # Registered before any source is entered. Changes after that are amendments
 # recorded in docs/phase8_registration.md. scripts/phase8/empirical_db.py
 # rejects any quantity, unit or class not listed here.
-version: 1
+version: 2   # v2 (P8-R1a): quantities for cooled-turbine rig reports; no v1 entry changed
 
 reference_state:            # for corrected parameters (standard day)
   T_ref_K: 288.15
@@ -36,6 +36,13 @@ quantities:
   thrust_ratio: {unit: "1",    dim: ratio,       range: [0.5, 1.10], desc: measured thrust / ideal isentropic thrust}
   thrust:       {unit: N,      dim: force,       range: [0, 1.0e6], desc: thrust}
   fuel_flow:    {unit: kg/s,   dim: mass_flow,   range: [0, 20], desc: fuel mass flow}
+  # --- added in v2 (P8-R1a) ---
+  speed_param:  {unit: "rad/s/K^0.5", dim: speed_parameter, range: [0, 1.0e3], desc: "speed parameter N/sqrt(Tt_in), inlet total temperature"}
+  flow_function: {unit: "kg*K^0.5/(s*Pa)", dim: flow_function, range: [0, 1.0e-2], desc: "flow function mdot*sqrt(Tt_in)/Pt_in (no R, no gamma)"}
+  PR_reported:  {unit: "1",    dim: ratio,       range: [1.0, 60], desc: "pressure/expansion ratio as the source reports it when the total/static basis is not stated; basis in experiment notes"}
+  reaction_p:   {unit: "1",    dim: ratio,       range: [-0.5, 1.0], desc: "static-pressure reaction: rotor static pressure drop / stage static pressure drop"}
+  eta_thermo_cooled: {unit: "1", dim: ratio,     range: [0.0, 1.0], desc: "cooled-turbine thermodynamic efficiency sum(m_i dh_i)/sum(m_i dh_i') over primary, coolant and leakage streams, ideal expansion to turbine exit pressure (source definition in experiment notes)"}
+  tip_clearance: {unit: m,     dim: length,      range: [0, 0.05], desc: average rotor tip clearance}
   shock_x:      {unit: m,      dim: length,      range: [-10, 10], desc: shock position along the duct axis}
   EI_NOx:       {unit: kg/kg,  dim: emission_index_mass, range: [0, 0.2], desc: NOx emission index (as NO2)}
   EI_CO:        {unit: kg/kg,  dim: emission_index_mass, range: [0, 0.5], desc: CO emission index}
@@ -59,6 +66,8 @@ units:
   force: {N: 1.0, kN: 1000.0, lbf: 4.4482216152605}
   emission_index_mass: {kg/kg: 1.0, g/kg: 1.0e-3, mg/kg: 1.0e-6}
   emission_index_number: {1/kg: 1.0}
+  speed_parameter: {"rad/s/K^0.5": 1.0, "rpm/degR^0.5": 0.1404962946208145}
+  flow_function: {"kg*K^0.5/(s*Pa)": 1.0, "lbm*degR^0.5/(s*psia)": 4.903548837995186e-05}
 
 # Fidelity tiers (plan section E). Validation and locked tests use tier 4 only
 # (enforced by a trigger in schema.sql).
