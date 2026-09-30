@@ -4,7 +4,8 @@ Plan: `docs/plan.md` (Phase 8). Registration: `docs/phase8_registration.md`.
 Branch `phase8`, from the Phase 7 freeze `7524a7a`.
 Scope authorized now: the STS slice first, plus independent Tracks B, C and D
 under the user's autonomous-execution directive (2026-09-29). P8.4–P8.15
-still require P8-R2 registration and their scientific gates before execution.
+are covered by `docs/phase8_r2_plan.md` in their scientific gate order;
+each run-specific registration remains required before computation.
 
 **Phase 8 is NOT complete.** The table says what is done, running or not started.
 
@@ -16,6 +17,8 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.0 protected list (184 files) + registration | `53e58b0` | registered |
 | P8.0 cProfile of Python v6 `run_at_thrust` | `2a863b3` | done (diagnostic); see below |
 | P8-A1 amendment (G2: B2 + paired cluster bootstrap; benchmark variants b, c) | `4c6df84` | registered before any cross-family data or benchmark |
+| P8-A2 STS ablation ladder | `421022e` | registered before P8.2 results; each step recalibrates on calibration groups and scores the Trent held-out group once |
+| P8-R2 plan revision, P8.4–P8.15 | this commit | registered before P8.4+ numerical work. Adds design/off-design, combustor, four-stage calibration, family-level bootstrap, synthetic/MLX/G3 and robust-optimization order. The external Claude design artifact was inaccessible, so missing numerical/model details require prospective pre-run registrations. |
 | P8.1 toolchain | `c8e63ad` | done: Miniforge 26.7.2 in `~/miniforge3` (auto_activate false, no shell rc change), env `catjet-cpp` (libcantera-devel 3.2.0, cmake 4.4.3, ninja, eigen 5.0.1, catch2 3.16), explicit lockfile; CLT clang 21 + MacOSX26.5 SDK |
 | P8.1 step 2 HP-equilibrium parity (C++ vs Python, 1e-12) | `8a1878c` | **PASS** on 3 cases (worst T rel 1.6e-14; worst species at 0.16× tol). Attempt 1 failed only a stricter exact-P check that was not the plan rule (P rel 5e-16); kept as `p81_hello_equilibrium_attempt1_exactP.json` |
 | P8.1 pybind11 import into `.venv` | `ae75c28` | works, with a required link recipe (below) |

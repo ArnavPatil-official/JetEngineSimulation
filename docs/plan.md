@@ -13,6 +13,12 @@ This plan authorizes repo work and Mac-local computation for the **STS slice
 P8.4 onward are listed for order and gates; they need a plan revision before
 execution. No manuscript edits, outreach, remote publishing, merge or tag.
 
+**Revision P8-R2 (2026-09-29):** `docs/phase8_r2_plan.md` extends local work
+authorization to P8.4–P8.15 in their registered gate order. Its prospective
+run registrations and the existing Phase 8 gate rules remain required. This
+paragraph supersedes only the original STS-slice scope limit above; the
+original phase descriptions remain as the Phase 8 baseline.
+
 ## Objective
 
 Turn the v6 thrust-matched cycle into a component-level model in this order:
