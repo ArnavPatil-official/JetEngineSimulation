@@ -142,3 +142,32 @@ def test_ae3_50_to_100_step_cycle(ae3):
         assert abs(a["turbine"][key] - b["turbine"][key]) / abs(b["turbine"][key]) < 1e-8
     assert a["max_energy_relative"] < 1e-10
     assert a["max_element_relative"] < 1e-10
+
+
+@pytest.mark.parametrize("mode", ["TAKE-OFF", "APPROACH", "IDLE"])
+def test_thrust_match_template_reproduces_v6_solver(mode):
+    """P8-A2 ladder: the solver template driven by the v6 cycle is the v6 solver."""
+    import lto_v5 as v5
+    from integrated_engine import LocalFuelBlend
+    sys.path.insert(0, str(ROOT / "scripts" / "phase8"))
+    from p82_g1 import AE3, setup
+
+    reg = json.loads((ROOT / "outputs/phase7/p72_registration.json").read_text())
+    fit = json.loads((ROOT / "outputs/phase7/calibration_v6.json").read_text())
+    rows = v5.load_rows([AE3], with_targets=True).set_index("Mode")
+    v6, _ = setup(core, reg, fit, rows, mode)
+    fuel = LocalFuelBlend("JetA_dooley2012", dict(reg["fuel"]["mole_fractions"]))
+    args = v6.fuel_args(fuel)
+    eta = reg["fixed_central"]["eta_b"][mode]
+    target = v5.MODE_X[mode] * rows.loc[mode, "Rated Thrust (kN)"]
+    cases = [(target, None), (target, 0.9 * 0.3), (target, 0.31), (5000.0, None), (0.5, None)]
+    for t, guess in cases:
+        ref = v6.core.run_at_thrust(t, *args, eta, phi_guess=guess)
+        new = core.v6_template_run_at_thrust(v6.core, t, *args, eta, phi_guess=guess)
+        assert new["status"] == ref["status"], (t, guess)
+        if ref["status"] == "converged":
+            assert new["phi"] == ref["thrust_match"]["phi"]
+            assert new["n_cycle_evaluations"] == ref["thrust_match"]["n_cycle_evaluations"]
+            assert new["fuel_mass_flow"] == ref["performance"]["fuel_mass_flow"]
+        else:
+            assert new["reason"] == ref["reason"]

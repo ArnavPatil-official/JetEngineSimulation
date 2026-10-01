@@ -5,6 +5,7 @@
 #include "../catjet_core/v6_engine.hpp"
 #include "../catjet_core/enthalpy_turbine.hpp"
 #include "../catjet_core/choking_nozzle.hpp"
+#include "../catjet_core/thrust_match.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -242,6 +243,28 @@ PYBIND11_MODULE(catjet_core, m)
             d["thrust_total"] = r.thrust_total; d["mass_flow_total"] = r.mass_flow_total;
             return d;
         });
+    // Test hook: the thrust_match.hpp template driven by the G0 v6 cycle must
+    // reproduce V6Engine::run_at_thrust exactly (phi, evaluations, reasons).
+    m.def("v6_template_run_at_thrust", [](V6Engine& e, double target, const std::string& fuel,
+                                          const std::vector<std::string>& species, double eff,
+                                          py::object guess) {
+        const double g = guess.is_none() ? -1.0 : guess.cast<double>();
+        py::dict d;
+        try {
+            auto solved = v6_thrust_match<CycleResult>(
+                [&](double phi) { return e.run_full_cycle(fuel, species, phi, eff); },
+                [](const CycleResult& r) { return r.combustor.T_out; },
+                [](const CycleResult& r) { return r.thrust_kN; },
+                target, eff, 0.05, 1.0, 3800.0 * 5.0 / 9.0, 1e-12, g);
+            d["status"] = "converged"; d["phi"] = solved.second.phi;
+            d["n_cycle_evaluations"] = solved.second.n_cycle_evaluations;
+            d["fuel_mass_flow"] = solved.first.fuel_mass_flow;
+        } catch (const ThrustTargetUnreachable& u) {
+            d["status"] = "unreachable"; d["reason"] = u.reason;
+        }
+        return d;
+    }, py::arg("engine"), py::arg("target_kN"), py::arg("fuel"), py::arg("fuel_species"),
+       py::arg("combustor_efficiency"), py::arg("phi_guess") = py::none());
     py::class_<P82Config>(m, "P82Config")
         .def(py::init<>())
         .def_readwrite("base", &P82Config::base)

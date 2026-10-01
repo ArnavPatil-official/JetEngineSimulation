@@ -1,6 +1,7 @@
 #include "enthalpy_turbine.hpp"
 
 #include "brentq.hpp"
+#include "thrust_match.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -446,80 +447,17 @@ P82AtThrustResult P82Engine::run_at_thrust(double target_kN, const std::string& 
                                             double phi_lo, double phi_hi, double t4_max_K,
                                             double phi_xtol, double phi_guess)
 {
-    // The same cold bracketing/Brent procedure as the G0 path, with only the
-    // cycle callback replaced. A cache ensures each phi is evaluated once.
-    if (!(std::isfinite(target_kN) && target_kN > 0.0 &&
-          std::isfinite(phi_lo) && std::isfinite(phi_hi) &&
-          phi_lo > 0.0 && phi_lo < phi_hi &&
-          std::isfinite(t4_max_K) && t4_max_K > 0.0 &&
-          std::isfinite(phi_xtol) && phi_xtol > 0.0 &&
-          combustor_efficiency > 0.0 && combustor_efficiency <= 1.0)) {
-        throw std::invalid_argument("invalid P8.2 thrust-solve input");
-    }
-    std::map<double, std::variant<P82CycleResult, std::string>> cache;
-    auto cycle = [&](double phi) -> const P82CycleResult& {
-        auto it = cache.find(phi);
-        if (it == cache.end()) {
-            try {
-                it = cache.emplace(phi, run_full_cycle(fuel, fuel_species, phi,
-                                                        combustor_efficiency, ablation_level)).first;
-            } catch (const CycleDoesNotClose& e) {
-                it = cache.emplace(phi, std::string(e.what())).first;
-            }
-        }
-        if (std::holds_alternative<std::string>(it->second)) {
-            throw CycleDoesNotClose(std::get<std::string>(it->second));
-        }
-        return std::get<P82CycleResult>(it->second);
-    };
-    auto runs = [&](double phi) {
-        try { cycle(phi); return true; }
-        catch (const CycleDoesNotClose&) { return false; }
-    };
-    auto t4 = [&](double phi) { return cycle(phi).cycle.combustor.T_out; };
-    auto residual = [&](double phi) { return cycle(phi).cycle.thrust_kN - target_kN; };
-    double lo = phi_lo, hi = phi_hi;
-    const double rtol = 4 * std::numeric_limits<double>::epsilon();
-    std::map<std::string, double> info{{"phi_bounds_lo", phi_lo}, {"phi_bounds_hi", phi_hi},
-                                       {"t4_max_K", t4_max_K}};
-    auto guarded_hi = [&]() {
-        if (t4(hi) <= t4_max_K) return hi;
-        return brentq([&](double p) { return t4(p) - t4_max_K; }, lo, hi, phi_xtol);
-    };
-    if (!runs(lo)) {
-        if (!runs(hi)) throw ThrustTargetUnreachable("cycle does not close anywhere in phi bounds", target_kN, info);
-        double a = lo, b = hi;
-        while (b - a > 1e-9 * b) {
-            const double m = 0.5 * (a + b);
-            if (runs(m)) b = m; else a = m;
-        }
-        lo = b;
-        info["phi_lower_cycle_closure"] = lo;
-    }
-    const double upper = guarded_hi();
-    info["phi_upper"] = upper;
-    info["thrust_at_lower_kN"] = cycle(lo).cycle.thrust_kN;
-    info["thrust_at_upper_kN"] = cycle(upper).cycle.thrust_kN;
-    if (residual(lo) > 0.0) throw ThrustTargetUnreachable("below minimum thrust", target_kN, info);
-    if (residual(upper) < 0.0) throw ThrustTargetUnreachable("above maximum thrust", target_kN, info);
-    double a = lo, b = upper;
-    if (std::isfinite(phi_guess) && lo < phi_guess && phi_guess < upper && runs(phi_guess)) {
-        double p0 = phi_guess, p1 = p0, step = 1.02;
-        double r0 = residual(p0);
-        for (int i = 0; i < 12; ++i) {
-            p1 = r0 < 0.0 ? std::min(p1 * step, upper) : std::max(p1 / step, lo);
-            if (!runs(p1)) break;
-            if ((residual(p1) > 0.0) != (r0 > 0.0)) {
-                a = std::min(p0, p1); b = std::max(p0, p1); break;
-            }
-            if (p1 == lo || p1 == upper) break;
-        }
-    }
-    const double phi = brentq(residual, a, b, phi_xtol, rtol);
+    // The v6 matched-thrust procedure (thrust_match.hpp, a copy of
+    // V6Engine::run_at_thrust) with only the cycle callback replaced (P8-A2).
+    auto solved = v6_thrust_match<P82CycleResult>(
+        [&](double phi) { return run_full_cycle(fuel, fuel_species, phi, combustor_efficiency,
+                                                ablation_level); },
+        [](const P82CycleResult& r) { return r.cycle.combustor.T_out; },
+        [](const P82CycleResult& r) { return r.cycle.thrust_kN; },
+        target_kN, combustor_efficiency, phi_lo, phi_hi, t4_max_K, phi_xtol, phi_guess);
     P82AtThrustResult result;
-    result.result = cycle(phi);
-    result.match = {phi, target_kN, residual(phi), t4(phi),
-                    static_cast<int>(cache.size()), info};
+    result.result = std::move(solved.first);
+    result.match = std::move(solved.second);
     return result;
 }
 
