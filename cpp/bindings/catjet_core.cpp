@@ -7,6 +7,7 @@
 #include "../catjet_core/choking_nozzle.hpp"
 #include "../catjet_core/thrust_match.hpp"
 #include "../catjet_core/reactor_network.hpp"
+#include "../catjet_core/offdesign.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -179,6 +180,28 @@ py::dict to_dict(const NetworkResult& r)
     return d;
 }
 
+py::dict to_dict(const Flow& f)
+{
+    py::dict d;
+    d["W"] = f.W; d["Tt"] = f.Tt; d["Pt"] = f.Pt; d["ht"] = f.ht; d["St"] = f.St;
+    return d;
+}
+
+py::dict to_dict(const SolveResult& r)
+{
+    py::dict d;
+    d["converged"] = r.converged; d["iterations"] = r.iterations; d["x"] = r.x;
+    d["residuals"] = r.residuals; d["norm_history"] = r.norm_history; d["reason"] = r.reason;
+    d["scalars"] = r.out.scalars;
+    py::dict st;
+    for (const auto& kv : r.out.stations) st[py::str(kv.first)] = to_dict(kv.second);
+    d["stations"] = st;
+    d["mass_closure"] = r.out.mass_closure; d["energy_closure"] = r.out.energy_closure;
+    d["element_closure"] = r.out.element_closure;
+    d["extrapolated"] = r.out.extrapolated; d["extrapolated_maps"] = r.out.extrapolated_maps;
+    return d;
+}
+
 CombustorResult combustor_from(const py::dict& d)
 {
     CombustorResult c{};
@@ -334,6 +357,78 @@ PYBIND11_MODULE(catjet_core, m)
         .def("equilibrium", &ReactorNetwork::equilibrium)
         .def("lhv_mass", &ReactorNetwork::lhv_mass)
         .def("species_names", &ReactorNetwork::species_names);
+    // P8.4 HBTF (docs/phase8_p84_registration.md)
+    py::class_<GridTable>(m, "GridTable")
+        .def(py::init<std::vector<std::vector<double>>, std::vector<double>>())
+        .def("__call__", [](const GridTable& t, const std::vector<double>& x) {
+            bool ex = false;
+            const double v = t(x, &ex);
+            return py::make_tuple(v, ex);
+        });
+    py::class_<ComponentMap>(m, "ComponentMap")
+        .def(py::init<>())
+        .def_readwrite("name", &ComponentMap::name)
+        .def_readwrite("params", &ComponentMap::params)
+        .def_readwrite("outputs", &ComponentMap::outputs)
+        .def_readwrite("defaults", &ComponentMap::defaults)
+        .def_readwrite("rline_stall", &ComponentMap::rline_stall);
+    py::class_<Bleed>(m, "Bleed")
+        .def(py::init<>())
+        .def_readwrite("name", &Bleed::name).def_readwrite("frac_W", &Bleed::frac_W)
+        .def_readwrite("frac_P", &Bleed::frac_P).def_readwrite("frac_work", &Bleed::frac_work);
+    py::class_<CompressorSpec>(m, "CompressorSpec")
+        .def(py::init<>())
+        .def_readwrite("name", &CompressorSpec::name).def_readwrite("map", &CompressorSpec::map)
+        .def_readwrite("PR_des", &CompressorSpec::PR_des).def_readwrite("eff_des", &CompressorSpec::eff_des)
+        .def_readwrite("bleeds", &CompressorSpec::bleeds);
+    py::class_<TurbineSpec>(m, "TurbineSpec")
+        .def(py::init<>())
+        .def_readwrite("name", &TurbineSpec::name).def_readwrite("map", &TurbineSpec::map)
+        .def_readwrite("eff_des", &TurbineSpec::eff_des);
+    py::class_<HbtfSpec>(m, "HbtfSpec")
+        .def(py::init<>())
+        .def_readwrite("alt_m", &HbtfSpec::alt_m).def_readwrite("MN", &HbtfSpec::MN)
+        .def_readwrite("dTs_K", &HbtfSpec::dTs_K).def_readwrite("Fn_des_N", &HbtfSpec::Fn_des_N)
+        .def_readwrite("T4_max_K", &HbtfSpec::T4_max_K).def_readwrite("N_lp_des", &HbtfSpec::N_lp_des)
+        .def_readwrite("N_hp_des", &HbtfSpec::N_hp_des).def_readwrite("BPR_des", &HbtfSpec::BPR_des)
+        .def_readwrite("ram_recovery", &HbtfSpec::ram_recovery)
+        .def_readwrite("dPqP_duct4", &HbtfSpec::dPqP_duct4).def_readwrite("dPqP_duct6", &HbtfSpec::dPqP_duct6)
+        .def_readwrite("dPqP_burner", &HbtfSpec::dPqP_burner).def_readwrite("dPqP_duct11", &HbtfSpec::dPqP_duct11)
+        .def_readwrite("dPqP_duct13", &HbtfSpec::dPqP_duct13).def_readwrite("dPqP_duct15", &HbtfSpec::dPqP_duct15)
+        .def_readwrite("Cv_core", &HbtfSpec::Cv_core).def_readwrite("Cv_byp", &HbtfSpec::Cv_byp)
+        .def_readwrite("frac_byp_bleed", &HbtfSpec::frac_byp_bleed)
+        .def_readwrite("cool3_frac_W", &HbtfSpec::cool3_frac_W).def_readwrite("cool4_frac_W", &HbtfSpec::cool4_frac_W)
+        .def_readwrite("cool3_frac_P", &HbtfSpec::cool3_frac_P).def_readwrite("cool4_frac_P", &HbtfSpec::cool4_frac_P)
+        .def_readwrite("cool1_frac_P_lpt", &HbtfSpec::cool1_frac_P_lpt)
+        .def_readwrite("cool2_frac_P_lpt", &HbtfSpec::cool2_frac_P_lpt)
+        .def_readwrite("HPX_W", &HbtfSpec::HPX_W)
+        .def_readwrite("fan", &HbtfSpec::fan).def_readwrite("lpc", &HbtfSpec::lpc)
+        .def_readwrite("hpc", &HbtfSpec::hpc).def_readwrite("hpt", &HbtfSpec::hpt)
+        .def_readwrite("lpt", &HbtfSpec::lpt)
+        .def_readwrite("atm_alt_ft", &HbtfSpec::atm_alt_ft).def_readwrite("atm_T_R", &HbtfSpec::atm_T_R)
+        .def_readwrite("atm_P_psi", &HbtfSpec::atm_P_psi);
+    py::class_<Hbtf>(m, "Hbtf")
+        .def(py::init([](const std::string& mech, const std::string& mode, const std::string& air,
+                         const std::string& fuel, std::map<std::string, double> weights) {
+            return std::make_unique<Hbtf>(mech, mode == "matched" ? ThermoMode::Matched : ThermoMode::Production,
+                                          air, fuel, weights);
+        }), py::arg("mechanism"), py::arg("mode"), py::arg("air"), py::arg("fuel"),
+            py::arg("fuel_element_weights") = std::map<std::string, double>{})
+        .def_readwrite("spec", &Hbtf::spec)
+        .def("solve_design", [](Hbtf& h, std::vector<double> g) { return to_dict(h.solve_design(g)); })
+        .def("solve_offdesign", [](Hbtf& h, std::vector<double> g, double alt, double MN, double dTs,
+                                   const std::string& throttle, double target) {
+            return to_dict(h.solve_offdesign(g, alt, MN, dTs, throttle, target));
+        })
+        .def("residuals", [](Hbtf& h, const std::vector<double>& x, bool design) {
+            return h.residuals(x, design);
+        })
+        .def("design_areas", [](const Hbtf& h) {
+            return py::make_tuple(h.design.A_core, h.design.A_byp, h.design.valid);
+        })
+        .def("us1976", [](const Hbtf& h, double alt_m) {
+            return py::make_tuple(h.us1976_T(alt_m), h.us1976_P(alt_m));
+        });
     py::class_<P82Config>(m, "P82Config")
         .def(py::init<>())
         .def_readwrite("base", &P82Config::base)

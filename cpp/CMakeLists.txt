@@ -60,7 +60,8 @@ if(Python_EXECUTABLE)
   catjet_python_module(catjet_probe bindings/probe.cpp)
   catjet_python_module(catjet_core bindings/catjet_core.cpp catjet_core/v6_engine.cpp
                        catjet_core/enthalpy_turbine.cpp catjet_core/choking_nozzle.cpp
-                       catjet_core/reactor_network.cpp)
+                       catjet_core/reactor_network.cpp catjet_core/maps.cpp
+                       catjet_core/offdesign.cpp)
   # P8.1 benchmark arms 3/4 (std::thread pool; variants a, b, c)
   catjet_python_module(catjet_benchmark bindings/catjet_benchmark.cpp catjet_core/v6_engine.cpp
                        catjet_core/v6_variant.cpp)
