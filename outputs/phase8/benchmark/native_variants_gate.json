@@ -1,0 +1,300 @@
+{
+  "gate": "P8-A1.2 native variants (arms 3/4)",
+  "verdict_full": "PASS",
+  "verdict_b": "PASS",
+  "verdict_c": "PASS",
+  "rules": {
+    "full_and_b": "rtol=1e-9, atol=1e-12 per numeric output; status exact",
+    "c": "|dFF|/FF <= 1e-4, |dT4| <= 0.1 K, held-out MAPE change <= 0.01 pp"
+  },
+  "reference": "outputs/phase8/g0/*_python.csv",
+  "results": {
+    "full": {
+      "verdict": "PASS",
+      "checks": {
+        "calibration": {
+          "match": true,
+          "n_rows": 93,
+          "worst_rel_by_field": {
+            "ff": 8.105724229027421e-13,
+            "phi": 8.1110600258447e-13,
+            "thrust_kN": 2.4095189874141984e-13,
+            "tsfc_mg_Ns": 6.285265286238056e-13,
+            "T3": 1.531216858836241e-16,
+            "T4": 2.6276333500429486e-13,
+            "T5": 4.0763161791632233e-13,
+            "p3_bar": 2.0144261471481423e-16,
+            "thrust_core_kN": 9.462767384094698e-13,
+            "thrust_bypass_kN": 1.3196966797660367e-16,
+            "m_core": 1.50303169295454e-16,
+            "pi_c": 1.9094934087489587e-16,
+            "nox_corr_g_s": 1.5854278747574669e-12
+          },
+          "failures": []
+        },
+        "heldout": {
+          "match": true,
+          "n_rows": 87,
+          "worst_rel_by_field": {
+            "ff": 9.44334686719747e-13,
+            "phi": 9.456099556543203e-13,
+            "T3": 1.5688684793983359e-16,
+            "T4": 3.62161622703934e-13,
+            "T5": 4.3040358995578753e-13,
+            "m_core": 1.5466144318282885e-16,
+            "pi_c": 2.1254913346394928e-16,
+            "nox_corr_g_s": 1.8470288373791947e-12,
+            "thrust_kN": 3.624134914992894e-13
+          },
+          "failures": []
+        },
+        "ae3": {
+          "match": true,
+          "fields": {
+            "ff": true,
+            "phi": true,
+            "thrust_kN": true,
+            "tsfc_mg_Ns": true,
+            "T3": true,
+            "T4": true,
+            "T5": true,
+            "p3_bar": true,
+            "thrust_core_kN": true,
+            "thrust_bypass_kN": true,
+            "m_core": true,
+            "pi_c": true,
+            "nox_corr_g_s": true
+          }
+        }
+      }
+    },
+    "b": {
+      "verdict": "PASS",
+      "checks": {
+        "calibration": {
+          "match": true,
+          "n_rows": 93,
+          "worst_rel_by_field": {
+            "ff": 8.105724229027421e-13,
+            "phi": 8.1110600258447e-13,
+            "thrust_kN": 2.4095189874141984e-13,
+            "tsfc_mg_Ns": 6.285265286238056e-13,
+            "T3": 1.531216858836241e-16,
+            "T4": 2.41491176581516e-13,
+            "T5": 2.859566504370357e-13,
+            "p3_bar": 2.0144261471481423e-16,
+            "thrust_core_kN": 7.211975416235769e-13,
+            "thrust_bypass_kN": 1.3196966797660367e-16,
+            "m_core": 1.50303169295454e-16,
+            "pi_c": 1.9094934087489587e-16,
+            "nox_corr_g_s": 1.5854278747574669e-12
+          },
+          "failures": []
+        },
+        "heldout": {
+          "match": true,
+          "n_rows": 87,
+          "worst_rel_by_field": {
+            "ff": 9.44334686719747e-13,
+            "phi": 9.456099556543203e-13,
+            "T3": 1.5688684793983359e-16,
+            "T4": 3.62161622703934e-13,
+            "T5": 4.3040358995578753e-13,
+            "m_core": 1.5466144318282885e-16,
+            "pi_c": 2.1254913346394928e-16,
+            "nox_corr_g_s": 1.8470288373791947e-12,
+            "thrust_kN": 3.624134914992894e-13
+          },
+          "failures": []
+        },
+        "ae3": {
+          "match": true,
+          "fields": {
+            "ff": true,
+            "phi": true,
+            "thrust_kN": true,
+            "tsfc_mg_Ns": true,
+            "T3": true,
+            "T4": true,
+            "T5": true,
+            "p3_bar": true,
+            "thrust_core_kN": true,
+            "thrust_bypass_kN": true,
+            "m_core": true,
+            "pi_c": true,
+            "nox_corr_g_s": true
+          }
+        }
+      }
+    },
+    "c": {
+      "verdict": "PASS",
+      "checks": {
+        "calibration": {
+          "match": true,
+          "n_rows": 93,
+          "max_ff_relative": 1.6270388112125091e-09,
+          "max_T4_abs_K": 9.932091415976174e-08,
+          "bad_rows": []
+        },
+        "heldout": {
+          "match": true,
+          "n_rows": 87,
+          "max_ff_relative": 2.2012347434015746e-09,
+          "max_T4_abs_K": 1.417270141246263e-07,
+          "bad_rows": []
+        },
+        "ae3": {
+          "match": true,
+          "ff_relative": 2.016654115124151e-11,
+          "T4_abs_K": 7.717062544543296e-10
+        },
+        "heldout_mape": {
+          "match": true,
+          "reference_pct": 1.829751549897219,
+          "variant_c_pct": 1.8297515463994256,
+          "absolute_change_percentage_points": 3.4977933882629486e-09
+        }
+      }
+    }
+  },
+  "untimed_W3_cycle_calls": {
+    "full": [
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28,
+      25,
+      27,
+      28
+    ],
+    "b": [
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28
+    ],
+    "c": [
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28,
+      25,
+      10,
+      28
+    ]
+  },
+  "source_sha256": "2446442fbf6404f272c229c5cabf94ae6e3c3f495fc5c811583ae00a089d8522",
+  "sources": [
+    "cpp/catjet_core/v6_variant.cpp",
+    "cpp/catjet_core/v6_variant.hpp",
+    "cpp/bindings/catjet_benchmark.cpp",
+    "cpp/catjet_core/v6_engine.cpp",
+    "cpp/catjet_core/v6_engine.hpp",
+    "cpp/catjet_core/brentq.hpp"
+  ],
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}
