@@ -19,4 +19,7 @@ repeats, axis calibration, class B/C).
 | NASA TP-3411, Wing 1994 (Langley skewed-throat static nozzle) | [NTRS 19940029666](https://ntrs.nasa.gov/citations/19940029666) | not downloaded | nozzle | C-D multiaxis thrust-vectoring nozzle, NPR 2–11.5 | poor match for the fixed-area convergent P8.3 nozzle; not entered |
 | ICAO Aircraft Engine Emissions Databank, EASA "Emissions Databank (03/2026)" | easa.europa.eu/en/downloads/131424/en | 57a9ff57…69302530 | engine | tabulated | downloaded; identifier columns only read (`outputs/phase8/icao_edb_families.*`); no target column decoded |
 
-Accessed 2026-09-29 for every row.
+| NASA TP-2171, Straight & Cullom 1983 (full-scale 2-D C-D nozzle on a J85 turbojet at altitude) | [NTRS 19830018568](https://ntrs.nasa.gov/citations/19830018568) | not stored | nozzle | abstract: corrected gross thrust coefficients >= 0.985 for NPR > 4 | **reference only** (2-D C-D, fighter geometry): not entered; shows full-scale Cfg near 0.985-0.99, relevant to the P8.3 Cv = 0.95 analog prior |
+| NASA TM-2000-209948, Saiyed, Mikkelsen & Bridges 2000 (Separate Flow Nozzle Test, high-BPR core + fan convergent nozzles, model scale) | [NTRS 20000083968](https://ntrs.nasa.gov/citations/20000083968) | not stored | nozzle | thrust coefficient C_T (accuracy +-0.25 points) static and M 0.28; tables give only losses relative to baseline 3BB; absolute C_T only plotted | **needs digitisation** (baseline 3BB absolute C_T vs NPR); best-matching geometry found for P8.3 separate convergent nozzles (2026-10-01) |
+
+Accessed 2026-09-29 for every row except the two rows dated 2026-10-01.
