@@ -37,18 +37,19 @@ import compare_hbtf as C  # noqa: E402
 AE3 = "02P23RR126"
 CRECK = ROOT / "data" / "creck_c1c16_full.yaml"
 OUT_DIR = ROOT / "outputs" / "phase8" / "ladder" / "A4"
-G1_PATH = ROOT / "outputs" / "phase8" / "p84b_g1.json"
+G1_PATH = ROOT / "outputs" / "phase8" / "p84b_a1_g1.json"   # P8.4b-A1 re-run (p84b_g1.json: failed original)
 
 # registered inputs (section 3); keys are also the sensitivity knobs
 CENTRAL = {"T4_K": 1800.0, "FPR": 1.45, "ipc_share": 8.0 / 14.0,
            "eff_fan": 0.8948, "eff_ipc": 0.9243, "eff_hpc": 0.8707,
            "eff_hpt": 0.8888, "eff_ipt": 0.8888, "eff_lpt": 0.8996,
-           "duct_scale": 1.0, "cooling_scale": 1.0, "ram_recovery": 0.999}
+           "duct_scale": 1.0, "cooling_scale": 1.0, "ram_recovery": 0.999, "sm_floor": 10.0}
 RANGES = {"T4_K": (1700.0, 1900.0), "FPR": (1.40, 1.55),
           "ipc_share": (0.8 * 8 / 14, min(1.2 * 8 / 14, 0.95)),
           "eff_fan": (0.8748, 0.9148), "eff_ipc": (0.9043, 0.9443), "eff_hpc": (0.8507, 0.8907),
           "eff_hpt": (0.8688, 0.9088), "eff_ipt": (0.8688, 0.9088), "eff_lpt": (0.8796, 0.9196),
-          "duct_scale": (0.0, 2.0), "cooling_scale": (0.0, 1.0), "ram_recovery": (0.99, 1.0)}
+          "duct_scale": (0.0, 2.0), "cooling_scale": (0.0, 1.0), "ram_recovery": (0.99, 1.0),
+          "sm_floor": (5.0, 15.0)}
 DUCTS = {"dPqP_duct4": 0.0048, "dPqP_duct6": 0.0101, "dPqP_duct11": 0.0051,
          "dPqP_duct_ipt_lpt": 0.0051, "dPqP_duct13": 0.0107, "dPqP_duct15": 0.0149}
 COOLING = {"cool3_frac_W": 0.0641, "cool4_frac_W": 0.0275}
@@ -94,8 +95,31 @@ def make_engine(opr: float, bpr: float, rated_kN: float, p: dict):
         t.name, t.map, t.eff_des = attr, C.load_map(mapname), eff
         setattr(s, attr, t)
     s.eta_b = fixed_v6()["eta_b"]["TAKE-OFF"]
+    s.sm_floor_pct = p["sm_floor"]
     eng.spec = s
     return eng
+
+
+def offdesign_point(eng, x, beta, target_N):
+    """P8.4b-A1: beta = 0 first; bleed active (13th unknown) if needed."""
+    spec = eng.spec
+    spec.ipc_bleed_active = False
+    eng.spec = spec
+    r = eng.solve_offdesign(x[:12], 0.0, 0.0, 0.0, "Fn", target_N)
+    if r["converged"] and r["scalars"]["SMN_ipc"] >= spec.sm_floor_pct:
+        return r, 0.0
+    spec.ipc_bleed_active = True
+    eng.spec = spec
+    rb = eng.solve_offdesign(list(x[:12]) + [max(beta, 0.02)], 0.0, 0.0, 0.0, "Fn", target_N)
+    spec.ipc_bleed_active = False
+    eng.spec = spec
+    if rb["converged"] and rb["x"][12] >= 0.0:
+        return rb, rb["x"][12]
+    if r["converged"]:
+        r["reason"] = "bleed solve did not converge; beta = 0 point has SMN below the floor"
+        r["converged"] = False
+        return r, 0.0
+    return rb, beta
 
 
 def solve_engine(args) -> dict:
@@ -116,7 +140,7 @@ def solve_engine(args) -> dict:
          eng.spec.hpc.map.defaults["RlineMap"], sx[2], sx[3], sx[4]]
     eta = fixed_v6()["eta_b"]
     targets = sorted(((v5.MODE_X[m], m) for m in modes), reverse=True)
-    level, failed = 1.0, None
+    level, failed, beta = 1.0, None, 0.0
     for xt, mode in targets:
         spec = eng.spec
         spec.eta_b = eta[mode]
@@ -129,11 +153,11 @@ def solve_engine(args) -> dict:
         for lv in path:
             if failed:
                 break
-            r = eng.solve_offdesign(x, 0.0, 0.0, 0.0, "Fn", lv * rated * 1000.0)
+            r, beta = offdesign_point(eng, x, beta, lv * rated * 1000.0)
             if not r["converged"]:
                 failed = f"off-design at {lv:.2f} rated: {r['reason']}"
                 break
-            x = r["x"]
+            x = r["x"][:12]
             level = lv
         if failed:
             out["modes"][mode] = {"status": "unreachable", "reason": failed}
@@ -170,7 +194,7 @@ def run_g1() -> int:
         for c in clos.values()) and central["design"]["converged"])
     repro = {}
     if "TAKE-OFF" in ok_modes:
-        dx, ox = central["design"]["x"], central["modes"]["TAKE-OFF"]["x"]
+        dx, ox = central["design"]["x"], central["modes"]["TAKE-OFF"]["x"][:12]
         pairs = {"W": (dx[0], ox[0]), "FAR": (dx[1], ox[1]), "PR_hpt": (dx[2], ox[9]),
                  "PR_ipt": (dx[3], ox[10]), "PR_lpt": (dx[4], ox[11])}
         repro = {k: abs(a - b) / abs(a) for k, (a, b) in pairs.items()}
@@ -194,7 +218,9 @@ def run_g1() -> int:
             sens[f"{key}={end}:{val:g}"] = {m: (res["modes"][m].get("ff"), res["modes"][m]["status"]) for m in modes}
         print("sensitivity", key, flush=True)
     verdict = "PASS" if all(checks.values()) else "FAIL"
-    doc = {"gate": "P8.4b checks (ladder A4 pre-score)", "verdict": verdict, "checks": checks,
+    doc = {"gate": "P8.4b checks with P8.4b-A1 handling bleed (ladder A4 pre-score)", "verdict": verdict,
+           "checks": checks, "amendment": "docs/phase8_p84b_amendment_a1.md",
+           "previous_record": "outputs/phase8/p84b_g1.json (FAIL, IPC stall at 0.5 rated)",
            "ae3_inputs": {"OPR": opr, "BPR": bpr, "rated_kN": rated}, "central_inputs": CENTRAL,
            "ae3_central": central, "closures": clos, "x1_vs_design_rel": repro,
            "two_shaft_regression_max_rel": worst,
@@ -287,6 +313,8 @@ def main() -> int:
                                                  "Wfuel")} if d["converged"] else "")
     for m, r in res["modes"].items():
         print(m, r["status"], r["reason"], r.get("ff"), r.get("extrapolated"),
+              {k: round(r["scalars"][k], 4) for k in ("SMN_ipc", "handling_bleed_frac", "SMN_hpc", "SMN_fan")}
+              if "scalars" in r else "",
               {k: f"{r[k]:.0e}" for k in ("mass_closure", "energy_closure", "element_closure")} if "ff" in r else "")
     return 0
 

@@ -555,6 +555,8 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
     const double PR_hpt = design_mode ? x[2] : x[9];
     const double PR_ipt = design_mode ? x[3] : x[10];
     const double PR_lpt = design_mode ? x[4] : x[11];
+    const bool bleed_on = !design_mode && s.ipc_bleed_active;
+    const double beta = bleed_on ? x[12] : 0.0;
     bool extrap = false;
     std::vector<std::string> extrap_maps;
 
@@ -576,7 +578,7 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
     const double F_ram = W * V0;
     auto duct = [&](const Flow& f, double dPqP) { return state_hP(f.Y, f.ht, f.Pt * (1.0 - dPqP), f.W); };
 
-    struct CompOut { Flow out; double power, PR, eff, map_resid; };
+    struct CompOut { Flow out; double power, PR, eff, map_resid, smn; };
     auto compressor = [&](const CompressorSpec& c, CompressorScalars& sc, const Flow& in, double N, double Rline) {
         CompOut o{};
         const double theta = in.Tt * R_PER_K / T_STD_R, delta = in.Pt / PSI / P_STD_PSI;
@@ -591,6 +593,10 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
             sc.Wc_des = Wc;
             o.PR = c.PR_des;
             o.eff = c.eff_des;
+            // pyCycle StallCalcs.SMN on unscaled map values (P8.4b-A1)
+            std::vector<double> xs{alpha, xm[1], c.map.rline_stall};
+            o.smn = ((c.map.eval("WcMap", xm, nullptr) / c.map.eval("WcMap", xs, nullptr)) /
+                     (c.map.eval("PRmap", xm, nullptr) / c.map.eval("PRmap", xs, nullptr)) - 1.0) * 100.0;
         } else {
             bool ex = false;
             std::vector<double> xm{alpha, Nc / sc.s_Nc, Rline};
@@ -598,6 +604,9 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
             o.eff = c.map.eval("effMap", xm, &ex) * sc.s_eff;
             o.map_resid = (c.map.eval("WcMap", xm, &ex) * sc.s_Wc - Wc) / sc.Wc_des;
             if (ex) { extrap = true; extrap_maps.push_back(c.name); }
+            std::vector<double> xs{alpha, xm[1], c.map.rline_stall};
+            o.smn = ((c.map.eval("WcMap", xm, nullptr) / c.map.eval("WcMap", xs, nullptr)) /
+                     (c.map.eval("PRmap", xm, nullptr) / c.map.eval("PRmap", xs, nullptr)) - 1.0) * 100.0;
         }
         const double Pt_out = o.PR * in.Pt;
         const double h_ideal = state_SP(in.Y, in.St, Pt_out, in.W).ht;
@@ -683,6 +692,10 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
     byp_in.W = fan.out.W - core_in.W;
     Flow d_fi = duct(core_in, s.dPqP_duct4);
     CompOut ipc = compressor(s.ipc, design.ipc, d_fi, N_ip, R_ipc);
+    // P8.4b-A1 handling bleed: beta of IPC exit flow, mixed into the bypass at bypass pressure
+    Flow hbleed = ipc.out;
+    hbleed.W = beta * ipc.out.W;
+    ipc.out.W -= hbleed.W;
     Flow d_ih = duct(ipc.out, s.dPqP_duct6);
     CompOut hpc = compressor(s.hpc, design.hpc, d_ih, N_hp, R_hpc);
     Flow bld = hpc.out, cool3 = hpc.out, cool4 = hpc.out;
@@ -712,7 +725,8 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
     Flow d_ln = duct(lpt.out, s.dPqP_duct13);
     Flow byp_bld = byp_in;
     byp_bld.W = byp_in.W * (1.0 - s.frac_byp_bleed);
-    Flow d_b = duct(byp_bld, s.dPqP_duct15);
+    Flow byp_mixed = hbleed.W > 0.0 ? mix({byp_bld, hbleed}, byp_bld.Pt) : byp_bld;
+    Flow d_b = duct(byp_mixed, s.dPqP_duct15);
     NozOut core = nozzle(d_ln, s.Cd_core, s.Cv_core, design.A_core);
     NozOut byp = nozzle(d_b, s.Cd_byp, s.Cv_byp, design.A_byp);
 
@@ -739,6 +753,7 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
         r = {thr, (core.capacity - d_ln.W) / design.W_core_noz, (byp.capacity - d_b.W) / design.W_byp_noz,
              lp_net / design.P_lpt, ip_net / design.P_ipt, hp_net / design.P_hpt,
              fan.map_resid, ipc.map_resid, hpc.map_resid, hpt.map_resid, ipt.map_resid, lpt.map_resid};
+        if (bleed_on) r.push_back((ipc.smn - s.sm_floor_pct) / 100.0);
     }
     if (out) {
         auto& o = *out;
@@ -757,7 +772,9 @@ std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_m
                      {"eff_ipt", ipt.eff}, {"eff_lpt", lpt.eff}, {"A_core_m2", core.area},
                      {"A_byp_m2", byp.area}, {"core_choked", core.choked}, {"byp_choked", byp.choked},
                      {"Fg_core_N", core.Fg}, {"Fg_byp_N", byp.Fg}, {"burner_heat_rejection_W", Q_rej},
-                     {"R_fan", R_fan}, {"R_ipc", R_ipc}, {"R_hpc", R_hpc}, {"Ts0", Ts}, {"Ps0", Ps}};
+                     {"R_fan", R_fan}, {"R_ipc", R_ipc}, {"R_hpc", R_hpc}, {"Ts0", Ts}, {"Ps0", Ps},
+                     {"SMN_fan", fan.smn}, {"SMN_ipc", ipc.smn}, {"SMN_hpc", hpc.smn},
+                     {"handling_bleed_frac", beta}, {"handling_bleed_W", hbleed.W}};
         Flow dumped = byp_in;
         dumped.W = byp_in.W - byp_bld.W;
         const double W_out = d_ln.W + d_b.W + dumped.W;
@@ -880,20 +897,26 @@ SolveResult Hbtf::solve_offdesign(std::vector<double> guess, double alt_m, doubl
     if (!design.valid) throw std::invalid_argument("solve the design point first");
     if (throttle != "T4" && throttle != "Fn") throw std::invalid_argument("throttle is T4 or Fn");
     if (spec.three_shaft) {
-        if (guess.size() != 12) throw std::invalid_argument("three-shaft off-design needs 12 unknowns");
+        const size_t n_unk = spec.ipc_bleed_active ? 13 : 12;
+        if (guess.size() != n_unk) throw std::invalid_argument("three-shaft off-design: 12 unknowns (13 with handling bleed)");
         alt_ = alt_m;
         MN_ = MN;
         dTs_ = dTs_K;
         throttle_ = throttle;
         throttle_target_ = target;
         const auto& s = spec;
-        const std::vector<double> lo{1 * LBM, 1e-4, 2.0, 0.2 * s.N_lp_des, 0.2 * s.N_ip_des, 0.2 * s.N_hp_des,
-                                     s.fan.map.rline_stall, s.ipc.map.rline_stall, s.hpc.map.rline_stall,
-                                     1.001, 1.001, 1.001};
-        const std::vector<double> hi{3000 * LBM, 0.06, 20.0, 1.3 * s.N_lp_des, 1.3 * s.N_ip_des,
-                                     1.3 * s.N_hp_des, 3.0, 3.0, 3.0, 8.0, 8.0, 12.0};
-        const std::vector<double> scale{design.W_des, 0.01, 1.0, s.N_lp_des, s.N_ip_des, s.N_hp_des,
-                                        1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+        std::vector<double> lo{1 * LBM, 1e-4, 2.0, 0.2 * s.N_lp_des, 0.2 * s.N_ip_des, 0.2 * s.N_hp_des,
+                               s.fan.map.rline_stall, s.ipc.map.rline_stall, s.hpc.map.rline_stall,
+                               1.001, 1.001, 1.001};
+        std::vector<double> hi{3000 * LBM, 0.06, 20.0, 1.3 * s.N_lp_des, 1.3 * s.N_ip_des,
+                               1.3 * s.N_hp_des, 3.0, 3.0, 3.0, 8.0, 8.0, 12.0};
+        std::vector<double> scale{design.W_des, 0.01, 1.0, s.N_lp_des, s.N_ip_des, s.N_hp_des,
+                                  1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+        if (spec.ipc_bleed_active) {
+            lo.push_back(0.0);
+            hi.push_back(0.5);
+            scale.push_back(0.1);
+        }
         return newton(guess, lo, hi, scale, false);
     }
     if (guess.size() != 10) throw std::invalid_argument("off-design needs 10 unknowns");

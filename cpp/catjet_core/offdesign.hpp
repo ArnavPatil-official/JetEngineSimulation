@@ -78,6 +78,9 @@ struct HbtfSpec {
     double Cd_core = 1.0, Cd_byp = 1.0;
     double eta_b = 1.0;                 // v6 temperature-rise convention (production burner)
     double Ts_override_K = 0.0, Ps_override_Pa = 0.0;   // > 0: explicit ambient (ISA SLS)
+    // P8.4b-A1: IPC handling bleed to bypass, held at a surge-margin floor (13th unknown)
+    bool ipc_bleed_active = false;
+    double sm_floor_pct = 10.0;
 };
 
 struct CompressorScalars { double s_Nc = 1, s_PR = 1, s_eff = 1, s_Wc = 1, Wc_des = 1; };

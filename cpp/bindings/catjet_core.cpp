@@ -414,7 +414,9 @@ PYBIND11_MODULE(catjet_core, m)
         .def_readwrite("Cd_core", &HbtfSpec::Cd_core).def_readwrite("Cd_byp", &HbtfSpec::Cd_byp)
         .def_readwrite("eta_b", &HbtfSpec::eta_b)
         .def_readwrite("Ts_override_K", &HbtfSpec::Ts_override_K)
-        .def_readwrite("Ps_override_Pa", &HbtfSpec::Ps_override_Pa);
+        .def_readwrite("Ps_override_Pa", &HbtfSpec::Ps_override_Pa)
+        .def_readwrite("ipc_bleed_active", &HbtfSpec::ipc_bleed_active)
+        .def_readwrite("sm_floor_pct", &HbtfSpec::sm_floor_pct);
     py::class_<Hbtf>(m, "Hbtf")
         .def(py::init([](const std::string& mech, const std::string& mode, const std::string& air,
                          const std::string& fuel, std::map<std::string, double> weights) {
