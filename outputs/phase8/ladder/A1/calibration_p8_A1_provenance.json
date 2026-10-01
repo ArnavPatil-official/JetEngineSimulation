@@ -1,0 +1,15 @@
+{
+  "step": "A1",
+  "ablation_level": 1,
+  "git_sha": "b415ddd8a715ccb5295a6aa125b994e26f3a38e0",
+  "dirty_source": "",
+  "module_sha256": "10075c42aaa273fe7f9f269adae29ff5a0f017d0c339f0856fa4cab809d74f3b",
+  "p82_defaults": {
+    "vaporization_J_kg": 360000.0,
+    "ngv_fraction": 0.0641,
+    "rotor_fraction": 0.0275,
+    "pressure_steps": 50
+  },
+  "registration": "docs/phase8_registration.md P8-A2; docs/phase8_p82_registration.md",
+  "solver": "cpp/catjet_core/thrust_match.hpp (v6 procedure, cycle callback replaced)"
+}
