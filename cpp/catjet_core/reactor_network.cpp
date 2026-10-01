@@ -206,22 +206,28 @@ PsrState ReactorNetwork::psr(std::shared_ptr<Cantera::Solution> sol, const GasSt
     const size_t n = net.neq();
     std::vector<double> state(n), previous(n), max_state(n);
     net.getState(max_state.data());
-    for (int step = 0; step < max_steps; ++step) {
-        net.getState(previous.data());
-        for (int i = 0; i < 10; ++i) net.step();
-        net.getState(state.data());
-        double sum = 0.0;
-        for (size_t i = 0; i < n; ++i) {
-            max_state[i] = std::max(max_state[i], state[i]);
-            const double d = (state[i] - previous[i]) / (max_state[i] + atol);
-            sum += d * d;
+    try {
+        for (int step = 0; step < max_steps; ++step) {
+            net.getState(previous.data());
+            for (int i = 0; i < 10; ++i) net.step();
+            net.getState(state.data());
+            double sum = 0.0;
+            for (size_t i = 0; i < n; ++i) {
+                max_state[i] = std::max(max_state[i], state[i]);
+                const double d = (state[i] - previous[i]) / (max_state[i] + atol);
+                sum += d * d;
+            }
+            r.final_residual = std::sqrt(sum) / std::sqrt(static_cast<double>(n));
+            r.steady_iterations = step + 1;
+            if (r.final_residual < threshold) {
+                r.converged = true;
+                break;
+            }
         }
-        r.final_residual = std::sqrt(sum) / std::sqrt(static_cast<double>(n));
-        r.steady_iterations = step + 1;
-        if (r.final_residual < threshold) {
-            r.converged = true;
-            break;
-        }
+    } catch (const CanteraError& e) {
+        // Registered: a PSR that does not converge is reported, never re-initialised.
+        r.converged = false;
+        r.error = e.getMessage();
     }
     reactor->restoreState();
     auto& out = *reactor->phase()->thermo();

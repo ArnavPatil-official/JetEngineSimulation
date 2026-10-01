@@ -160,6 +160,8 @@ def main() -> int:
         dY = float(np.max(np.abs(Y_net - Y_eq)[mask]))
         g1[mode] = {"T_network": long["lean_exit"]["T"], "T_equilibrium": eq.T, "dT_K": dT,
                     "max_dY_where_Yeq_gt_1e-6": dY, "converged": long["all_converged"],
+                    "psr_errors": [z["error"][:300] for z in long["primary"] + [long["quench"]] + long["lean"]
+                                   if z["error"]],
                     "pass": bool(dT <= TOL_T and dY <= TOL_Y and long["all_converged"])}
         # (2) closure at test values, and in the long-residence run
         res = net.run(T3, P3, ma, mf, base, d)
@@ -232,6 +234,12 @@ def main() -> int:
            "G1.1": g1, "G1.2": g2, "G1.3": g3, "G1.4_quadrature_reported": g4,
            "G1.5_thermo_consistency_reported": t5, "G1.6_mechanism_spread_reported": spread,
            "diagnostic_mechanism_element_imbalance": diag, **out,
+           "previous_attempts": [
+               "attempt 1 (no record written): TAKE-OFF printed G1.1 True, G1.2 False (4.59e-07), "
+               "G1.3 False (T spread 1.2e-15); the APPROACH long-residence run then raised an "
+               "uncaught CVODES error-test failure (t = 2.31 s). Fix before this attempt: the PSR "
+               "solver now records integrator failure as non-convergence (registered reporting rule); "
+               "no tolerance or check was changed."],
            "wall_s": time.time() - t0,
            "provenance": {"git_sha": run("git", "rev-parse", "HEAD"),
                           "dirty_source": run("git", "status", "--porcelain", "--", "cpp", "scripts"),

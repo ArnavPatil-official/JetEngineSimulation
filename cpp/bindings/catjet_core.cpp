@@ -156,6 +156,7 @@ py::dict to_dict(const PsrState& z)
     d["mass_flow"] = z.mass_flow; d["volume"] = z.volume; d["residence_time"] = z.residence_time;
     d["steady_iterations"] = z.steady_iterations; d["final_residual"] = z.final_residual;
     d["converged"] = z.converged; d["extinguished"] = z.extinguished;
+    d["error"] = z.error;
     return d;
 }
 

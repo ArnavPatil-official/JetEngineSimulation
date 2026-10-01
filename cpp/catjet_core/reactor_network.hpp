@@ -44,6 +44,7 @@ struct PsrState {
     double final_residual = 0.0;
     bool converged = false;
     bool extinguished = false;
+    std::string error;  // integrator failure message, if any
 };
 
 struct NetworkResult {
