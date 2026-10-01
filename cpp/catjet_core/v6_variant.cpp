@@ -103,10 +103,10 @@ V6VariantEngine::V6VariantEngine(const std::string& mechanism, Equilibrium mode)
 
     auto products = std::make_shared<Cantera::IdealGasPhase>();
     for (const auto& name : products_only_species()) {
-        // Species is non-copyable; rebuild it from its own definition.
-        std::shared_ptr<Cantera::Species> sp = Cantera::newSpecies(eq_->species(name)->parameters(eq_.get()));
+        // Shared Species objects, as Python's ct.Solution(species=[full.species(n)...]).
+        std::shared_ptr<Cantera::Species> sp = eq_->species(name);
         for (const auto& [element, count] : sp->composition) {
-            if (products->elementIndex(element) == Cantera::npos) products->addElement(element);
+            if (products->elementIndex(element, false) == Cantera::npos) products->addElement(element);
         }
         products->addSpecies(sp);
         full_index_.push_back(eq_->speciesIndex(name));
@@ -140,7 +140,7 @@ CombustorResult V6VariantEngine::combustor_run(double T_in, double p_in, const s
     in.setEquivalenceRatio(phi, f.data(), o.data(), Cantera::ThermoBasis::molar);
     const double h_in = in.enthalpy_mass();
     auto z = [&](const char* element) {
-        const size_t m = in.elementIndex(element);
+        const size_t m = in.elementIndex(element, false);
         if (m == Cantera::npos) throw std::invalid_argument(std::string("missing element ") + element);
         return in.elementalMoleFraction(m);
     };
