@@ -1,0 +1,18 @@
+# Numerical fixture only: ideal gas with exactly constant cp for G1 limit tests.
+phases:
+- name: perfect-gas
+  thermo: ideal-gas
+  elements: [N]
+  species: [N2]
+  kinetics: none
+  state: {T: 300 K, P: 1 atm, X: {N2: 1}}
+
+species:
+- name: N2
+  composition: {N: 2}
+  thermo:
+    model: constant-cp
+    T0: 300 K
+    h0: 0 J/kmol
+    s0: 0 J/kmol/K
+    cp0: 29100 J/kmol/K

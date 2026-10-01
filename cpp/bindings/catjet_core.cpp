@@ -4,6 +4,7 @@
 // hidden-symbol recipe (cpp/CMakeLists.txt) so it coexists with the pip wheel.
 #include "../catjet_core/v6_engine.hpp"
 #include "../catjet_core/enthalpy_turbine.hpp"
+#include "../catjet_core/choking_nozzle.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -133,6 +134,19 @@ py::dict to_dict(const P82CycleResult& r)
     return d;
 }
 
+py::dict to_dict(const ChokingNozzleResult& n)
+{
+    py::dict d;
+    d["exit"] = to_dict(n.exit);
+    d["critical_pressure"] = n.critical_pressure; d["critical_mass_flux"] = n.critical_mass_flux;
+    d["area"] = n.area; d["Cd"] = n.Cd; d["Cv"] = n.Cv; d["mass_flow"] = n.mass_flow;
+    d["velocity_ideal"] = n.velocity_ideal; d["velocity"] = n.velocity;
+    d["thrust_momentum"] = n.thrust_momentum; d["thrust_pressure"] = n.thrust_pressure;
+    d["thrust_total"] = n.thrust_total; d["energy_relative"] = n.energy_relative;
+    d["choked"] = n.choked;
+    return d;
+}
+
 CombustorResult combustor_from(const py::dict& d)
 {
     CombustorResult c{};
@@ -211,6 +225,23 @@ PYBIND11_MODULE(catjet_core, m)
            py::arg("steps") = 50, py::arg("constant_cp") = 0.0,
            py::arg("constant_R") = 0.0)
         .def_property_readonly("n_species", &GasThermo::n_species);
+    py::class_<ChokingNozzle>(m, "ChokingNozzle")
+        .def(py::init<const std::string&>(), py::arg("mechanism"))
+        .def("critical_pressure", py::overload_cast<const GasState&>(&ChokingNozzle::critical_pressure))
+        .def("mass_flux", &ChokingNozzle::mass_flux)
+        .def("run", [](ChokingNozzle& n, const GasState& s, double pa, double A, double Cd, double Cv) {
+            return to_dict(n.run(s, pa, A, Cd, Cv));
+        }, py::arg("stagnation"), py::arg("ambient_pressure"), py::arg("area"),
+           py::arg("Cd"), py::arg("Cv"))
+        .def("run_dual", [](ChokingNozzle& n, const GasState& core, const GasState& bypass,
+                             double pa, double Ac, double Ab, double Cdc, double Cvc,
+                             double Cdb, double Cvb) {
+            const DualNozzleResult r = n.run_dual(core, bypass, pa, Ac, Ab, Cdc, Cvc, Cdb, Cvb);
+            py::dict d;
+            d["core"] = to_dict(r.core); d["bypass"] = to_dict(r.bypass);
+            d["thrust_total"] = r.thrust_total; d["mass_flow_total"] = r.mass_flow_total;
+            return d;
+        });
     py::class_<P82Config>(m, "P82Config")
         .def(py::init<>())
         .def_readwrite("base", &P82Config::base)

@@ -59,7 +59,7 @@ if(Python_EXECUTABLE)
 
   catjet_python_module(catjet_probe bindings/probe.cpp)
   catjet_python_module(catjet_core bindings/catjet_core.cpp catjet_core/v6_engine.cpp
-                       catjet_core/enthalpy_turbine.cpp)
+                       catjet_core/enthalpy_turbine.cpp catjet_core/choking_nozzle.cpp)
 endif()
 
 # C++ unit tests (Catch2 from the catjet-cpp env)
@@ -70,5 +70,15 @@ target_link_libraries(catjet_tests PRIVATE Catch2::Catch2WithMain)
 target_compile_definitions(catjet_tests PRIVATE
   CATJET_BRENTQ_REFERENCE="${CMAKE_CURRENT_SOURCE_DIR}/tests/brentq_reference.txt")
 target_compile_options(catjet_tests PRIVATE -ffp-contract=off)
+
+# P8.3 nozzle contract tests (standalone executable: shared Cantera is fine)
+add_executable(catjet_nozzle_tests tests/test_choking_nozzle.cpp catjet_core/choking_nozzle.cpp)
+target_include_directories(catjet_nozzle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(catjet_nozzle_tests PRIVATE cantera_dep Catch2::Catch2WithMain)
+target_compile_definitions(catjet_nozzle_tests PRIVATE
+  CATJET_PERFECT_GAS="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/perfect_gas.yaml"
+  CATJET_MECHANISM="${CMAKE_CURRENT_SOURCE_DIR}/../data/creck_c1c16_full.yaml")
+target_compile_options(catjet_nozzle_tests PRIVATE -ffp-contract=off)
 enable_testing()
 add_test(NAME catjet_tests COMMAND catjet_tests)
+add_test(NAME catjet_nozzle_tests COMMAND catjet_nozzle_tests)
