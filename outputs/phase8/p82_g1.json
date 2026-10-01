@@ -1,0 +1,438 @@
+{
+  "gate": "P8.2 G1",
+  "verdict": "PASS",
+  "checks": {
+    "G1.1_constant_cp_and_interface": true,
+    "G1.2_closure": true,
+    "G1.3_step_doubling": true,
+    "G1.4_protected_hashes": true,
+    "G1.4_g0_sources_unchanged_since_G0": true
+  },
+  "tolerances": {
+    "limit": 1e-10,
+    "closure": 1e-10,
+    "steps": 1e-08
+  },
+  "modes": {
+    "TAKE-OFF": {
+      "phi_frozen_v6": 0.3387927145669107,
+      "eta_b": 0.999893720535389,
+      "constant_cp_limit": {
+        "v6_T5": 961.8378836278739,
+        "v6_p5": 243140.83832614787,
+        "stage_T5": 961.8378836278739,
+        "stage_p5": 243140.83832614802,
+        "T_relative": 0.0,
+        "p_relative": 5.984973700241577e-16,
+        "energy_relative": 0.0,
+        "pass": true
+      },
+      "zero_cooling_interface": {
+        "T_relative": 1.3455559786469428e-16,
+        "P_relative": 0.0,
+        "mass_flow_relative": 0.0,
+        "Y_max_abs": 1.1102230246251565e-16,
+        "pass": true
+      },
+      "closure": {
+        "cases": {
+          "A1": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 1.1410313080346408e-16,
+            "max_element_relative": 9.86054807238462e-12,
+            "burner_heat_rejection_W": 11625.374762833118,
+            "stages": {}
+          },
+          "A2": {
+            "max_mass_relative": 1.3475343365403615e-16,
+            "max_energy_relative": 6.8650922188964776e-15,
+            "max_element_relative": 9.860760787036458e-12,
+            "burner_heat_rejection_W": 10560.4904345572,
+            "stages": {
+              "HP": {
+                "energy_relative": 1.2021196909494098e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 66634443.58532867,
+                "actual_work_W": 66634443.58532851
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 1.2706437241406978e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 33872189.49955013,
+                "actual_work_W": 33872189.49955008
+              }
+            }
+          },
+          "A2_zero_cooling": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 3.794795127093346e-14,
+            "max_element_relative": 9.86054807238462e-12,
+            "burner_heat_rejection_W": 11625.374762833118,
+            "stages": {
+              "HP": {
+                "energy_relative": 7.34151157193202e-16,
+                "element_relative": 0.0,
+                "requested_work_W": 66634443.58532867,
+                "actual_work_W": 66634443.585328765
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 2.9624798593138807e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 33872189.49955013,
+                "actual_work_W": 33872189.49955002
+              }
+            }
+          }
+        },
+        "worst_relative": 9.860760787036458e-12,
+        "pass": true
+      },
+      "performance": {
+        "v6": {
+          "thrust_kN": 310.89999999999907,
+          "tsfc_mg_per_Ns": 7.694136128477164
+        },
+        "A1": {
+          "thrust_kN": 310.5246584598722,
+          "tsfc_mg_per_Ns": 7.703436288144779
+        },
+        "A2": {
+          "thrust_kN": 296.7379276290119,
+          "tsfc_mg_per_Ns": 7.322926144357231
+        }
+      },
+      "step_doubling": {
+        "stages": {
+          "HP": {
+            "T_50": 1123.81876772819,
+            "T_100": 1123.8187677281896,
+            "P_50": 671990.973248648,
+            "P_100": 671990.9732657877,
+            "T_relative": 4.046447380530404e-16,
+            "P_relative": 2.5505865553462785e-11
+          },
+          "IP": {
+            "T_50": 1118.0073622010812,
+            "T_100": 1118.007362201081,
+            "P_50": 671990.973248648,
+            "P_100": 671990.9732657877,
+            "T_relative": 2.0337404129038048e-16,
+            "P_relative": 2.5505865553462785e-11
+          },
+          "LP": {
+            "T_50": 846.305492151704,
+            "T_100": 846.3054921517036,
+            "P_50": 189235.67358480248,
+            "P_100": 189235.67359034653,
+            "T_relative": 5.373323877767635e-16,
+            "P_relative": 2.929704936800529e-11
+          }
+        },
+        "worst_relative": 2.929704936800529e-11,
+        "pass": true
+      }
+    },
+    "APPROACH": {
+      "phi_frozen_v6": 0.1506845156427766,
+      "eta_b": 0.999833722706198,
+      "constant_cp_limit": {
+        "v6_T5": 662.2920627867269,
+        "v6_p5": 155339.82230735428,
+        "stage_T5": 662.2920627867269,
+        "stage_p5": 155339.82230735433,
+        "T_relative": 0.0,
+        "p_relative": 3.7471177737218033e-16,
+        "energy_relative": 0.0,
+        "pass": true
+      },
+      "zero_cooling_interface": {
+        "T_relative": 0.0,
+        "P_relative": 0.0,
+        "mass_flow_relative": 0.0,
+        "Y_max_abs": 0.0,
+        "pass": true
+      },
+      "closure": {
+        "cases": {
+          "A1": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 0.0,
+            "max_element_relative": 2.94978909177257e-11,
+            "burner_heat_rejection_W": 4889.123693328351,
+            "stages": {}
+          },
+          "A2": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 9.007430710429918e-15,
+            "max_element_relative": 2.949792720679791e-11,
+            "burner_heat_rejection_W": 4441.279963033274,
+            "stages": {
+              "HP": {
+                "energy_relative": 4.136017983125111e-16,
+                "element_relative": 0.0,
+                "requested_work_W": 18899990.566624317,
+                "actual_work_W": 18899990.566624332
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 1.927225478764469e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 4529260.966091325,
+                "actual_work_W": 4529260.966091313
+              }
+            }
+          },
+          "A2_zero_cooling": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 1.2706205740943928e-15,
+            "max_element_relative": 2.94978909177257e-11,
+            "burner_heat_rejection_W": 4889.123693328351,
+            "stages": {
+              "HP": {
+                "energy_relative": 1.0215928572742422e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 18899990.566624317,
+                "actual_work_W": 18899990.56662428
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 1.2706205740943928e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 4529260.966091325,
+                "actual_work_W": 4529260.966091317
+              }
+            }
+          }
+        },
+        "worst_relative": 2.949792720679791e-11,
+        "pass": true
+      },
+      "performance": {
+        "v6": {
+          "thrust_kN": 93.26999999998652,
+          "tsfc_mg_per_Ns": 6.931063225169284
+        },
+        "A1": {
+          "thrust_kN": 93.1225518039784,
+          "tsfc_mg_per_Ns": 6.942037717912146
+        },
+        "A2": {
+          "thrust_kN": 88.50397353484938,
+          "tsfc_mg_per_Ns": 6.635233234154889
+        }
+      },
+      "step_doubling": {
+        "stages": {
+          "HP": {
+            "T_50": 679.7207505094486,
+            "T_100": 679.720750509449,
+            "P_50": 209853.43942781602,
+            "P_100": 209853.4394312699,
+            "T_relative": 5.017656337683146e-16,
+            "P_relative": 1.6458476854050366e-11
+          },
+          "IP": {
+            "T_50": 677.1005510767953,
+            "T_100": 677.1005510767958,
+            "P_50": 209853.43942781602,
+            "P_100": 209853.4394312699,
+            "T_relative": 6.716097781389744e-16,
+            "P_relative": 1.6458476854050366e-11
+          },
+          "LP": {
+            "T_50": 611.1085085604808,
+            "T_100": 611.1085085604811,
+            "P_50": 136746.43804604682,
+            "P_100": 136746.43804830423,
+            "T_relative": 5.581013983396265e-16,
+            "P_relative": 1.650799492670286e-11
+          }
+        },
+        "worst_relative": 1.650799492670286e-11,
+        "pass": true
+      }
+    },
+    "IDLE": {
+      "phi_frozen_v6": 0.1034034920195857,
+      "eta_b": 0.9981516090869106,
+      "constant_cp_limit": {
+        "v6_T5": 575.9825125535381,
+        "v6_p5": 117258.63171380381,
+        "stage_T5": 575.9825125535381,
+        "stage_p5": 117258.63171380381,
+        "T_relative": 0.0,
+        "p_relative": 0.0,
+        "energy_relative": 3.312466563156264e-17,
+        "pass": true
+      },
+      "zero_cooling_interface": {
+        "T_relative": 0.0,
+        "P_relative": 0.0,
+        "mass_flow_relative": 0.0,
+        "Y_max_abs": 0.0,
+        "pass": true
+      },
+      "closure": {
+        "cases": {
+          "A1": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 0.0,
+            "max_element_relative": 9.046676178961263e-15,
+            "burner_heat_rejection_W": 20248.011281671468,
+            "stages": {}
+          },
+          "A2": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 2.2057519818956824e-14,
+            "max_element_relative": 9.080184990668764e-15,
+            "burner_heat_rejection_W": 18393.293448270066,
+            "stages": {
+              "HP": {
+                "energy_relative": 2.2358882051840666e-15,
+                "element_relative": 0.0,
+                "requested_work_W": 2887822.031069309,
+                "actual_work_W": 2887822.03106932
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 2.2057519818956824e-14,
+                "element_relative": 0.0,
+                "requested_work_W": 358846.9756777111,
+                "actual_work_W": 358846.9756777346
+              }
+            }
+          },
+          "A2_zero_cooling": {
+            "max_mass_relative": 0.0,
+            "max_energy_relative": 2.839641131940155e-14,
+            "max_element_relative": 9.046676178961263e-15,
+            "burner_heat_rejection_W": 20248.011281671468,
+            "stages": {
+              "HP": {
+                "energy_relative": 8.329120812338357e-16,
+                "element_relative": 0.0,
+                "requested_work_W": 2887822.031069309,
+                "actual_work_W": 2887822.031069305
+              },
+              "IP": {
+                "energy_relative": 0.0,
+                "element_relative": 0.0,
+                "requested_work_W": 0.0,
+                "actual_work_W": 0.0
+              },
+              "LP": {
+                "energy_relative": 2.839641131940155e-14,
+                "element_relative": 0.0,
+                "requested_work_W": 358846.9756777111,
+                "actual_work_W": 358846.9756777424
+              }
+            }
+          }
+        },
+        "worst_relative": 2.839641131940155e-14,
+        "pass": true
+      },
+      "performance": {
+        "v6": {
+          "thrust_kN": 21.76299999999468,
+          "tsfc_mg_per_Ns": 11.162233091166366
+        },
+        "A1": {
+          "thrust_kN": 21.69712132450631,
+          "tsfc_mg_per_Ns": 11.196124828256298
+        },
+        "A2": {
+          "thrust_kN": 20.553913260720723,
+          "tsfc_mg_per_Ns": 10.736246036905097
+        }
+      },
+      "step_doubling": {
+        "stages": {
+          "HP": {
+            "T_50": 561.6319931060023,
+            "T_100": 561.6319931060023,
+            "P_50": 121388.29728688442,
+            "P_100": 121388.29728690715,
+            "T_relative": 0.0,
+            "P_relative": 1.8725109499629394e-13
+          },
+          "IP": {
+            "T_50": 556.5621330029271,
+            "T_100": 556.5621330029271,
+            "P_50": 121388.29728688442,
+            "P_100": 121388.29728690715,
+            "T_relative": 0.0,
+            "P_relative": 1.8725109499629394e-13
+          },
+          "LP": {
+            "T_50": 546.7485996825257,
+            "T_100": 546.7485996825253,
+            "P_50": 112897.91218491118,
+            "P_100": 112897.91218493236,
+            "T_relative": 6.237976894003713e-16,
+            "P_relative": 1.8754143675032084e-13
+          }
+        },
+        "worst_relative": 1.8754143675032084e-13,
+        "pass": true
+      }
+    }
+  },
+  "notes": [
+    "Burner energy closure is definitional: heat rejection is the residual of reactant minus product enthalpy flux under the v6 eta_b convention, so it is reported, not counted as an independent closure check.",
+    "G1.4 180-row recomputation is not in this record: the v6 translation units are checked byte-identical to the G0 PASS commit, the C++ parity tests run in pytest, and the protected hashes are checked. A fresh g0_parity run was not performed in this session."
+  ],
+  "development_probe_P8.2-A2": {
+    "note": "uncommitted smoke probe before the 1e-13 HP-inversion correction",
+    "ae3_takeoff_A1_energy_relative": 1.14e-16,
+    "ae3_takeoff_A2_max_energy_relative": 1.25e-09,
+    "two_stream_mix_energy_relative": 4.5e-10
+  },
+  "provenance": {
+    "git_sha": "5d5920926f9dbfa8b8e471531043be89845ccde6",
+    "dirty_source": "?? cpp/catjet_core/choking_nozzle.cpp\n?? cpp/catjet_core/choking_nozzle.hpp\n?? cpp/tests/fixtures/\n?? cpp/tests/test_choking_nozzle.cpp",
+    "g0_commit": "74f53c8",
+    "g0_source_diff": "",
+    "mechanism_sha256": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+    "registration_sha256": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c",
+    "calibration_v6_sha256": "8e41b4102ae5a9c76e5d3a8d725be2a73dae2b7d08e2568eb3a61d6df4034dd2",
+    "frozen_rows_sha256": "e80ed0dd6585da830df75af42ce9ea1783e237af90aa095a9386a886332b86d1",
+    "cantera_cpp": "libcantera-devel 3.2.0 (catjet-cpp, cpp/conda-lock-osx-arm64.txt)",
+    "conda_lock_sha256": "286c595b64e400de246b9200ce58e7f3372647d3ed62985494c79cfcdf5b42ef",
+    "module_sha256": "960b450728dc9d570eb7dc115c7a9588f65791bdac501eb69b675f6d4d45f0f4",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "machine": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}
