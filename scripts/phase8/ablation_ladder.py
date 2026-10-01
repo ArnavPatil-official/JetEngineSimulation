@@ -186,7 +186,7 @@ def holdout(step: str, n_workers: int) -> dict:
     df.to_csv(paths[0], index=False)
     summary.to_csv(paths[1], index=False)
     v5._write_new(paths[2], v5._json(result))
-    print(f"{step} held-out: model {fields['primary_group_weighted_mape_pct']:.3f} %, "
+    print(f"{step} held-out: model {fields['primary_group_weighted_mape_pct']['model']:.3f} %, "
           f"unreachable {result['n_unreachable']}")
     return result
 
