@@ -39,7 +39,7 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | Ladder A3 (P8.3 nozzles) | **blocked (definition)** | P8.3 registration: areas frozen from a declared design-point procedure before any A3 score, and nozzle capacity is *not* matched to the imposed v6 flow until P8.4. How A3 thrust is computed at off-design rows with fixed area and imposed flow is not registered; needs a decision (see Blocked). |
 | P8.5 registration + A1 + A2 notes | `bb5b61b`, `7143e6b`, `a822e5d` | Network registered before computation; A1: C++ port of Cantera's steady loop (threshold 10 rtol), enthalpy-based PSR, sequential zones; A2: pre-G1 probe found whole-network closure C/H ~4.6e-7, traced to **7 element-imbalanced HyChem fuel reactions in the protected `A2NOx.yaml`** (2–4e-7 C/H atoms per event); G1 rules unchanged. |
 | P8.5 implementation | `a822e5d`, `2f2b57f` | Threaded network in `cpp/catjet_core/reactor_network.*`; dev builds in `cpp/build_next` (ignored) while ladder workers held `cpp/build`. |
-| P8.5 **G1** | attempt 1 crashed; attempt 2 running | Attempt 1 wrote no record: TAKE-OFF G1.1 pass, G1.2 4.59e-7 FAIL, G1.3 FAIL (strict all-species σ=0 spread; T spread 1.2e-15), then an uncaught CVODES failure in the APPROACH s=1e4 run. Fix: integrator failure reported as non-convergence (registered reporting rule). Attempt 2 so far: TAKE-OFF same; APPROACH G1.1 FAIL, G1.2 4.65e-7 FAIL, G1.3 FAIL. Expected verdict **FAIL** (closure, σ=0, long-τ at APPROACH). |
+| P8.5 **G1** | `2f2b57f` fix, record (latest commit) | **FAIL** (`outputs/phase8/p85_g1.json`). G1.1: TAKE-OFF pass (dT 9e-5 K), APPROACH CVODES failure in the s=1e4 run, IDLE dT 167 K. G1.2: elements 4.6e-7, energy up to 7e-9 (1e-10). G1.3: strict all-species spread fails on trace species (T 1e-14, Y>1e-6 5e-10). **The imbalance diagnostic contradicts P8.5-A2**: predicted C creation −5.6e-8 vs observed +7.5e-7 kg/s, so the closure error source is open. Test-value APPROACH/IDLE barely burn (eta_b ≈ 0.42, EI CO > 1000 g/kg). Attempt 1 (crash) listed in the record. Blocks P8.5 use in P8.7. |
 | P8.4 registration | `f3be816` | Two-shaft HBTF mirroring pyCycle; thermo-matched (pyCycle JANAF → Cantera NASA-9) vs production (CRECK) modes; map scaling; 10×10 off-design Newton; G1 = 0.10 % vs pyCycle in thermo-matched mode, closure audit. Trent three-shaft application = P8.4b after G1. |
 | P8.4 maps | `67eab80` | Five pyCycle 4.4.0 maps exported to `data/maps/pycycle_4.4.0/` (Apache-2.0, hashes). Map/solver C++ not yet written. |
 | P8.6 schema + vocabulary v1 + QA code/tests | `02cb627` (v2 `b7daa51`) | registered (P8-R1) before any source |
@@ -107,11 +107,12 @@ the same recipe; standalone executables may keep the shared library.
    not a closed cycle; either define A3 as "real-gas choked nozzle on the
    imposed flow with floating area" (no fixed area until A4) or merge A3
    into A4 (P8.4b matching). Scientific scope → user.
-4. **P8.5 mechanism imbalance** — protected `A2NOx.yaml` HyChem fuel
-   reactions do not conserve C/H (2–4e-7 atoms/event), so the registered
-   1e-10 closure cannot pass with it. Options: a rebalanced copy of the
-   mechanism (new data file, registered), or a registered closure tolerance
-   tied to the measured imbalance. Scientific scope → user.
+4. **P8.5 G1 FAIL** — closure (~4.6e-7), strict σ=0 spread and the
+   long-residence limit at APPROACH/IDLE failed. The A2NOx HyChem fuel
+   reactions are element-imbalanced, but the registered diagnostic shows
+   that is *not* the main cause; root cause open (next: per-PSR element
+   audit, solve_steady polish, extinction at low power). Any change to the
+   closure rule or mechanism is a scientific decision → user.
 5. **G0 re-run for G1 item 4** — reading `scripts/phase8/g0_parity.py` /
    `simulation/catjet_backend.py` was blocked by the permission classifier
    in this session, so no fresh 180-row g0_parity run is in the P8.2/P8.3
