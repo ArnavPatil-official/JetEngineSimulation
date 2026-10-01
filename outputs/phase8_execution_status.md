@@ -33,9 +33,15 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.2 **G1** | `df3a6c1` | **PASS** at AE3 TAKE-OFF, APPROACH, IDLE (`outputs/phase8/p82_g1.json`): constant-cp vs v6 T5/p5 ≤ 6e-16; A1 vs zero-cooling A2 interface ≤ 1.3e-16; worst closure 2.9e-11 (1e-10); 50→100 steps 2.9e-11 (1e-8). Burner energy closure is definitional (reported, not counted). A fresh 180-row `g0_parity` rerun is **not** in the record (v6 sources byte-identical to the G0 commit instead; see Blocked). The P8.2 compressor's ideal-outlet `setState_SP` keeps Cantera's 1e-9 default (~1e-9 precision; noted for P8.4). |
 | P8.3 implementation + **G1** | `88319ec`, `6bf7918`, `ef4e928` | Development Catch2 run failed 1/5 (mass flow 2.76e-10 off at 1e-12: `setState_SP` default 1e-9); recorded in `docs/phase8_p83_amendment_a1.md` before G1, isentrope inversion set to 1e-13. G1 **PASS** (`outputs/phase8/p83_g1.json`): constant-cp p*/p0 3.6e-15; mass-flow/force jumps at p*(1±1e-9) 1.2e-15 / 1.6e-9 (1e-8); unchoked Cd=Cv=1 vs v6 force 8.5e-14; real-gas core/bypass exit energy ≤ 5.6e-13, Y and elements unchanged. AE3 take-off core nozzle chokes (p0/pa 1.87, real-gas p*/p0 0.537). |
 | P8-A2 ladder solver fix | `b415ddd` | Before any ladder result: P8.2's thrust solve replaced by `thrust_match.hpp`, a template copy of the v6 solve; pytest proves it identical to `V6Engine::run_at_thrust` (phi, evaluation count, fuel flow, reasons) at AE3 three modes, cold/warm, above/below range. |
-| Ladder A1 calibration | running | `scripts/phase8/ablation_ladder.py --step A1 --phase calibrate` (frozen `lto_v6.run_calibration`, 6 workers). Held-out scoring only after the fitted parameters are committed. |
-| Ladder A2 | queued after A1 | same procedure, level 2. |
+| Ladder A1 calibration | `5e03692` | Frozen `lto_v6.run_calibration`, P8.2 level 1: selected polish_from_v5_A2, SSE 4.5887e-4 (v6 4.5708e-4), in-sample MAPE 1.786 % (v6 1.785 %), W_ref 103.474, a_thrust 1.10891, k_pi 1.34377, k_mdot 0.414514, 0 unreachable; TPE candidate SSE 8.2e-3. Took 74 min vs v6's 11 min for a similar evaluation count (not profiled yet). |
+| Ladder **A1 held-out** (scored once) | `99a0578` | **1.835 %** vs v6 1.830 %, B0 2.189 %, B1 1.076 %. Take-off 1.724, approach 1.917, idle 1.863 (B1 0.579 / 0.855 / 1.795). A2 skill FAIL, A3 approach-sign FAIL (as v6). 0 unreachable. |
+| Ladder A2 calibration | attempt 1 stopped | Stopped by the executor at 02:21Z (Mac on battery, ~35 min left; run needs >1 h). `calibration_p8_A2_attempt1_incomplete_provenance.json` kept; no parameters produced. Restart on AC: `ablation_ladder.py --step A2 --phase calibrate`. |
 | Ladder A3 (P8.3 nozzles) | **blocked (definition)** | P8.3 registration: areas frozen from a declared design-point procedure before any A3 score, and nozzle capacity is *not* matched to the imposed v6 flow until P8.4. How A3 thrust is computed at off-design rows with fixed area and imposed flow is not registered; needs a decision (see Blocked). |
+| P8.5 registration + A1 + A2 notes | `bb5b61b`, `7143e6b`, `a822e5d` | Network registered before computation; A1: C++ port of Cantera's steady loop (threshold 10 rtol), enthalpy-based PSR, sequential zones; A2: pre-G1 probe found whole-network closure C/H ~4.6e-7, traced to **7 element-imbalanced HyChem fuel reactions in the protected `A2NOx.yaml`** (2–4e-7 C/H atoms per event); G1 rules unchanged. |
+| P8.5 implementation | `a822e5d`, `2f2b57f` | Threaded network in `cpp/catjet_core/reactor_network.*`; dev builds in `cpp/build_next` (ignored) while ladder workers held `cpp/build`. |
+| P8.5 **G1** | attempt 1 crashed; attempt 2 running | Attempt 1 wrote no record: TAKE-OFF G1.1 pass, G1.2 4.59e-7 FAIL, G1.3 FAIL (strict all-species σ=0 spread; T spread 1.2e-15), then an uncaught CVODES failure in the APPROACH s=1e4 run. Fix: integrator failure reported as non-convergence (registered reporting rule). Attempt 2 so far: TAKE-OFF same; APPROACH G1.1 FAIL, G1.2 4.65e-7 FAIL, G1.3 FAIL. Expected verdict **FAIL** (closure, σ=0, long-τ at APPROACH). |
+| P8.4 registration | `f3be816` | Two-shaft HBTF mirroring pyCycle; thermo-matched (pyCycle JANAF → Cantera NASA-9) vs production (CRECK) modes; map scaling; 10×10 off-design Newton; G1 = 0.10 % vs pyCycle in thermo-matched mode, closure audit. Trent three-shaft application = P8.4b after G1. |
+| P8.4 maps | `67eab80` | Five pyCycle 4.4.0 maps exported to `data/maps/pycycle_4.4.0/` (Apache-2.0, hashes). Map/solver C++ not yet written. |
 | P8.6 schema + vocabulary v1 + QA code/tests | `02cb627` (v2 `b7daa51`) | registered (P8-R1) before any source |
 | P8-R1b empirical vocabulary v3 | `55be484` | registered FAR, chemical combustion efficiency, total/static turbine PR and corrected torque before entering the newly inspected GE E3 core/LPT/HPT sources or digitised TN D-6967 points |
 | P8.6 source 1: NASA CR-168189 (E3 HPT cooled rig, Table 5.3.1-II) | `2a4a0f4` | entered: 23 test points, 191 observations, class A, QA 0 issues; transcription cross-checked against the table's SI and clearance-adjusted columns |
@@ -87,3 +93,26 @@ give bit-identical HP-equilibrium T at the AE3 take-off inlet
 The module still binds conda's own `libfmt` (the fmt that `libcantera.a` was
 built against), which is correct. Every future `catjet_core` module must use
 the same recipe; standalone executables may keep the shared library.
+
+## Blocked / needs the user (2026-10-01)
+
+1. **AC power.** Benchmark run 2 (56 runs) is armed and waits for mains power
+   (registered protocol); ladder A2 calibration also needs > 1 h. The Mac has
+   been on battery since the session started.
+2. **C3 family split** — only 15 eligible direct-drive families vs the
+   required ≥ 8 held-out + ≥ 8 calibration (16). Options: admit geared
+   turbofans (solver support = a gearbox speed ratio on the LP shaft, P8.4b),
+   or relax the in-production rule. Scientific scope → user.
+3. **Ladder A3 definition** — fixed-area nozzles with imposed v6 flows are
+   not a closed cycle; either define A3 as "real-gas choked nozzle on the
+   imposed flow with floating area" (no fixed area until A4) or merge A3
+   into A4 (P8.4b matching). Scientific scope → user.
+4. **P8.5 mechanism imbalance** — protected `A2NOx.yaml` HyChem fuel
+   reactions do not conserve C/H (2–4e-7 atoms/event), so the registered
+   1e-10 closure cannot pass with it. Options: a rebalanced copy of the
+   mechanism (new data file, registered), or a registered closure tolerance
+   tied to the measured imbalance. Scientific scope → user.
+5. **G0 re-run for G1 item 4** — reading `scripts/phase8/g0_parity.py` /
+   `simulation/catjet_backend.py` was blocked by the permission classifier
+   in this session, so no fresh 180-row g0_parity run is in the P8.2/P8.3
+   G1 records (v6 sources byte-identical to the G0 commit instead).
