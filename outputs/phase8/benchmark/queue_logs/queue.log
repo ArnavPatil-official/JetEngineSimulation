@@ -1,0 +1,8 @@
+2026-10-01T00:14:13Z start arm1a_W1_1w
+2026-10-01T00:14:23Z end arm1a_W1_1w exit=0
+2026-10-01T00:14:23Z start arm1a_W2_1w
+2026-10-01T00:46:30Z end arm1a_W2_1w exit=0
+2026-10-01T00:46:30Z start arm1a_W3_1w
+2026-10-01T00:48:03Z end arm1a_W3_1w exit=0
+2026-10-01T00:48:03Z start arm1a_W4_1w
+2026-10-01T00:49:28Z queue stopped by executor: Mac on battery (47%, discharging); arm1a_W4_1w interrupted; battery runs superseded by an AC-only rerun

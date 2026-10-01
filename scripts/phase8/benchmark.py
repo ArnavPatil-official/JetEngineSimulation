@@ -105,17 +105,21 @@ def inputs(points: int) -> dict:
             "fuel": lto_v6.fuel_composition(reg)}
 
 
-def model_for(arm: int, variant: str, workers: int, data: dict):
+def model_for(arm: int, variant: str, workers: int, data: dict, native: bool = False):
     if arm == 1 and variant == "a":
         return make_model_v6("python", n_workers=workers)
     if arm == 2 and variant in ("a", "b", "c"):
         return OptimizedModel(data["reg"]["fixed_central"],
                               data["split"]["heldout_models"], n_workers=workers,
                               fuel=data["fuel"], variant=variant)
-    if arm == 3 and variant == "a":
+    if arm == 3 and variant == "a" and not native:
         return make_model_v6("cpp", n_workers=1)
-    if arm == 4 and variant == "a":
-        return NativeModel(data, n_threads=11)
+    # Arm 3 b/c (and the labelled arm-3a native run) use the one-thread native
+    # pool, so their difference from each other is not Python dispatch.
+    if arm == 3:
+        return NativeModel(data, n_threads=1, variant=variant)
+    if arm == 4:
+        return NativeModel(data, n_threads=11, variant=variant)
     raise ValueError(f"arm {arm} variant {variant} is not implemented; no timing will be labelled as it")
 
 
@@ -196,7 +200,7 @@ class NativeModel:
                      "P_ambient", "T_ambient", "eta_c", "eta_polytropic",
                      "nox_A", "nox_B", "nox_C")
 
-    def __init__(self, data: dict, n_threads: int):
+    def __init__(self, data: dict, n_threads: int, variant: str = "a"):
         from integrated_engine import LocalFuelBlend
         from simulation.catjet_backend import CppEngine
 
@@ -209,7 +213,7 @@ class NativeModel:
         fuel = LocalFuelBlend("blend", data["fuel"])
         fuel_string, fuel_species = adapter.fuel_args(fuel)
         self.pool = catjet_benchmark.NativePool(adapter.mechanism, fuel_string,
-                                               fuel_species, n_threads)
+                                               fuel_species, n_threads, variant)
         self.n_threads = n_threads
         self.jobs = {}
         self.row_positions = {}
@@ -251,9 +255,14 @@ class NativeModel:
 
     def cycle_counts(self, workload: str) -> list[dict]:
         unique = list(self.pool.run_many(self.jobs[workload]))
+        # "cycle_calls" (copied engine) counts failed probes too; for V6Engine
+        # variant b a failed probe's evaluations are not observable here.
         return [{"status": row["status"],
-                 "actual_cycle_calls": row.get("n_cycle_evaluations"),
-                 "reported_unique_evaluations": row.get("n_cycle_evaluations")}
+                 "actual_cycle_calls": row.get("cycle_calls",
+                                               None if row.get("probe_failed") or row["status"] != "converged"
+                                               else row.get("n_cycle_evaluations")),
+                 "reported_unique_evaluations": row.get("n_cycle_evaluations"),
+                 "probe_failed": row.get("probe_failed")}
                 for row in unique]
 
 
@@ -336,7 +345,13 @@ def _json_safe(value):
     raise TypeError(type(value).__name__)
 
 
+def _power_source() -> str | None:
+    out = _command("pmset", "-g", "ps")
+    return out.splitlines()[0] if out else None
+
+
 def _write_line(path: Path, obj: dict) -> None:
+    obj = {"t_unix": time.time(), **obj}
     with path.open("a") as f:
         f.write(json.dumps(obj, default=_json_safe, allow_nan=True) + "\n")
         f.flush()
@@ -367,6 +382,8 @@ def main() -> int:
     ap.add_argument("--repeats", type=int, default=5)
     ap.add_argument("--points", type=int, default=1000)
     ap.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--native", action="store_true",
+                    help="arm 3 variant a on the one-thread native pool (labelled supplementary run)")
     a = ap.parse_args()
     if a.arm in (3, 4) and a.workers != 1 and a.arm == 3:
         ap.error("arm 3 is the one-thread C++ core")
@@ -376,9 +393,16 @@ def main() -> int:
         ap.error("repeats and points must be positive")
     if a.arm == 1 and a.variant != "a":
         ap.error("arm 1 has variant a only")
+    if a.native and not (a.arm == 3 and a.variant == "a"):
+        ap.error("--native labels only the arm-3 variant-a supplementary run")
     if a.arm in (3, 4) and a.variant in ("b", "c"):
-        ap.error("this variant is not yet implemented; refusing to report another path under its label")
-    if a.variant == "c":
+        gate = ROOT / "outputs/phase8/benchmark/native_variants_gate.json"
+        record = json.loads(gate.read_text()) if gate.is_file() else {}
+        from verify_native_variants import source_sha256 as native_sha
+        if record.get("verdict_" + a.variant) != "PASS" or record.get("source_sha256") != native_sha():
+            ap.error(f"native variant {a.variant} must pass its registered 180-row/AE3 gate "
+                     "on the current native sources first")
+    if a.variant == "c" and a.arm == 2:
         # arm2c_gate.json predates a later uncommitted edit of v6_optimized.py;
         # only a gate recording the current source hash certifies variant c.
         from verify_c import source_sha256
@@ -396,7 +420,7 @@ def main() -> int:
         except ImportError as exc:
             ap.error(f"build the registered std::thread batch module before arm 4: {exc}")
 
-    run_name = f"arm{a.arm}{a.variant}_{a.workload}_{a.workers}w"
+    run_name = f"arm{a.arm}{a.variant}{'-native' if a.native else ''}_{a.workload}_{a.workers}w"
     run_dir = a.out_dir / run_name
     if run_dir.exists():
         ap.error(f"{run_dir} exists; output is write-once")
@@ -413,6 +437,9 @@ def main() -> int:
         "registration": "docs/phase8_registration.md section 4, amendment P8-A1",
         "arm": a.arm, "variant": a.variant, "workload": a.workload,
         "workers": a.workers, "repeats": a.repeats, "warmups": 1,
+        "implementation": ("python v6" if a.arm == 1 else "optimized python" if a.arm == 2
+                           else "C++ via python worker" if a.arm == 3 and a.variant == "a" and not a.native
+                           else f"C++ native std::thread pool, {1 if a.arm == 3 else 11} thread(s)"),
         "sobol_points": a.points if a.workload == "W4" else None,
         "registered_protocol": a.repeats == 5 and a.points == 1000,
         "git_sha": _command("git", "rev-parse", "HEAD"),
@@ -427,7 +454,9 @@ def main() -> int:
     comparisons = []
     count_summary = None
     verdict = "PASS"
-    model = model_for(a.arm, a.variant, a.workers, data)
+    _write_line(progress, {"phase": "model_create_start", "power": _power_source()})
+    model = model_for(a.arm, a.variant, a.workers, data, native=a.native)
+    _write_line(progress, {"phase": "model_created"})
     try:
         for rep in range(a.repeats + 1):
             load_before = os.getloadavg()
@@ -447,6 +476,7 @@ def main() -> int:
                 samples.append(elapsed)
             _write_line(progress, {"repeat": rep, "warmup": rep == 0, "wall_s": elapsed,
                                    "loadavg_before": load_before, "loadavg_after": load_after,
+                                   "power": _power_source(),
                                    "score": score, "output_match": ok,
                                    "n_unreachable": sum(r["status"] == "unreachable" for r in records)})
             print(f"{run_name} {'warmup' if rep == 0 else f'repeat {rep}'}: "
@@ -454,6 +484,7 @@ def main() -> int:
             if not ok:
                 break
         if verdict == "PASS":
+            _write_line(progress, {"phase": "untimed_cycle_counts_start"})
             if isinstance(model, NativeModel):
                 counts = model.cycle_counts(a.workload)
             else:

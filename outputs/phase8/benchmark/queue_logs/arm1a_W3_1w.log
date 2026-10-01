@@ -1,0 +1,7 @@
+arm1a_W3_1w warmup: 18.735s, output PASS
+arm1a_W3_1w repeat 1: 12.117s, output PASS
+arm1a_W3_1w repeat 2: 12.130s, output PASS
+arm1a_W3_1w repeat 3: 12.137s, output PASS
+arm1a_W3_1w repeat 4: 12.179s, output PASS
+arm1a_W3_1w repeat 5: 12.137s, output PASS
+arm1a_W3_1w: PASS, median 12.136528834002092 s, 3.2134394054036552 solves/s

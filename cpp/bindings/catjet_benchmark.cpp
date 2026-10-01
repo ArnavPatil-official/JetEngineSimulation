@@ -2,6 +2,7 @@
 // Python model are unchanged. Each worker owns one V6Engine/Cantera state.
 // Pool and engine construction occur before the benchmark warm-up.
 #include "../catjet_core/v6_engine.hpp"
+#include "../catjet_core/v6_variant.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -22,6 +23,7 @@ using catjet::AtThrustResult;
 using catjet::ThrustTargetUnreachable;
 using catjet::V6Config;
 using catjet::V6Engine;
+using catjet::V6VariantEngine;
 
 namespace {
 
@@ -36,7 +38,28 @@ struct Answer {
     std::string reason;
     AtThrustResult solved{};
     std::exception_ptr error;
+    bool probe_failed = false;
+    long cycle_calls = -1;  // every cycle call incl. failed probes; -1 = not counted
 };
+
+// P8-A1.2 variant b bracket, identical to scripts/phase8/v6_optimized.py:
+// a narrower cold probe solve; any unreachable probe falls back to the
+// registered cold (0.05, 1.0) solve, which then decides result and reason.
+template <class Engine>
+AtThrustResult solve_with_probe(Engine& engine, const Job& job, const std::string& fuel,
+                                const std::vector<std::string>& species, bool& probe_failed)
+{
+    const double pi_c = job.cfg.pi_c;
+    const double probe = pi_c >= 20.0 ? 0.20 : (pi_c >= 5.0 ? 0.10 : -1.0);
+    if (probe > 0.0) {
+        try {
+            return engine.run_at_thrust(job.target_kN, fuel, species, job.eta_b, probe, 1.0);
+        } catch (const ThrustTargetUnreachable&) {
+            probe_failed = true;
+        }
+    }
+    return engine.run_at_thrust(job.target_kN, fuel, species, job.eta_b);
+}
 
 V6Config parse_config(const py::dict& d)
 {
@@ -69,6 +92,7 @@ py::dict as_row(const Answer& answer, const Job& job)
         d["reason"] = answer.reason;
         d["ff"] = std::numeric_limits<double>::quiet_NaN();
         d["phi"] = std::numeric_limits<double>::quiet_NaN();
+        if (answer.cycle_calls >= 0) d["cycle_calls"] = answer.cycle_calls;
         return d;
     }
     const auto& r = answer.solved;
@@ -89,25 +113,43 @@ py::dict as_row(const Answer& answer, const Job& job)
     d["pi_c"] = job.cfg.pi_c;
     d["nox_corr_g_s"] = c.nox_g_s;
     d["n_cycle_evaluations"] = r.match.n_cycle_evaluations;
+    d["probe_failed"] = answer.probe_failed;
+    if (answer.cycle_calls >= 0) d["cycle_calls"] = answer.cycle_calls;
     return d;
 }
 
 class NativePool {
 public:
+    // variant: "a" V6Engine; "b" V6Engine + probe; "c" products-only copy +
+    // probe; "full" the copied engine with full equilibrium and no probe
+    // (untimed faithfulness check of the copy against "a").
     NativePool(const std::string& mechanism, const std::string& fuel,
-               const std::vector<std::string>& fuel_species, unsigned int n_threads)
-        : fuel_(fuel), fuel_species_(fuel_species)
+               const std::vector<std::string>& fuel_species, unsigned int n_threads,
+               const std::string& variant)
+        : fuel_(fuel), fuel_species_(fuel_species), variant_(variant)
     {
         if (n_threads == 0) throw std::invalid_argument("n_threads must be positive");
+        if (variant != "a" && variant != "b" && variant != "c" && variant != "full") {
+            throw std::invalid_argument("variant must be a, b, c or full");
+        }
         // Cantera mechanism construction is done serially before any worker
         // thread starts; it is excluded from every timed repeat.
         std::vector<std::unique_ptr<V6Engine>> engines;
-        engines.reserve(n_threads);
+        std::vector<std::unique_ptr<V6VariantEngine>> copies;
         for (unsigned int i = 0; i < n_threads; ++i) {
-            engines.push_back(std::make_unique<V6Engine>(mechanism));
+            if (variant == "a" || variant == "b") {
+                engines.push_back(std::make_unique<V6Engine>(mechanism));
+                copies.push_back(nullptr);
+            } else {
+                engines.push_back(nullptr);
+                copies.push_back(std::make_unique<V6VariantEngine>(mechanism,
+                    variant == "c" ? V6VariantEngine::Equilibrium::ProductsOnly
+                                   : V6VariantEngine::Equilibrium::Full));
+            }
         }
         for (unsigned int i = 0; i < n_threads; ++i) {
-            workers_.emplace_back(&NativePool::worker, this, std::move(engines[i]));
+            workers_.emplace_back(&NativePool::worker, this, std::move(engines[i]),
+                                  std::move(copies[i]));
         }
     }
 
@@ -160,7 +202,7 @@ public:
     unsigned int n_threads() const { return static_cast<unsigned int>(workers_.size()); }
 
 private:
-    void worker(std::unique_ptr<V6Engine> engine)
+    void worker(std::unique_ptr<V6Engine> engine, std::unique_ptr<V6VariantEngine> copy)
     {
         size_t seen = 0;
         for (;;) {
@@ -175,15 +217,30 @@ private:
                 if (i >= jobs_->size()) break;
                 const auto& job = (*jobs_)[i];
                 auto& answer = (*answers_)[i];
+                const long calls_before = copy ? copy->cycle_calls : 0;
                 try {
-                    engine->config = job.cfg;
-                    answer.solved = engine->run_at_thrust(job.target_kN, fuel_, fuel_species_, job.eta_b);
+                    if (variant_ == "a") {
+                        engine->config = job.cfg;
+                        answer.solved = engine->run_at_thrust(job.target_kN, fuel_, fuel_species_, job.eta_b);
+                    } else if (variant_ == "b") {
+                        engine->config = job.cfg;
+                        answer.solved = solve_with_probe(*engine, job, fuel_, fuel_species_,
+                                                         answer.probe_failed);
+                    } else if (variant_ == "c") {
+                        copy->config = job.cfg;
+                        answer.solved = solve_with_probe(*copy, job, fuel_, fuel_species_,
+                                                         answer.probe_failed);
+                    } else {
+                        copy->config = job.cfg;
+                        answer.solved = copy->run_at_thrust(job.target_kN, fuel_, fuel_species_, job.eta_b);
+                    }
                     answer.reachable = true;
                 } catch (const ThrustTargetUnreachable& exc) {
                     answer.reason = exc.reason;
                 } catch (...) {
                     answer.error = std::current_exception();
                 }
+                if (copy) answer.cycle_calls = copy->cycle_calls - calls_before;
             }
             {
                 std::lock_guard<std::mutex> lock(mutex_);
@@ -194,6 +251,7 @@ private:
 
     const std::string fuel_;
     const std::vector<std::string> fuel_species_;
+    const std::string variant_;
     std::vector<std::thread> workers_;
     std::mutex mutex_;
     std::condition_variable cv_, done_;
@@ -211,9 +269,9 @@ PYBIND11_MODULE(catjet_benchmark, m)
     m.doc() = "P8.1 v6 benchmark std::thread batch pool";
     py::class_<NativePool>(m, "NativePool")
         .def(py::init<const std::string&, const std::string&,
-                      const std::vector<std::string>&, unsigned int>(),
+                      const std::vector<std::string>&, unsigned int, const std::string&>(),
              py::arg("mechanism"), py::arg("fuel"), py::arg("fuel_species"),
-             py::arg("n_threads"))
+             py::arg("n_threads"), py::arg("variant") = "a")
         .def("run_many", &NativePool::run_many)
         .def_property_readonly("n_threads", &NativePool::n_threads);
 }
