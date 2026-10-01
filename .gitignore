@@ -11,3 +11,4 @@ cpp/build/
 data/empirical/pdf/
 # Phase 8 raw third-party data (edition and sha256 recorded in outputs/phase8 and data/empirical/acquisition_log.md)
 data/empirical/raw/
+cpp/build_next/

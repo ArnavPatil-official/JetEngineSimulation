@@ -6,6 +6,7 @@
 #include "../catjet_core/enthalpy_turbine.hpp"
 #include "../catjet_core/choking_nozzle.hpp"
 #include "../catjet_core/thrust_match.hpp"
+#include "../catjet_core/reactor_network.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -148,6 +149,35 @@ py::dict to_dict(const ChokingNozzleResult& n)
     return d;
 }
 
+py::dict to_dict(const PsrState& z)
+{
+    py::dict d;
+    d["inlet"] = to_dict(z.inlet); d["outlet"] = to_dict(z.outlet);
+    d["mass_flow"] = z.mass_flow; d["volume"] = z.volume; d["residence_time"] = z.residence_time;
+    d["steady_iterations"] = z.steady_iterations; d["final_residual"] = z.final_residual;
+    d["converged"] = z.converged; d["extinguished"] = z.extinguished;
+    return d;
+}
+
+py::dict to_dict(const NetworkResult& r)
+{
+    py::dict d;
+    d["exit"] = to_dict(r.exit); d["lean_exit"] = to_dict(r.lean_exit);
+    d["mass_flow_exit"] = r.mass_flow_exit; d["eta_b"] = r.eta_b;
+    d["EI_NOx_g_kg"] = r.EI_NOx_g_kg; d["EI_CO_g_kg"] = r.EI_CO_g_kg; d["EI_UHC_g_kg"] = r.EI_UHC_g_kg;
+    d["phi_pz"] = r.phi_pz; d["alpha_pz"] = r.alpha_pz; d["alpha_qq"] = r.alpha_qq;
+    d["alpha_dil"] = r.alpha_dil; d["phi_k"] = r.phi_k;
+    py::list primary, lean;
+    for (const auto& z : r.primary) primary.append(to_dict(z));
+    for (const auto& z : r.lean) lean.append(to_dict(z));
+    d["primary"] = primary; d["quench"] = to_dict(r.quench); d["lean"] = lean;
+    d["energy_relative"] = r.energy_relative; d["element_relative"] = r.element_relative;
+    d["max_mixer_energy_relative"] = r.max_mixer_energy_relative;
+    d["max_mixer_element_relative"] = r.max_mixer_element_relative;
+    d["all_converged"] = r.all_converged; d["any_extinguished"] = r.any_extinguished;
+    return d;
+}
+
 CombustorResult combustor_from(const py::dict& d)
 {
     CombustorResult c{};
@@ -265,6 +295,44 @@ PYBIND11_MODULE(catjet_core, m)
         return d;
     }, py::arg("engine"), py::arg("target_kN"), py::arg("fuel"), py::arg("fuel_species"),
        py::arg("combustor_efficiency"), py::arg("phi_guess") = py::none());
+    py::class_<NetworkParams>(m, "NetworkParams")
+        .def(py::init<>())
+        .def_readwrite("phi_pz_design", &NetworkParams::phi_pz_design)
+        .def_readwrite("sigma_rel", &NetworkParams::sigma_rel)
+        .def_readwrite("alpha_qq", &NetworkParams::alpha_qq)
+        .def_readwrite("volume_scale", &NetworkParams::volume_scale)
+        .def_readwrite("K", &NetworkParams::K)
+        .def_readwrite("n_lean", &NetworkParams::n_lean)
+        .def_readwrite("no_dilution", &NetworkParams::no_dilution);
+    py::class_<NetworkDesign>(m, "NetworkDesign")
+        .def(py::init<>())
+        .def_readwrite("alpha_pz", &NetworkDesign::alpha_pz)
+        .def_readwrite("V_ref", &NetworkDesign::V_ref)
+        .def_readwrite("far_st", &NetworkDesign::far_st)
+        .def_readwrite("rho_mean", &NetworkDesign::rho_mean);
+    m.def("gauss_hermite", [](int K) {
+        std::vector<double> x, w;
+        gauss_hermite(K, x, w);
+        return py::make_tuple(x, w);
+    });
+    py::class_<ReactorNetwork>(m, "ReactorNetwork")
+        .def(py::init<const std::string&, const std::string&, int>(), py::arg("mechanism"),
+             py::arg("fuel") = "POSF10325", py::arg("n_solutions") = 9)
+        .def("design", &ReactorNetwork::design, py::arg("T3"), py::arg("P3"), py::arg("m_air"),
+             py::arg("m_fuel"), py::arg("params"), py::arg("pressure_loss") = 0.045)
+        .def("run", [](ReactorNetwork& n, double T3, double P3, double ma, double mf,
+                       const NetworkParams& p, const NetworkDesign& d, double dp) {
+            NetworkResult r;
+            {
+                py::gil_scoped_release release;
+                r = n.run(T3, P3, ma, mf, p, d, dp);
+            }
+            return to_dict(r);
+        }, py::arg("T3"), py::arg("P3"), py::arg("m_air"), py::arg("m_fuel"), py::arg("params"),
+           py::arg("design"), py::arg("pressure_loss") = 0.045)
+        .def("equilibrium", &ReactorNetwork::equilibrium)
+        .def("lhv_mass", &ReactorNetwork::lhv_mass)
+        .def("species_names", &ReactorNetwork::species_names);
     py::class_<P82Config>(m, "P82Config")
         .def(py::init<>())
         .def_readwrite("base", &P82Config::base)
