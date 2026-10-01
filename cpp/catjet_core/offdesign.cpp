@@ -131,6 +131,7 @@ Hbtf::Hbtf(const std::string& mechanism, ThermoMode mode, const std::string& air
     }
     Y_air_.resize(nk);
     gas_->getMassFractions(Y_air_.data());
+    if (mode_ == ThermoMode::Production) p83_ = std::make_unique<ChokingNozzle>(mechanism);
 }
 
 double Hbtf::us1976_T(double alt_m) const
@@ -535,6 +536,261 @@ std::vector<double> Hbtf::residuals(const std::vector<double>& x, bool design_mo
     return r;
 }
 
+// P8.4b three-shaft separate-flow turbofan (docs/phase8_p84b_registration.md).
+// Element equations are the same as residuals() (two-shaft, P8.4 G1); the
+// two-shaft function is kept unchanged so its verified result cannot move.
+std::vector<double> Hbtf::residuals3(const std::vector<double>& x, bool design_mode, CycleOutputs* out)
+{
+    const HbtfSpec& s = spec;
+    const double alt = design_mode ? s.alt_m : alt_;
+    const double MN = design_mode ? s.MN : MN_;
+    const double dTs = design_mode ? s.dTs_K : dTs_;
+    const double W = x[0], FAR = x[1];
+    const double BPR = design_mode ? s.BPR_des : x[2];
+    const double N_lp = design_mode ? s.N_lp_des : x[3];
+    const double N_ip = design_mode ? s.N_ip_des : x[4];
+    const double N_hp = design_mode ? s.N_hp_des : x[5];
+    const double R_fan = design_mode ? 0.0 : x[6], R_ipc = design_mode ? 0.0 : x[7];
+    const double R_hpc = design_mode ? 0.0 : x[8];
+    const double PR_hpt = design_mode ? x[2] : x[9];
+    const double PR_ipt = design_mode ? x[3] : x[10];
+    const double PR_lpt = design_mode ? x[4] : x[11];
+    bool extrap = false;
+    std::vector<std::string> extrap_maps;
+
+    const double Ts = s.Ts_override_K > 0.0 ? s.Ts_override_K : us1976_T(alt) + dTs;
+    const double Ps = s.Ps_override_Pa > 0.0 ? s.Ps_override_Pa : us1976_P(alt);
+    Flow stat = state_TP(Y_air_, Ts, Ps, W);
+    const double V0 = MN * sound_speed(stat.Y, stat.St, Ps);
+    const double ht0 = stat.ht + 0.5 * V0 * V0;
+    double Pt0 = Ps;
+    if (MN > 0.0) {
+        auto f = [&](double P) { return state_SP(stat.Y, stat.St, P, W).ht - ht0; };
+        double hiP = Ps * 1.5;
+        while (f(hiP) < 0.0) hiP *= 1.5;
+        Pt0 = brentq(f, Ps, hiP, 1e-12 * Ps);
+    }
+    Flow fc = state_SP(stat.Y, stat.St, Pt0, W);
+    const double ram = MN < 1.0 ? s.ram_recovery : s.ram_recovery * (1 - 0.075 * std::pow(MN - 1, 1.35));
+    Flow inlet = state_hP(fc.Y, fc.ht, fc.Pt * ram, W);
+    const double F_ram = W * V0;
+    auto duct = [&](const Flow& f, double dPqP) { return state_hP(f.Y, f.ht, f.Pt * (1.0 - dPqP), f.W); };
+
+    struct CompOut { Flow out; double power, PR, eff, map_resid; };
+    auto compressor = [&](const CompressorSpec& c, CompressorScalars& sc, const Flow& in, double N, double Rline) {
+        CompOut o{};
+        const double theta = in.Tt * R_PER_K / T_STD_R, delta = in.Pt / PSI / P_STD_PSI;
+        const double Wc = in.W / LBM * std::sqrt(theta) / delta, Nc = N / std::sqrt(theta);
+        const double alpha = c.map.defaults.at("alphaMap");
+        if (design_mode) {
+            std::vector<double> xm{alpha, c.map.defaults.at("NcMap"), c.map.defaults.at("RlineMap")};
+            sc.s_Nc = Nc / xm[1];
+            sc.s_PR = (c.PR_des - 1.0) / (c.map.eval("PRmap", xm, nullptr) - 1.0);
+            sc.s_eff = c.eff_des / c.map.eval("effMap", xm, nullptr);
+            sc.s_Wc = Wc / c.map.eval("WcMap", xm, nullptr);
+            sc.Wc_des = Wc;
+            o.PR = c.PR_des;
+            o.eff = c.eff_des;
+        } else {
+            bool ex = false;
+            std::vector<double> xm{alpha, Nc / sc.s_Nc, Rline};
+            o.PR = (c.map.eval("PRmap", xm, &ex) - 1.0) * sc.s_PR + 1.0;
+            o.eff = c.map.eval("effMap", xm, &ex) * sc.s_eff;
+            o.map_resid = (c.map.eval("WcMap", xm, &ex) * sc.s_Wc - Wc) / sc.Wc_des;
+            if (ex) { extrap = true; extrap_maps.push_back(c.name); }
+        }
+        const double Pt_out = o.PR * in.Pt;
+        const double h_ideal = state_SP(in.Y, in.St, Pt_out, in.W).ht;
+        const double ht_out = in.ht + (h_ideal - in.ht) / o.eff;
+        o.out = state_hP(in.Y, ht_out, Pt_out, in.W);
+        o.power = in.W * (in.ht - ht_out);
+        return o;
+    };
+    struct TurbOut { Flow out; double power, eff, map_resid; };
+    auto turbine = [&](const TurbineSpec& t, TurbineScalars& sc, const Flow& in,
+                       const std::vector<std::pair<Flow, double>>& bleeds, double N, double PR) {
+        TurbOut o{};
+        const double Wp = in.W / LBM * std::sqrt(in.Tt * R_PER_K) / (in.Pt / PSI);
+        const double Np = N / std::sqrt(in.Tt * R_PER_K);
+        const double alpha = t.map.defaults.at("alphaMap");
+        if (design_mode) {
+            const double NpD = t.map.defaults.at("NpMap"), PRD = t.map.defaults.at("PRmap");
+            std::vector<double> xm{alpha, NpD, PRD};
+            sc.s_Np = Np / NpD;
+            sc.s_PR = (PR - 1.0) / (PRD - 1.0);
+            sc.s_eff = t.eff_des / t.map.eval("effMap", xm, nullptr);
+            sc.s_Wp = Wp / t.map.eval("WpMap", xm, nullptr);
+            sc.Wp_des = Wp;
+            o.eff = t.eff_des;
+        } else {
+            bool ex = false;
+            std::vector<double> xm{alpha, Np / sc.s_Np, (PR - 1.0) / sc.s_PR + 1.0};
+            o.eff = t.map.eval("effMap", xm, &ex) * sc.s_eff;
+            o.map_resid = (t.map.eval("WpMap", xm, &ex) * sc.s_Wp - Wp) / sc.Wp_des;
+            if (ex) { extrap = true; extrap_maps.push_back(t.name); }
+        }
+        const double Pt_out = in.Pt / PR;
+        const double h_ideal = state_SP(in.Y, in.St, Pt_out, in.W).ht;
+        double W_out = in.W, H = in.W * (in.ht * (1.0 - o.eff) + h_ideal * o.eff);
+        o.power = in.W * o.eff * (in.ht - h_ideal);
+        std::vector<double> Y(in.Y.size());
+        for (size_t k = 0; k < Y.size(); ++k) Y[k] = in.W * in.Y[k];
+        for (const auto& [b, frac_P] : bleeds) {
+            const double Ptb = Pt_out + frac_P * (in.Pt - Pt_out);
+            const Flow bin = state_hP(b.Y, b.ht, Ptb, b.W);
+            const double hbi = state_SP(b.Y, bin.St, Pt_out, b.W).ht;
+            H += b.W * (b.ht * (1.0 - o.eff) + hbi * o.eff);
+            o.power += b.W * o.eff * (b.ht - hbi);
+            W_out += b.W;
+            for (size_t k = 0; k < Y.size(); ++k) Y[k] += b.W * b.Y[k];
+        }
+        for (double& y : Y) y /= W_out;
+        o.out = state_hP(Y, H / W_out, Pt_out, W_out);
+        return o;
+    };
+    // nozzle: P8.3 law (production) or pyCycle CV (matched); returns thrust and capacity
+    struct NozOut { double Fg = 0, capacity = 0, area = 0; bool choked = false; };
+    auto nozzle = [&](const Flow& in, double Cd, double Cv, double design_area) {
+        NozOut o{};
+        if (s.nozzle_p83) {
+            if (!p83_) throw EvalError("P8.3 nozzle law needs production thermo");
+            const GasState g{in.Tt, in.Pt, in.Y};
+            if (design_mode) {
+                const double pstar = p83_->critical_pressure(g);
+                const double pexit = std::max(Ps, pstar);
+                o.area = in.W / (Cd * p83_->mass_flux(g, pexit));
+            } else {
+                o.area = design_area;
+            }
+            const ChokingNozzleResult r = p83_->run(g, Ps, o.area, Cd, Cv);
+            o.Fg = r.thrust_total;
+            o.capacity = r.mass_flow;
+            o.choked = r.choked;
+        } else {
+            const ThroatState star = static_at_MN(in, 1.0);
+            o.choked = Ps < star.Ps;
+            const ThroatState th = o.choked ? star : static_at_Ps(in, Ps);
+            o.Fg = in.W * th.V * Cv + (th.Ps - Ps) * th.area;
+            o.area = th.area;
+            o.capacity = design_mode ? in.W : in.W * design_area / th.area;   // area-equivalent capacity
+        }
+        return o;
+    };
+
+    CompOut fan = compressor(s.fan, design.fan, inlet, N_lp, R_fan);
+    Flow core_in = fan.out, byp_in = fan.out;
+    core_in.W = fan.out.W / (BPR + 1.0);
+    byp_in.W = fan.out.W - core_in.W;
+    Flow d_fi = duct(core_in, s.dPqP_duct4);
+    CompOut ipc = compressor(s.ipc, design.ipc, d_fi, N_ip, R_ipc);
+    Flow d_ih = duct(ipc.out, s.dPqP_duct6);
+    CompOut hpc = compressor(s.hpc, design.hpc, d_ih, N_hp, R_hpc);
+    Flow bld = hpc.out, cool3 = hpc.out, cool4 = hpc.out;
+    cool3.W = s.cool3_frac_W * hpc.out.W;
+    cool4.W = s.cool4_frac_W * hpc.out.W;
+    bld.W = hpc.out.W - cool3.W - cool4.W;
+    const double W_fuel = FAR * bld.W;
+    const double h_fuel = fuel_enthalpy(bld);
+    const double h4 = (bld.W * bld.ht + W_fuel * h_fuel) / (bld.W + W_fuel);
+    const double P4 = bld.Pt * (1.0 - s.dPqP_burner);
+    Flow burner = state_hP(burner_Y(bld, W_fuel), h4, P4, bld.W + W_fuel);
+    double Q_rej = 0.0;
+    if (mode_ == ThermoMode::Production) {
+        gas_->equilibrate("HP", "auto", 1e-12, 5000, 500, 0, 0);
+        Flow eq = read(*gas_, burner.W);
+        // v6 / P8.2 eta_b convention: scale the temperature rise at the equilibrium composition
+        const double T_out = bld.Tt + s.eta_b * (eq.Tt - bld.Tt);
+        burner = state_TP(eq.Y, T_out, P4, eq.W);
+        Q_rej = eq.W * (eq.ht - burner.ht);
+    }
+    TurbOut hpt = turbine(s.hpt, design.hpt, burner, {{cool3, s.cool3_frac_P}, {cool4, s.cool4_frac_P}},
+                          N_hp, PR_hpt);
+    Flow d_hi = duct(hpt.out, s.dPqP_duct11);
+    TurbOut ipt = turbine(s.ipt, design.ipt, d_hi, {}, N_ip, PR_ipt);
+    Flow d_il = duct(ipt.out, s.dPqP_duct_ipt_lpt);
+    TurbOut lpt = turbine(s.lpt, design.lpt, d_il, {}, N_lp, PR_lpt);
+    Flow d_ln = duct(lpt.out, s.dPqP_duct13);
+    Flow byp_bld = byp_in;
+    byp_bld.W = byp_in.W * (1.0 - s.frac_byp_bleed);
+    Flow d_b = duct(byp_bld, s.dPqP_duct15);
+    NozOut core = nozzle(d_ln, s.Cd_core, s.Cv_core, design.A_core);
+    NozOut byp = nozzle(d_b, s.Cd_byp, s.Cv_byp, design.A_byp);
+
+    const double Fg = core.Fg + byp.Fg, Fn = Fg - F_ram;
+    const double lp_net = fan.power + lpt.power;
+    const double ip_net = ipc.power + ipt.power;
+    const double hp_net = hpc.power + hpt.power - s.HPX_W;
+    std::vector<double> r;
+    if (design_mode) {
+        r = {(Fn - s.Fn_des_N) / s.Fn_des_N, (burner.Tt - s.T4_max_K) / s.T4_max_K,
+             lp_net / std::max(std::abs(lpt.power), 1.0), ip_net / std::max(std::abs(ipt.power), 1.0),
+             hp_net / std::max(std::abs(hpt.power), 1.0)};
+        design.A_core = core.area;
+        design.A_byp = byp.area;
+        design.P_hpt = hpt.power;
+        design.P_ipt = ipt.power;
+        design.P_lpt = lpt.power;
+        design.W_des = W;
+        design.W_core_noz = d_ln.W;
+        design.W_byp_noz = d_b.W;
+    } else {
+        const double thr = throttle_ == "T4" ? (burner.Tt - throttle_target_) / s.T4_max_K
+                                             : (Fn - throttle_target_) / s.Fn_des_N;
+        r = {thr, (core.capacity - d_ln.W) / design.W_core_noz, (byp.capacity - d_b.W) / design.W_byp_noz,
+             lp_net / design.P_lpt, ip_net / design.P_ipt, hp_net / design.P_hpt,
+             fan.map_resid, ipc.map_resid, hpc.map_resid, hpt.map_resid, ipt.map_resid, lpt.map_resid};
+    }
+    if (out) {
+        auto& o = *out;
+        o.extrapolated = extrap;
+        o.extrapolated_maps = extrap_maps;
+        o.stations = {{"fc", fc}, {"inlet", inlet}, {"fan", fan.out}, {"splitter1", core_in},
+                      {"splitter2", byp_in}, {"ipc", ipc.out}, {"hpc", hpc.out}, {"burner", burner},
+                      {"hpt", hpt.out}, {"ipt", ipt.out}, {"lpt", lpt.out}, {"core_nozz", d_ln},
+                      {"byp_nozz", d_b}};
+        o.scalars = {{"W", W}, {"FAR", FAR}, {"BPR", BPR}, {"N_lp", N_lp}, {"N_ip", N_ip}, {"N_hp", N_hp},
+                     {"OPR", hpc.out.Pt / inlet.Pt}, {"Fn_N", Fn}, {"Fg_N", Fg}, {"F_ram_N", F_ram},
+                     {"Wfuel", W_fuel}, {"TSFC_kg_per_N_s", W_fuel / Fn}, {"Tt3", hpc.out.Tt},
+                     {"Tt4", burner.Tt}, {"PR_fan", fan.PR}, {"PR_ipc", ipc.PR}, {"PR_hpc", hpc.PR},
+                     {"eff_fan", fan.eff}, {"eff_ipc", ipc.eff}, {"eff_hpc", hpc.eff},
+                     {"PR_hpt", PR_hpt}, {"PR_ipt", PR_ipt}, {"PR_lpt", PR_lpt}, {"eff_hpt", hpt.eff},
+                     {"eff_ipt", ipt.eff}, {"eff_lpt", lpt.eff}, {"A_core_m2", core.area},
+                     {"A_byp_m2", byp.area}, {"core_choked", core.choked}, {"byp_choked", byp.choked},
+                     {"Fg_core_N", core.Fg}, {"Fg_byp_N", byp.Fg}, {"burner_heat_rejection_W", Q_rej},
+                     {"R_fan", R_fan}, {"R_ipc", R_ipc}, {"R_hpc", R_hpc}, {"Ts0", Ts}, {"Ps0", Ps}};
+        Flow dumped = byp_in;
+        dumped.W = byp_in.W - byp_bld.W;
+        const double W_out = d_ln.W + d_b.W + dumped.W;
+        o.mass_closure = std::abs(W + W_fuel - W_out) / (W + W_fuel);
+        const double E_in = W * fc.ht + W_fuel * h_fuel;
+        const double E_out = d_ln.W * d_ln.ht + d_b.W * d_b.ht + dumped.W * dumped.ht + s.HPX_W +
+                             (lp_net + ip_net + hp_net) + Q_rej;
+        o.energy_closure = std::abs(E_in - E_out) /
+                           (std::abs(W * fc.ht) + std::abs(W_fuel * h_fuel) + std::abs(Q_rej) + 1.0);
+        const size_t ne = gas_->nElements();
+        std::vector<double> bal(ne, 0.0), scale_e(ne, 0.0);
+        auto elements = [&](const Flow& f, std::vector<double>& acc, double sign) {
+            set_Y(f.Y);
+            for (size_t e = 0; e < ne; ++e) acc[e] += sign * f.W * gas_->elementalMassFraction(e);
+        };
+        elements(fc, bal, 1.0);
+        elements(fc, scale_e, 1.0);
+        for (size_t e = 0; e < ne; ++e) {
+            const double fuel_e = mode_ == ThermoMode::Matched
+                ? W_fuel * fuel_element_moles_per_kg_[e] * gas_->atomicWeight(e) / 1000.0
+                : (set_Y(Y_fuel_), W_fuel * gas_->elementalMassFraction(e));
+            bal[e] += fuel_e;
+            scale_e[e] += fuel_e;
+        }
+        for (const Flow* f : std::initializer_list<const Flow*>{&d_ln, &d_b, &dumped}) elements(*f, bal, -1.0);
+        o.element_closure = 0.0;
+        for (size_t e = 0; e < ne; ++e) {
+            if (scale_e[e] > 1e-12) o.element_closure = std::max(o.element_closure, std::abs(bal[e]) / scale_e[e]);
+        }
+    }
+    return r;
+}
+
 SolveResult Hbtf::newton(std::vector<double> x, const std::vector<double>& lo,
                          const std::vector<double>& hi, const std::vector<double>& scale, bool design_mode)
 {
@@ -542,7 +798,7 @@ SolveResult Hbtf::newton(std::vector<double> x, const std::vector<double>& lo,
     const size_t n = x.size();
     auto eval = [&](const std::vector<double>& v) {
         try {
-            return residuals(v, design_mode);
+            return dispatch(v, design_mode, nullptr);
         } catch (const std::exception&) {
             return std::vector<double>(n, std::numeric_limits<double>::infinity());
         }
@@ -597,13 +853,20 @@ SolveResult Hbtf::newton(std::vector<double> x, const std::vector<double>& lo,
     }
     res.x = x;
     res.residuals = r;
-    if (res.converged) residuals(x, design_mode, &res.out);
+    if (res.converged) dispatch(x, design_mode, &res.out);
     else if (res.reason.empty()) res.reason = "iteration limit";
     return res;
 }
 
 SolveResult Hbtf::solve_design(std::vector<double> guess)
 {
+    if (spec.three_shaft) {
+        if (guess.size() != 5) throw std::invalid_argument("design unknowns: W, FAR, PR_hpt, PR_ipt, PR_lpt");
+        const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001, 1.001}, hi{3000 * LBM, 0.06, 8.0, 8.0, 12.0};
+        SolveResult r = newton(guess, lo, hi, {guess[0], 0.01, 1.0, 1.0, 1.0}, true);
+        design.valid = r.converged;
+        return r;
+    }
     if (guess.size() != 4) throw std::invalid_argument("design unknowns: W, FAR, PR_hpt, PR_lpt");
     const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001}, hi{1000 * LBM, 0.06, 8.0, 8.0};
     SolveResult r = newton(guess, lo, hi, {guess[0], 0.01, 1.0, 1.0}, true);
@@ -615,8 +878,25 @@ SolveResult Hbtf::solve_offdesign(std::vector<double> guess, double alt_m, doubl
                                   const std::string& throttle, double target)
 {
     if (!design.valid) throw std::invalid_argument("solve the design point first");
-    if (guess.size() != 10) throw std::invalid_argument("off-design needs 10 unknowns");
     if (throttle != "T4" && throttle != "Fn") throw std::invalid_argument("throttle is T4 or Fn");
+    if (spec.three_shaft) {
+        if (guess.size() != 12) throw std::invalid_argument("three-shaft off-design needs 12 unknowns");
+        alt_ = alt_m;
+        MN_ = MN;
+        dTs_ = dTs_K;
+        throttle_ = throttle;
+        throttle_target_ = target;
+        const auto& s = spec;
+        const std::vector<double> lo{1 * LBM, 1e-4, 2.0, 0.2 * s.N_lp_des, 0.2 * s.N_ip_des, 0.2 * s.N_hp_des,
+                                     s.fan.map.rline_stall, s.ipc.map.rline_stall, s.hpc.map.rline_stall,
+                                     1.001, 1.001, 1.001};
+        const std::vector<double> hi{3000 * LBM, 0.06, 20.0, 1.3 * s.N_lp_des, 1.3 * s.N_ip_des,
+                                     1.3 * s.N_hp_des, 3.0, 3.0, 3.0, 8.0, 8.0, 12.0};
+        const std::vector<double> scale{design.W_des, 0.01, 1.0, s.N_lp_des, s.N_ip_des, s.N_hp_des,
+                                        1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+        return newton(guess, lo, hi, scale, false);
+    }
+    if (guess.size() != 10) throw std::invalid_argument("off-design needs 10 unknowns");
     alt_ = alt_m;
     MN_ = MN;
     dTs_ = dTs_K;

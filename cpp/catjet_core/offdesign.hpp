@@ -5,6 +5,7 @@
 #pragma once
 
 #include "maps.hpp"
+#include "choking_nozzle.hpp"
 
 #include "cantera/core.h"
 
@@ -67,16 +68,27 @@ struct HbtfSpec {
     TurbineSpec hpt, lpt;
     // pyCycle US 1976 table (ft, degR, psi), Akima-interpolated as pyCycle does
     std::vector<double> atm_alt_ft, atm_T_R, atm_P_psi;
+    // P8.4b three-shaft extension (docs/phase8_p84b_registration.md)
+    bool three_shaft = false;
+    CompressorSpec ipc;
+    TurbineSpec ipt;
+    double N_ip_des = 1.0;
+    double dPqP_duct_ipt_lpt = 0.0;
+    bool nozzle_p83 = false;            // P8.3 law (Cd on mass flux, pressure term on geometric area)
+    double Cd_core = 1.0, Cd_byp = 1.0;
+    double eta_b = 1.0;                 // v6 temperature-rise convention (production burner)
+    double Ts_override_K = 0.0, Ps_override_Pa = 0.0;   // > 0: explicit ambient (ISA SLS)
 };
 
 struct CompressorScalars { double s_Nc = 1, s_PR = 1, s_eff = 1, s_Wc = 1, Wc_des = 1; };
 struct TurbineScalars { double s_Np = 1, s_PR = 1, s_eff = 1, s_Wp = 1, Wp_des = 1; };
 
 struct DesignData {
-    CompressorScalars fan, lpc, hpc;
-    TurbineScalars hpt, lpt;
+    CompressorScalars fan, lpc, hpc, ipc;
+    TurbineScalars hpt, lpt, ipt;
     double A_core = 0.0, A_byp = 0.0;   // nozzle throat areas, m^2
-    double P_hpt = 0.0, P_lpt = 0.0;    // design shaft powers, W (normalisation)
+    double P_hpt = 0.0, P_lpt = 0.0, P_ipt = 0.0;   // design shaft powers, W (normalisation)
+    double W_core_noz = 0.0, W_byp_noz = 0.0;       // design nozzle flows (P8.3 capacity residuals)
     double W_des = 0.0;
     bool valid = false;
 };
@@ -116,6 +128,8 @@ public:
     SolveResult solve_offdesign(std::vector<double> guess, double alt_m, double MN, double dTs_K,
                                 const std::string& throttle, double target);
     // One evaluation (for tests): residual vector for the given unknowns.
+    // Three-shaft (spec.three_shaft): design unknowns W, FAR, PR_hpt, PR_ipt, PR_lpt;
+    // off-design W, FAR, BPR, N_lp, N_ip, N_hp, R_fan, R_ipc, R_hpc, PR_hpt, PR_ipt, PR_lpt.
     std::vector<double> residuals(const std::vector<double>& x, bool design_mode,
                                   CycleOutputs* out = nullptr);
 
@@ -144,6 +158,11 @@ private:
     Flow mix(const std::vector<Flow>& flows, double P);
     std::vector<double> burner_Y(const Flow& air, double W_fuel);
     double fuel_enthalpy(const Flow& air) ;
+    std::unique_ptr<ChokingNozzle> p83_;
+    std::vector<double> residuals3(const std::vector<double>& x, bool design_mode, CycleOutputs* out);
+    std::vector<double> dispatch(const std::vector<double>& x, bool design_mode, CycleOutputs* out) {
+        return spec.three_shaft ? residuals3(x, design_mode, out) : residuals(x, design_mode, out);
+    }
     SolveResult newton(std::vector<double> x, const std::vector<double>& lo,
                        const std::vector<double>& hi, const std::vector<double>& scale,
                        bool design_mode);

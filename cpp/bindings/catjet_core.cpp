@@ -406,7 +406,15 @@ PYBIND11_MODULE(catjet_core, m)
         .def_readwrite("hpc", &HbtfSpec::hpc).def_readwrite("hpt", &HbtfSpec::hpt)
         .def_readwrite("lpt", &HbtfSpec::lpt)
         .def_readwrite("atm_alt_ft", &HbtfSpec::atm_alt_ft).def_readwrite("atm_T_R", &HbtfSpec::atm_T_R)
-        .def_readwrite("atm_P_psi", &HbtfSpec::atm_P_psi);
+        .def_readwrite("atm_P_psi", &HbtfSpec::atm_P_psi)
+        .def_readwrite("three_shaft", &HbtfSpec::three_shaft).def_readwrite("ipc", &HbtfSpec::ipc)
+        .def_readwrite("ipt", &HbtfSpec::ipt).def_readwrite("N_ip_des", &HbtfSpec::N_ip_des)
+        .def_readwrite("dPqP_duct_ipt_lpt", &HbtfSpec::dPqP_duct_ipt_lpt)
+        .def_readwrite("nozzle_p83", &HbtfSpec::nozzle_p83)
+        .def_readwrite("Cd_core", &HbtfSpec::Cd_core).def_readwrite("Cd_byp", &HbtfSpec::Cd_byp)
+        .def_readwrite("eta_b", &HbtfSpec::eta_b)
+        .def_readwrite("Ts_override_K", &HbtfSpec::Ts_override_K)
+        .def_readwrite("Ps_override_Pa", &HbtfSpec::Ps_override_Pa);
     py::class_<Hbtf>(m, "Hbtf")
         .def(py::init([](const std::string& mech, const std::string& mode, const std::string& air,
                          const std::string& fuel, std::map<std::string, double> weights) {
