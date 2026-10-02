@@ -38,10 +38,11 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | Ladder A2 calibration | attempt 1 stopped | Stopped by the executor at 02:21Z (Mac on battery, ~35 min left; run needs >1 h). `calibration_p8_A2_attempt1_incomplete_provenance.json` kept; no parameters produced. Restart on AC: `ablation_ladder.py --step A2 --phase calibrate`. |
 | Ladder A3 | merged into A4 (`5958df1`, P8-A3) | User decisions 2026-10-01: A3 is not separately scorable (no closed cycle before P8.4 matching); A4 has no knobs (P8-R2 governs). |
 | P8.4b Trent three-shaft (ladder A4) | registration `c0fd761`; code `1cb32e4`-series | Cited inputs (T4 1800 K from Martinez *Aerospace engine data*, Trent XWB TET; FPR 1.45 v6; IPC/HPC split by stage count; pyCycle generic efficiencies/ducts; CR-168189 cooling; P8.3 Cd 0.96/Cv 0.95). Checks **FAIL** (`p84b_g1.json`, `1cb32e4`): IPC reaches its stall line at 0.5 rated, APPROACH/IDLE unreachable; AE3 take-off fuel flow 2.700 kg/s (ICAO 2.327); sensitivities 2.49–2.92. |
-| P8.4b-A1 handling bleed | `33b8e15`, `8262d14`; checks queued | User decision: IPC handling bleed to bypass held at SMN ≥ 10 % (Chapman, NASA GRC, NTRS 20210017572). Development: all AE3 modes converge, fuel flow 2.700/0.693/0.255 vs ICAO 2.327/0.643/0.244, bleed 0/15/24 %. Registered checks re-run to `p84b_a1_g1.json` during benchmark arm2a_W4_1w. |
+| P8.4b-A1 handling bleed | `33b8e15`, `8262d14`; checks `25d0201` | Checks **PASS** (`p84b_a1_g1.json`): AE3 TO/APP/IDLE converge, closure ≤ 7e-13; fuel flow 2.700/0.693/0.255 vs ICAO 2.327/0.643/0.244; bleed 0/15/24 %. |
+| Ladder **A4** (scored once) | `2dd705f` | **21.24 %** held-out (v6 1.830, A1 1.835, B0 2.189, B1 1.076). 6 held-out rows unreachable (both Trent 1000-E records fail at the design point from the registered guess; scored e = 1.0). Converged rows over-predict: TO +15.4 %, APP +10.3 %, IDLE +8.3 %. Skill check ESCALATE; A3 sign FAIL. Knob-free cited inputs; P8.7 is where design-point variables become calibrated. |
 | P8.5 registration + A1 + A2 notes | `bb5b61b`, `7143e6b`, `a822e5d` | Network registered before computation; A1: C++ port of Cantera's steady loop (threshold 10 rtol), enthalpy-based PSR, sequential zones; A2: pre-G1 probe found whole-network closure C/H ~4.6e-7, traced to **7 element-imbalanced HyChem fuel reactions in the protected `A2NOx.yaml`** (2–4e-7 C/H atoms per event); G1 rules unchanged. |
 | P8.5 implementation | `a822e5d`, `2f2b57f` | Threaded network in `cpp/catjet_core/reactor_network.*`; dev builds in `cpp/build_next` (ignored) while ladder workers held `cpp/build`. |
-| P8.5 **G1** | `2f2b57f` fix, record (latest commit) | **FAIL** (`outputs/phase8/p85_g1.json`). G1.1: TAKE-OFF pass (dT 9e-5 K), APPROACH CVODES failure in the s=1e4 run, IDLE dT 167 K. G1.2: elements 4.6e-7, energy up to 7e-9 (1e-10). G1.3: strict all-species spread fails on trace species (T 1e-14, Y>1e-6 5e-10). **The imbalance diagnostic contradicts P8.5-A2**: predicted C creation −5.6e-8 vs observed +7.5e-7 kg/s, so the closure error source is open. Test-value APPROACH/IDLE barely burn (eta_b ≈ 0.42, EI CO > 1000 g/kg). Attempt 1 (crash) listed in the record. Blocks P8.5 use in P8.7. |
+| P8.5 **G1** | attempt 2 `722a0b6`, rev1 `04b384d`, rev2 `43adda9` | All **FAIL** under the unchanged rules. Root cause of the closure error found (P8.5-A3, `52d387c`): **Cantera cloning rounds the HyChem stoichiometry** (reaction 0 mass imbalance +6.1e-5 vs −4.0e-6 kg/kmol in the file), so the cloned network had a 15x larger, opposite-sign error. Without cloning the error equals the protected A2NOx's own imbalance (~2.7e-8; diagnostic now matches observation to 4–6 %). P8.5-A4 (`ac4ec11`): G1 script now uses the take-off design as registered (it had recomputed it per mode) and PSRs are solved at unit flow. Rev2: closure el 2–3e-8 / energy ≤ 4.6e-10; σ=0 T spread ≤ 2.5e-12 but strict trace-species rule fails; long-τ TO pass, APP 2.5 K, IDLE 0.041 K with dY 2.2e-5. Outputs now sensible: eta_b 0.996/0.987/0.928; CRECK spread within 0.4 %. The earlier "APP/IDLE barely burn" and the "attribution not confirmed" status were artefacts of cloning and the per-mode design; corrected here. |
 | P8.4 registration | `f3be816` | Two-shaft HBTF mirroring pyCycle; thermo-matched (pyCycle JANAF → Cantera NASA-9) vs production (CRECK) modes; map scaling; 10×10 off-design Newton; G1 = 0.10 % vs pyCycle in thermo-matched mode, closure audit. Trent three-shaft application = P8.4b after G1. |
 | P8.4 maps + thermo exports | `67eab80`, `a5f12db`, P8.4-A1 `e15d14c` | pyCycle 4.4.0 maps, JANAF (NASA-9 into Cantera; cp/R 3e-16, molar masses 2e-16 vs pyCycle; pyCycle's element_wts has C 12.0170, a transposition, mirrored for the fuel) and US 1976 table exported with hashes. P8.4-A1 (before any solve): matched mode uses shifting equilibrium at every station, fuel h = 0, CEA air elements. |
 | P8.4 implementation | `0ba43f5` | C++ two-shaft HBTF: maps (scipy-verified 1e-12), Akima atmosphere (scipy-verified), element equations mirroring pyCycle, 4×4 design and 10×10 off-design damped Newton, closure audit; matched and production thermo. |
@@ -98,14 +99,24 @@ The module still binds conda's own `libfmt` (the fmt that `libcantera.a` was
 built against), which is correct. Every future `catjet_core` module must use
 the same recipe; standalone executables may keep the shared library.
 
-## Blocked / needs the user (updated 2026-10-01 afternoon)
+## Running / queued (2026-10-02 ~03:30Z)
+
+- Benchmark run 2 (`run2_ac`, remaining arms 2–4) then reruns
+  (`run2_ac_rerun`: arm1a_W2_11w, arm1a_W4_11w), waiting for AC power; runs
+  now fail as INVALID_POWER if any repeat is off mains.
+- Ladder A2 calibration chained after the reruns, on AC
+  (`outputs/phase8/ladder/A2/run.log`); held-out scoring needs a commit first.
+
+## Blocked / needs the user (updated 2026-10-02)
 
 Resolved by the user on 2026-10-01: C3 (geared admitted, split drawn), ladder
 A3 (merged into A4), A4 knobs (none), A4 IPC stall (handling bleed).
 Still open:
-1. **P8.5 G1 FAIL** — closure (~4.6e-7), strict σ=0 spread, long-residence
-   limit at APPROACH/IDLE; the mechanism-imbalance attribution was not
-   confirmed. Root cause open (CPU-light diagnosis after the benchmark).
+1. **P8.5 G1 FAIL (rev2)** — closure ~2.7e-8 is the protected A2NOx's own
+   HyChem imbalance (needs a decision: rebalanced mechanism copy, or a
+   closure tolerance tied to it); strict σ=0 rule fails only on trace
+   species (threshold decision); long-τ misses at APPROACH (2.5 K) and IDLE
+   (dY 2.2e-5) at s = 1e4 (larger s or a different limit test).
 2. **G0 re-run for G1 item 4** — reading `scripts/phase8/g0_parity.py` /
    `simulation/catjet_backend.py` is blocked by the permission classifier.
 3. **Nozzle Cv prior** — the P8.3 analog prior Cv = 0.95 (TN-1757 small cone
