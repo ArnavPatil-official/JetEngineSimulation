@@ -177,13 +177,18 @@ GasState ReactorNetwork::equilibrium(double T3, double P, double m_air, double m
     return out;
 }
 
-PsrState ReactorNetwork::psr(size_t slot, const GasState& inlet, double mass_flow, double volume)
+PsrState ReactorNetwork::psr(size_t slot, const GasState& inlet, double mass_flow_actual, double volume_actual)
 {
     using namespace Cantera;
     PsrState r;
     r.inlet = inlet;
-    r.mass_flow = mass_flow;
-    r.volume = volume;
+    r.mass_flow = mass_flow_actual;
+    r.volume = volume_actual;
+    // P8.5-A4: a PSR's steady state depends only on rho V / mdot, so it is solved
+    // at unit mass flow with the volume scaled accordingly (exact; equal conditioning
+    // for the very unequal Gauss-Hermite reactors).
+    const double mass_flow = 1.0;
+    const double volume = volume_actual / mass_flow_actual;
     // P8.5-A3: separate file-loaded Solutions, no cloning
     auto& tin = *psr_in_[slot]->thermo();
     tin.setMassFractions(inlet.Y.data());
@@ -246,7 +251,7 @@ PsrState ReactorNetwork::psr(size_t slot, const GasState& inlet, double mass_flo
     auto& out = *reactor->phase()->thermo();
     r.outlet = {out.temperature(), out.pressure(), std::vector<double>(out.nSpecies())};
     out.getMassFractions(r.outlet.Y.data());
-    r.residence_time = out.density() * volume / mass_flow;
+    r.residence_time = out.density() * volume / mass_flow;   // = rho V_actual / mdot_actual
     r.extinguished = r.outlet.T < inlet.T + 50.0;
     return r;
 }

@@ -133,7 +133,7 @@ def thermo_consistency() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=ROOT / "outputs/phase8/p85_g1_rev1.json")
+    ap.add_argument("--output", type=Path, default=ROOT / "outputs/phase8/p85_g1_rev2.json")
     a = ap.parse_args()
     if a.output.exists():
         ap.error(f"{a.output} exists; output is write-once")
@@ -147,10 +147,11 @@ def main() -> int:
     pts = inlets()
     out: dict = {"inputs": {m: dict(zip(("T3", "P3", "m_air", "m_fuel"), v)) for m, v in pts.items()}}
     g1, g2, g3, g4, diag = {}, {}, {}, {}, {}
+    # registration section 1: alpha_pz and V_ref fixed at the engine's take-off design (P8.5-A4)
+    d = net.design(*pts["TAKE-OFF"], params())
     for mode, (T3, P3, ma, mf) in pts.items():
         P = P3 * (1 - DP)
         base = params()
-        d = net.design(T3, P3, ma, mf, base)
         # (1) long residence, no dilution
         long = net.run(T3, P3, ma, mf, params(no_dilution=True, volume_scale=1e4), d)
         eq = net.equilibrium(T3, P, ma, mf)
@@ -215,7 +216,7 @@ def main() -> int:
     # (6) mechanism spread at test values (CRECK has no N chemistry)
     spread = {}
     for mode, (T3, P3, ma, mf) in pts.items():
-        dcr = creck.design(T3, P3, ma, mf, params())
+        dcr = creck.design(*pts["TAKE-OFF"], params())
         rc = creck.run(T3, P3, ma, mf, params(), dcr)
         ra = out["test_value_outputs"][mode]
         spread[mode] = {"eta_b": {"A2NOx": ra["eta_b"], "CRECK": rc["eta_b"]},
@@ -242,7 +243,9 @@ def main() -> int:
                "no tolerance or check was changed.",
                "attempt 2 = outputs/phase8/p85_g1.json (FAIL). This rev1 run follows P8.5-A3: non-cloned "
                "file-loaded Solutions (cloning rounded the HyChem stoichiometry, 15x larger imbalance with "
-               "the opposite sign) and the temperature-state PSR; checks unchanged."],
+               "the opposite sign) and the temperature-state PSR; checks unchanged.",
+               "rev1 = outputs/phase8/p85_g1_rev1.json (FAIL). rev2 follows P8.5-A4: design fixed at "
+               "take-off as registered (rev1 recomputed it per mode) and unit-flow PSR solves."],
            "wall_s": time.time() - t0,
            "provenance": {"git_sha": run("git", "rev-parse", "HEAD"),
                           "dirty_source": run("git", "status", "--porcelain", "--", "cpp", "scripts"),
