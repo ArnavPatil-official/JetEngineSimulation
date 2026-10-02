@@ -1,0 +1,157 @@
+{
+  "registration": "docs/phase8_registration.md section 4, amendment P8-A1",
+  "arm": 1,
+  "variant": "a",
+  "workload": "W1",
+  "workers": 1,
+  "repeats": 5,
+  "warmups": 1,
+  "implementation": "python v6",
+  "sobol_points": null,
+  "registered_protocol": true,
+  "git_sha": "5de7699544dc3b70febf071de88d240a37038b93",
+  "dirty_source": "",
+  "machine": {
+    "host": "Arnavs-MacBook-Pro-3.local",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "processor": "Apple M3 Pro",
+    "logical_cores": 11,
+    "memory_bytes": "19327352832",
+    "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=35782755)\t27%; charging; 2:01 remaining present: true",
+    "python": "3.12.4",
+    "cantera": "3.2.0",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "developer_dir": "/Library/Developer/CommandLineTools",
+    "sdk": "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk",
+    "cpp_compile_flags": "C++17; -ffp-contract=off; hidden symbols; static Cantera (cpp/CMakeLists.txt)"
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  },
+  "reference": null,
+  "verdict": "PASS",
+  "records": [
+    {
+      "status": "converged",
+      "reason": "",
+      "ff": 2.3921069223426437,
+      "phi": 0.3387927145667831,
+      "thrust_kN": 310.89999999996303,
+      "tsfc_mg_Ns": 7.694136128475162,
+      "T3": 901.5451512272988,
+      "T4": 1700.721159739462,
+      "T5": 961.837883627572,
+      "p3_bar": 43.7724,
+      "thrust_core_kN": 70.17883284115102,
+      "thrust_bypass_kN": 240.72116715881202,
+      "m_core": 103.28521124594644,
+      "pi_c": 43.2,
+      "nox_corr_g_s": 117.70894225393387
+    }
+  ],
+  "comparisons": [
+    {
+      "repeat": 0,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    },
+    {
+      "repeat": 1,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    },
+    {
+      "repeat": 2,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    },
+    {
+      "repeat": 3,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    },
+    {
+      "repeat": 4,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    },
+    {
+      "repeat": 5,
+      "internal": {
+        "match": true,
+        "n": 1,
+        "max_relative_difference": 0.0,
+        "differences": []
+      },
+      "reference": null
+    }
+  ],
+  "timings_s": [
+    0.3075373750180006,
+    0.3040129580767825,
+    0.3054395830258727,
+    0.29457025008741766,
+    0.3045129160163924
+  ],
+  "median_s": 0.3045129160163924,
+  "range_s": [
+    0.29457025008741766,
+    0.3075373750180006
+  ],
+  "solves_per_s": 3.28393295457513,
+  "rows_per_s": 3.28393295457513,
+  "n_solves": 1,
+  "n_rows": 1,
+  "memory": {
+    "parent_peak_bytes": 174407680,
+    "max_child_peak_bytes": 976601088,
+    "upper_bound_bytes": 1151008768,
+    "formula": "parent ru_maxrss + workers * RUSAGE_CHILDREN ru_maxrss; upper bound"
+  },
+  "cycle_evaluations_per_solve": {
+    "n_solves": 1,
+    "n_counted": 1,
+    "n_unreachable_without_count": 0,
+    "min": 25,
+    "median": 25,
+    "max": 25,
+    "mean": 25,
+    "counts": [
+      {
+        "status": "converged",
+        "actual_cycle_calls": 25,
+        "reported_unique_evaluations": 25
+      }
+    ]
+  },
+  "cprofile": "outputs/phase8/profile_v6_ae3_takeoff.json"
+}

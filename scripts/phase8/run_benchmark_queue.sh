@@ -18,7 +18,7 @@ for spec in "$@"; do
     sleep 300
   done
   # registered protocol: no other heavy jobs while timing
-  while pgrep -f "scripts/phase8/(ablation_ladder|p8[0-9]_g1|verify_)" > /dev/null; do
+  while pgrep -if "python.*scripts/phase8/" | xargs -I{} ps -o command= -p {} 2>/dev/null | grep -qv "scripts/phase8/benchmark.py"; do
     echo "$(date -u +%FT%TZ) waiting for other Phase 8 jobs to finish before $name" >> "$LOG/queue.log"
     sleep 120
   done

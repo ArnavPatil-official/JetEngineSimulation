@@ -510,6 +510,11 @@ def main() -> int:
     n_solves = (len(row_tasks(data["held" if a.workload == "W2" else "cal"], data)[0])
                 if a.workload in ("W2", "W3") else n_rows)
     final_verdict = "FAIL" if verdict == "FAIL" else ("PASS" if len(samples) == a.repeats else "INCOMPLETE")
+    # registered protocol: mains power for every timed repeat (the queue only checks at start)
+    powers = [json.loads(line).get("power") for line in progress.read_text().splitlines()]
+    power_ok = all(p is None or "AC Power" in p for p in powers)
+    if not power_ok and final_verdict == "PASS":
+        final_verdict = "INVALID_POWER"
     result = {**manifest, "verdict": final_verdict,
               "records": first_records, "comparisons": comparisons,
               "timings_s": samples, "median_s": statistics.median(samples) if samples else None,
@@ -518,6 +523,7 @@ def main() -> int:
               "rows_per_s": n_rows / statistics.median(samples) if samples else None,
               "n_solves": n_solves, "n_rows": n_rows, "memory": memory,
               "cycle_evaluations_per_solve": count_summary,
+              "power_ok": power_ok,
               "cprofile": "outputs/phase8/profile_v6_ae3_takeoff.json"}
     (run_dir / "result.json").write_text(json.dumps(result, indent=2, default=_json_safe,
                                                     allow_nan=True) + "\n")

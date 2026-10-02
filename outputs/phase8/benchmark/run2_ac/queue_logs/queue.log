@@ -1,0 +1,41 @@
+2026-10-01T00:56:42Z waiting for AC power before arm1a_W1_1w
+2026-10-01T01:01:42Z waiting for AC power before arm1a_W1_1w
+2026-10-01T01:01:51Z waiting for AC power before arm1a_W1_1w
+2026-10-01T01:53:53Z waiting for AC power before arm1a_W1_1w
+2026-10-01T02:15:12Z waiting for AC power before arm1a_W1_1w
+2026-10-01T02:20:12Z waiting for AC power before arm1a_W1_1w
+2026-10-01T02:25:12Z waiting for AC power before arm1a_W1_1w
+2026-10-01T02:30:12Z waiting for AC power before arm1a_W1_1w
+2026-10-01T02:35:12Z waiting for AC power before arm1a_W1_1w
+2026-10-01T10:35:13Z waiting for AC power before arm1a_W1_1w
+2026-10-01T13:28:16Z waiting for AC power before arm1a_W1_1w
+2026-10-01T14:52:11Z start arm1a_W1_1w
+2026-10-01T14:52:21Z end arm1a_W1_1w exit=0
+2026-10-01T14:52:22Z start arm1a_W2_1w
+2026-10-01T14:54:11Z end arm1a_W2_1w exit=0
+2026-10-01T14:54:11Z start arm1a_W3_1w
+2026-10-01T14:55:51Z end arm1a_W3_1w exit=0
+2026-10-01T14:55:51Z start arm1a_W4_1w
+2026-10-01T15:38:14Z end arm1a_W4_1w exit=0
+2026-10-01T15:38:14Z start arm1a_W2_11w
+2026-10-01T15:38:49Z end arm1a_W2_11w exit=0
+2026-10-01T15:38:49Z start arm1a_W3_11w
+2026-10-01T15:39:20Z end arm1a_W3_11w exit=0
+2026-10-01T15:39:20Z start arm1a_W4_11w
+2026-10-01T18:01:33Z end arm1a_W4_11w exit=0
+2026-10-01T18:01:33Z waiting for AC power before arm2a_W1_1w
+2026-10-01T21:02:14Z waiting for AC power before arm2a_W1_1w
+2026-10-01T21:53:15Z waiting for AC power before arm2a_W1_1w
+2026-10-01T22:03:26Z waiting for AC power before arm2a_W1_1w
+2026-10-01T22:15:49Z waiting for AC power before arm2a_W1_1w
+2026-10-02T01:47:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T01:52:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T01:57:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:02:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:07:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:12:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:17:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:22:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:27:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:32:03Z waiting for AC power before arm2a_W1_1w
+2026-10-02T02:34:39Z queue stopped by executor while waiting for AC; arm1a_W4_11w repeat 5 and count pass ran on battery (power changed mid-run, 16:19Z) - flagged for clean rerun
