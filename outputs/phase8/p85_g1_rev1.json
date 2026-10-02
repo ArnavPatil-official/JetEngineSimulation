@@ -1,0 +1,744 @@
+{
+  "gate": "P8.5 G1",
+  "verdict": "FAIL",
+  "checks": {
+    "G1.1_long_residence_equilibrium": false,
+    "G1.2_element_energy_closure": false,
+    "G1.3_sigma_zero_identical": false
+  },
+  "tolerances": {
+    "dT_K": 0.1,
+    "dY": 1e-05,
+    "Y_floor": 1e-06,
+    "closure": 1e-10,
+    "sigma0": 1e-12
+  },
+  "G1.1": {
+    "TAKE-OFF": {
+      "T_network": 1682.2615270367316,
+      "T_equilibrium": 1682.261528401334,
+      "dT_K": 1.3646024399349699e-06,
+      "max_dY_where_Yeq_gt_1e-6": 1.6272580505294343e-10,
+      "converged": true,
+      "psr_errors": [],
+      "pass": true
+    },
+    "APPROACH": {
+      "T_network": 750.4285888435262,
+      "T_equilibrium": 975.2710176278538,
+      "dT_K": 224.84242878432758,
+      "max_dY_where_Yeq_gt_1e-6": 0.025785279222497702,
+      "converged": true,
+      "psr_errors": [],
+      "pass": false
+    },
+    "IDLE": {
+      "T_network": 491.50838309765186,
+      "T_equilibrium": 658.9686026007223,
+      "dT_K": 167.46021950307045,
+      "max_dY_where_Yeq_gt_1e-6": 0.017568931923558392,
+      "converged": true,
+      "psr_errors": [],
+      "pass": false
+    }
+  },
+  "G1.2": {
+    "TAKE-OFF": {
+      "test_values": {
+        "energy_relative": 4.582016000147598e-10,
+        "element_relative": 2.6305574995952997e-08,
+        "max_mixer_energy_relative": 6.911995574175239e-16,
+        "max_mixer_element_relative": 1.9450619457530633e-09
+      },
+      "long_residence": {
+        "energy_relative": 8.123016742501456e-12,
+        "element_relative": 2.1283599285528146e-09,
+        "max_mixer_energy_relative": 5.759996314530314e-16,
+        "max_mixer_element_relative": 2.122324648876437e-10
+      },
+      "worst": 2.6305574995952997e-08,
+      "pass": false
+    },
+    "APPROACH": {
+      "test_values": {
+        "energy_relative": 7.388955993314904e-11,
+        "element_relative": 2.6750567951669746e-08,
+        "max_mixer_energy_relative": 6.471333095724736e-14,
+        "max_mixer_element_relative": 2.363325596766163e-09
+      },
+      "long_residence": {
+        "energy_relative": 4.928744720003296e-11,
+        "element_relative": 2.0876886521607583e-08,
+        "max_mixer_energy_relative": 7.309811470454647e-15,
+        "max_mixer_element_relative": 2.083604255846175e-09
+      },
+      "worst": 2.6750567951669746e-08,
+      "pass": false
+    },
+    "IDLE": {
+      "test_values": {
+        "energy_relative": 3.2476164701723927e-10,
+        "element_relative": 2.5832105770621638e-08,
+        "max_mixer_energy_relative": 1.4773485150699241e-15,
+        "max_mixer_element_relative": 2.3765365960544543e-09
+      },
+      "long_residence": {
+        "energy_relative": 3.282804489732255e-10,
+        "element_relative": 2.6506322065900347e-08,
+        "max_mixer_energy_relative": 9.303265458512069e-16,
+        "max_mixer_element_relative": 2.6306270792467113e-09
+      },
+      "worst": 2.6506322065900347e-08,
+      "pass": false
+    }
+  },
+  "G1.3": {
+    "TAKE-OFF": {
+      "T_relative_spread": 0.607372609684528,
+      "Y_relative_spread_all": 1.0000659029569843,
+      "Y_relative_spread_Y_gt_1e-6": 0.9999999999999353,
+      "pass": false
+    },
+    "APPROACH": {
+      "T_relative_spread": 1.3208217144980306e-13,
+      "Y_relative_spread_all": 1.0,
+      "Y_relative_spread_Y_gt_1e-6": 4.871340650562425e-10,
+      "pass": false
+    },
+    "IDLE": {
+      "T_relative_spread": 1.7891478144721204e-12,
+      "Y_relative_spread_all": 1.385796868904577,
+      "Y_relative_spread_Y_gt_1e-6": 2.7916972955198216e-09,
+      "pass": false
+    }
+  },
+  "G1.4_quadrature_reported": {
+    "TAKE-OFF": {
+      "eta_b": {
+        "K7": 0.9962983407584655,
+        "K9": 0.9962983462888345,
+        "delta": 5.530369051598427e-09
+      },
+      "EI_NOx_g_kg": {
+        "K7": 8.380265742258157,
+        "K9": 8.374730360904024,
+        "delta": -0.0055353813541323404
+      },
+      "EI_CO_g_kg": {
+        "K7": 2.2309165422050192,
+        "K9": 2.2309208619192975,
+        "delta": 4.319714278278042e-06
+      },
+      "exit_T": {
+        "K7": 1684.6829379671183,
+        "K9": 1684.6831329777963,
+        "delta": 0.00019501067799865268
+      }
+    },
+    "APPROACH": {
+      "eta_b": {
+        "K7": 0.4260738426297995,
+        "K9": 0.42606621444767967,
+        "delta": -7.628182119856497e-06
+      },
+      "EI_NOx_g_kg": {
+        "K7": 0.05777893049835771,
+        "K9": 0.058887604175486025,
+        "delta": 0.0011086736771283162
+      },
+      "EI_CO_g_kg": {
+        "K7": 1271.9847560564274,
+        "K9": 1271.9542066493748,
+        "delta": -0.030549407052603783
+      },
+      "exit_T": {
+        "K7": 752.6890373412004,
+        "K9": 752.6860524022038,
+        "delta": -0.002984938996632991
+      }
+    },
+    "IDLE": {
+      "eta_b": {
+        "K7": 0.4057162675966829,
+        "K9": 0.39790602050451884,
+        "delta": -0.0078102470921640466
+      },
+      "EI_NOx_g_kg": {
+        "K7": 0.02887677729849203,
+        "K9": 0.0302069250649533,
+        "delta": 0.0013301477664612697
+      },
+      "EI_CO_g_kg": {
+        "K7": 1111.042996972523,
+        "K9": 1083.5198161397748,
+        "delta": -27.523180832748267
+      },
+      "exit_T": {
+        "K7": 489.25941539405204,
+        "K9": 487.0181998435624,
+        "delta": -2.241215550489642
+      }
+    }
+  },
+  "G1.5_thermo_consistency_reported": {
+    "n_shared": 55,
+    "a2_polynomial_discontinuities": [
+      "C2H3CHOCH2",
+      "C4H5-2",
+      "C4H6-2",
+      "CH2OCH",
+      "CH3CHCHCHO",
+      "iC4H7-1"
+    ],
+    "worst_10_shared": {
+      "C6H5CH2OH": {
+        "cp_rel": 0.12383207465110124,
+        "h_rel_vs_max(|h|,RT)": 1.6390224984813233
+      },
+      "C6H4O2": {
+        "cp_rel": 0.06529345784174545,
+        "h_rel_vs_max(|h|,RT)": 1.5178945902604108
+      },
+      "C6H5CHO": {
+        "cp_rel": 0.012824655793211744,
+        "h_rel_vs_max(|h|,RT)": 0.5693579765474706
+      },
+      "C3H6": {
+        "cp_rel": 0.018010798782230206,
+        "h_rel_vs_max(|h|,RT)": 0.20981272789808544
+      },
+      "CH3COCH3": {
+        "cp_rel": 0.01628219601895131,
+        "h_rel_vs_max(|h|,RT)": 0.17045590784970865
+      },
+      "CH2CO": {
+        "cp_rel": 0.003922274964922533,
+        "h_rel_vs_max(|h|,RT)": 0.13789131214009548
+      },
+      "H2O2": {
+        "cp_rel": 0.022955348436785317,
+        "h_rel_vs_max(|h|,RT)": 0.10653104447916506
+      },
+      "CH3CO": {
+        "cp_rel": 0.054908404289033874,
+        "h_rel_vs_max(|h|,RT)": 0.09616777974407287
+      },
+      "C2H3CHO": {
+        "cp_rel": 0.04685565372708907,
+        "h_rel_vs_max(|h|,RT)": 0.09602135182912043
+      },
+      "HCO": {
+        "cp_rel": 0.08364782682671638,
+        "h_rel_vs_max(|h|,RT)": 0.024972385219523843
+      }
+    },
+    "max_cp_rel": 0.12383207465110124,
+    "max_h_rel": 1.6390224984813233,
+    "h_relative_note": "h difference divided by max(|h|, R T) since h crosses zero",
+    "HP_equilibrium_T_AE3_takeoff": {
+      "A2NOx_POSF10325": 1682.261528401334,
+      "CRECK_Dooley2012": 1694.5307119066742,
+      "delta_K": 12.269183505340152,
+      "basis": "same fuel/air mass ratio, liquid basis 360 kJ/kg"
+    }
+  },
+  "G1.6_mechanism_spread_reported": {
+    "TAKE-OFF": {
+      "eta_b": {
+        "A2NOx": 0.9962983407584655,
+        "CRECK": 0.9960736929533857
+      },
+      "EI_CO_g_kg": {
+        "A2NOx": 2.2309165422050192,
+        "CRECK": 2.4484509791769677
+      },
+      "exit_T": {
+        "A2NOx": 1684.6829379671183,
+        "CRECK": 1691.7115952073407
+      },
+      "CRECK_converged": true
+    },
+    "APPROACH": {
+      "eta_b": {
+        "A2NOx": 0.4260738426297995,
+        "CRECK": 0.42653001010240854
+      },
+      "EI_CO_g_kg": {
+        "A2NOx": 1271.9847560564274,
+        "CRECK": 1449.3099057186323
+      },
+      "exit_T": {
+        "A2NOx": 752.6890373412004,
+        "CRECK": 753.7165425548241
+      },
+      "CRECK_converged": false
+    },
+    "IDLE": {
+      "eta_b": {
+        "A2NOx": 0.4057162675966829,
+        "CRECK": 0.42108951052759924
+      },
+      "EI_CO_g_kg": {
+        "A2NOx": 1111.042996972523,
+        "CRECK": 1304.8081569662613
+      },
+      "exit_T": {
+        "A2NOx": 489.25941539405204,
+        "CRECK": 494.60440678035314
+      },
+      "CRECK_converged": true
+    }
+  },
+  "diagnostic_mechanism_element_imbalance": {
+    "TAKE-OFF": {
+      "observed": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "observed_out_minus_in_kg_s": [
+          1.3934062792486657e-08,
+          -5.920910706169735e-09,
+          -5.3881882511319645e-08,
+          4.586875945733482e-08,
+          1.0024881828727723e-59,
+          0.0
+        ],
+        "relative": [
+          5.790075558260639e-10,
+          1.722194479935495e-08,
+          2.630557521276097e-08,
+          5.790063507398481e-10,
+          1.0024881828727723e-47,
+          0.0
+        ],
+        "exit_sum_Y_minus_1": 2.220446049250313e-16
+      },
+      "predicted_from_mechanism_imbalance": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "predicted_creation_kg_s": [
+          0.0,
+          -6.26477050493869e-09,
+          -5.602704039736847e-08,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "imbalanced_reactions": [
+          {
+            "index": 0,
+            "equation": "POSF10325 => 1.74268 C2H4 + 0.819058 C3H6 + 0.261401 C4H81 + 0.163333 C6H5CH3 + 0.17 C6H6 + 1.5 CH3 + 0.5 H + 0.0871338 iC4H8",
+            "atoms": {
+              "H": -3.9999999934536845e-07,
+              "C": -2.9999999995311555e-07
+            }
+          },
+          {
+            "index": 1,
+            "equation": "H + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999985624612e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 2,
+            "equation": "CH3 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 1.45 CH4 + 0.3 H + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.9999999861797235e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 3,
+            "equation": "OH + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 4,
+            "equation": "O2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + HO2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 5,
+            "equation": "HO2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 6,
+            "equation": "O + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + OH + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          }
+        ]
+      }
+    },
+    "APPROACH": {
+      "observed": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "observed_out_minus_in_kg_s": [
+          3.832502315503916e-09,
+          -1.64078321762684e-09,
+          -1.480775491113917e-08,
+          1.2616020228506386e-08,
+          0.0,
+          8.217021396085966e-39
+        ],
+        "relative": [
+          2.620970954475516e-10,
+          1.7659712836180107e-08,
+          2.675056815223422e-08,
+          2.6209698414772176e-10,
+          0.0,
+          8.217021396085967e-27
+        ],
+        "exit_sum_Y_minus_1": -3.3306690738754696e-16
+      },
+      "predicted_from_mechanism_imbalance": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "predicted_creation_kg_s": [
+          0.0,
+          -1.7065832632120601e-09,
+          -1.52600704959443e-08,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "imbalanced_reactions": [
+          {
+            "index": 0,
+            "equation": "POSF10325 => 1.74268 C2H4 + 0.819058 C3H6 + 0.261401 C4H81 + 0.163333 C6H5CH3 + 0.17 C6H6 + 1.5 CH3 + 0.5 H + 0.0871338 iC4H8",
+            "atoms": {
+              "H": -3.9999999934536845e-07,
+              "C": -2.9999999995311555e-07
+            }
+          },
+          {
+            "index": 1,
+            "equation": "H + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999985624612e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 2,
+            "equation": "CH3 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 1.45 CH4 + 0.3 H + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.9999999861797235e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 3,
+            "equation": "OH + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 4,
+            "equation": "O2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + HO2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 5,
+            "equation": "HO2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 6,
+            "equation": "O + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + OH + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          }
+        ]
+      }
+    },
+    "IDLE": {
+      "observed": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "observed_out_minus_in_kg_s": [
+          1.3909833285197237e-09,
+          -5.96547790332469e-10,
+          -5.37333641470461e-09,
+          4.5789008140673104e-09,
+          0.0,
+          0.0
+        ],
+        "relative": [
+          1.7371618132201542e-10,
+          1.7086364280710145e-08,
+          2.5832105904055486e-08,
+          1.737158517827822e-10,
+          0.0,
+          0.0
+        ],
+        "exit_sum_Y_minus_1": 0.0
+      },
+      "predicted_from_mechanism_imbalance": {
+        "elements": [
+          "O",
+          "H",
+          "C",
+          "N",
+          "Ar",
+          "He"
+        ],
+        "predicted_creation_kg_s": [
+          0.0,
+          -6.317184824587917e-10,
+          -5.6527339389343845e-09,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "imbalanced_reactions": [
+          {
+            "index": 0,
+            "equation": "POSF10325 => 1.74268 C2H4 + 0.819058 C3H6 + 0.261401 C4H81 + 0.163333 C6H5CH3 + 0.17 C6H6 + 1.5 CH3 + 0.5 H + 0.0871338 iC4H8",
+            "atoms": {
+              "H": -3.9999999934536845e-07,
+              "C": -2.9999999995311555e-07
+            }
+          },
+          {
+            "index": 1,
+            "equation": "H + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999985624612e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 2,
+            "equation": "CH3 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 1.45 CH4 + 0.3 H + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.9999999861797235e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 3,
+            "equation": "OH + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 4,
+            "equation": "O2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + HO2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 5,
+            "equation": "HO2 + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + H2O2 + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          },
+          {
+            "index": 6,
+            "equation": "O + POSF10325 => 1.59458 C2H4 + 0.749451 C3H6 + 0.239186 C4H81 + 0.236833 C6H5CH3 + 0.2465 C6H6 + 0.7 CH3 + 0.45 CH4 + 0.3 H + OH + 0.0797288 iC4H8",
+            "atoms": {
+              "H": -1.999999983404166e-07,
+              "C": -1.9999999945063962e-07
+            }
+          }
+        ]
+      }
+    }
+  },
+  "inputs": {
+    "TAKE-OFF": {
+      "T3": 901.5451512272988,
+      "P3": 4377240.0,
+      "m_air": 103.28521124594644,
+      "m_fuel": 2.3921069223435443
+    },
+    "APPROACH": {
+      "T3": 582.2883189670894,
+      "P3": 946608.74471776,
+      "m_air": 62.75738337860157,
+      "m_fuel": 0.6464602670114463
+    },
+    "IDLE": {
+      "T3": 371.2303618705601,
+      "P3": 220454.4507520255,
+      "m_air": 34.36578436928959,
+      "m_fuel": 0.2429236787629943
+    }
+  },
+  "test_value_outputs": {
+    "TAKE-OFF": {
+      "eta_b": 0.9962983407584655,
+      "EI_NOx_g_kg": 8.380265742258157,
+      "EI_CO_g_kg": 2.2309165422050192,
+      "EI_UHC_g_kg": 6.634663102684757e-05,
+      "exit_T": 1684.6829379671183,
+      "phi_pz": 1.8,
+      "alpha_pz": 0.18895737483202474,
+      "alpha_dil": 0.3610426251679752,
+      "all_converged": true,
+      "any_extinguished": false,
+      "primary_T": [
+        2687.342148987586,
+        2519.4388330108955,
+        2358.0657396488573,
+        2222.900580148612,
+        2107.707630027277,
+        2005.8173666672228,
+        1913.601513167457
+      ],
+      "primary_tau_ms": [
+        3.667963429825313,
+        3.6927973337192266,
+        3.758522159705039,
+        3.8393088307118526,
+        3.940959599239487,
+        4.054788358394001,
+        4.170781226239094
+      ],
+      "note": "registered G1 test values; not a prediction"
+    },
+    "APPROACH": {
+      "eta_b": 0.4260738426297995,
+      "EI_NOx_g_kg": 0.05777893049835771,
+      "EI_CO_g_kg": 1271.9847560564274,
+      "EI_UHC_g_kg": 133.1824879670071,
+      "exit_T": 752.6890373412004,
+      "phi_pz": 1.8000000000000003,
+      "alpha_pz": 0.08404239311961624,
+      "alpha_dil": 0.46595760688038373,
+      "all_converged": true,
+      "any_extinguished": false,
+      "primary_T": [
+        2442.25512604236,
+        2255.8937133035092,
+        2101.8223287010887,
+        1976.231739255068,
+        1867.1373179443522,
+        1764.559263491907,
+        1658.7042110033947
+      ],
+      "primary_tau_ms": [
+        5.199362519834188,
+        5.310949136403149,
+        5.474507790307901,
+        5.669270001909315,
+        5.877345761872371,
+        6.106895293648171,
+        6.376580347227786
+      ],
+      "note": "registered G1 test values; not a prediction"
+    },
+    "IDLE": {
+      "eta_b": 0.4057162675966829,
+      "EI_NOx_g_kg": 0.02887677729849203,
+      "EI_CO_g_kg": 1111.042996972523,
+      "EI_UHC_g_kg": 214.57109186050081,
+      "exit_T": 489.25941539405204,
+      "phi_pz": 1.8,
+      "alpha_pz": 0.057671996947933936,
+      "alpha_dil": 0.4923280030520661,
+      "all_converged": true,
+      "any_extinguished": true,
+      "primary_T": [
+        2242.406471484655,
+        2080.6687714471364,
+        1932.9899164596663,
+        1796.5992657149366,
+        1645.0296335662692,
+        328.85940947978406,
+        324.6176940050621
+      ],
+      "primary_tau_ms": [
+        5.540460222652205,
+        5.644187384865467,
+        5.875494854732259,
+        6.1882949381781485,
+        6.639956433002181,
+        40.83513190809788,
+        41.2449623042154
+      ],
+      "note": "registered G1 test values; not a prediction"
+    }
+  },
+  "previous_attempts": [
+    "attempt 1 (no record written): TAKE-OFF printed G1.1 True, G1.2 False (4.59e-07), G1.3 False (T spread 1.2e-15); the APPROACH long-residence run then raised an uncaught CVODES error-test failure (t = 2.31 s). Fix before this attempt: the PSR solver now records integrator failure as non-convergence (registered reporting rule); no tolerance or check was changed.",
+    "attempt 2 = outputs/phase8/p85_g1.json (FAIL). This rev1 run follows P8.5-A3: non-cloned file-loaded Solutions (cloning rounded the HyChem stoichiometry, 15x larger imbalance with the opposite sign) and the temperature-state PSR; checks unchanged."
+  ],
+  "wall_s": 250.24595713615417,
+  "provenance": {
+    "git_sha": "609ddeb453634f87e18b651d3509593622444fd7",
+    "dirty_source": "",
+    "module": "cpp/build_next",
+    "module_sha256": "1a90edebb04b41a57293810a1628c21db6b001a90bc9ad9bf02ddca0f3954539",
+    "a2nox_sha256": "af3bc190f35736c7a572a510d63215843d4a939d019dbdc0db9c0883a230a087",
+    "creck_sha256": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+    "cantera_python": "3.2.0",
+    "machine": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}
