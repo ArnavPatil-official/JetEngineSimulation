@@ -133,7 +133,7 @@ def thermo_consistency() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=ROOT / "outputs/phase8/p85_g1.json")
+    ap.add_argument("--output", type=Path, default=ROOT / "outputs/phase8/p85_g1_rev1.json")
     a = ap.parse_args()
     if a.output.exists():
         ap.error(f"{a.output} exists; output is write-once")
@@ -239,7 +239,10 @@ def main() -> int:
                "G1.3 False (T spread 1.2e-15); the APPROACH long-residence run then raised an "
                "uncaught CVODES error-test failure (t = 2.31 s). Fix before this attempt: the PSR "
                "solver now records integrator failure as non-convergence (registered reporting rule); "
-               "no tolerance or check was changed."],
+               "no tolerance or check was changed.",
+               "attempt 2 = outputs/phase8/p85_g1.json (FAIL). This rev1 run follows P8.5-A3: non-cloned "
+               "file-loaded Solutions (cloning rounded the HyChem stoichiometry, 15x larger imbalance with "
+               "the opposite sign) and the temperature-state PSR; checks unchanged."],
            "wall_s": time.time() - t0,
            "provenance": {"git_sha": run("git", "rev-parse", "HEAD"),
                           "dirty_source": run("git", "status", "--porcelain", "--", "cpp", "scripts"),

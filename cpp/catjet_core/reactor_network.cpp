@@ -34,7 +34,12 @@ ReactorNetwork::ReactorNetwork(const std::string& mechanism, const std::string& 
     : mechanism_(mechanism), fuel_(fuel.find(':') == std::string::npos ? fuel + ":1" : fuel)
 {
     if (n_solutions < 1) throw std::invalid_argument("need at least one Solution");
-    for (int i = 0; i < n_solutions; ++i) sols_.push_back(Cantera::newSolution(mechanism));
+    for (int i = 0; i < n_solutions; ++i) {
+        sols_.push_back(Cantera::newSolution(mechanism));
+        psr_in_.push_back(Cantera::newSolution(mechanism));
+        psr_r_.push_back(Cantera::newSolution(mechanism));
+        psr_ex_.push_back(Cantera::newSolution(mechanism));
+    }
     auto& th = *sols_[0]->thermo();
     const size_t nk = th.nSpecies();
     // Fuel: a single species or a molar composition (e.g. a CRECK surrogate).
@@ -172,22 +177,30 @@ GasState ReactorNetwork::equilibrium(double T3, double P, double m_air, double m
     return out;
 }
 
-PsrState ReactorNetwork::psr(std::shared_ptr<Cantera::Solution> sol, const GasState& inlet,
-                             double mass_flow, double volume)
+PsrState ReactorNetwork::psr(size_t slot, const GasState& inlet, double mass_flow, double volume)
 {
     using namespace Cantera;
     PsrState r;
     r.inlet = inlet;
     r.mass_flow = mass_flow;
     r.volume = volume;
-    auto& th = *sol->thermo();
-    th.setMassFractions(inlet.Y.data());
-    th.setState_TP(inlet.T, inlet.P);
-    auto source = newReservoir(sol, true, "inlet");
-    th.equilibrate("HP", "auto", 1e-9, 1000, 100, 0, 0);  // burning-branch start, h = h_in
-    auto reactor = newReactor4("ConstPressureReactor", sol, true, "psr");
+    // P8.5-A3: separate file-loaded Solutions, no cloning
+    auto& tin = *psr_in_[slot]->thermo();
+    tin.setMassFractions(inlet.Y.data());
+    tin.setState_TP(inlet.T, inlet.P);
+    auto source = newReservoir(psr_in_[slot], false, "inlet");
+    auto& tr = *psr_r_[slot]->thermo();
+    tr.setMassFractions(inlet.Y.data());
+    tr.setState_TP(inlet.T, inlet.P);
+    tr.equilibrate("HP", "auto", 1e-9, 1000, 100, 0, 0);  // burning-branch start, h = h_in
+    auto& tex = *psr_ex_[slot]->thermo();
+    std::vector<double> Yr(tr.nSpecies());
+    tr.getMassFractions(Yr.data());
+    tex.setMassFractions(Yr.data());
+    tex.setState_TP(tr.temperature(), tr.pressure());
+    auto reactor = newReactor4("IdealGasConstPressureReactor", psr_r_[slot], false, "psr");
     reactor->setInitialVolume(volume);
-    auto exhaust = newReservoir(sol, true, "exhaust");
+    auto exhaust = newReservoir(psr_ex_[slot], false, "exhaust");
     auto mfc = newFlowDevice("MassFlowController", source, reactor, "mfc");
     std::dynamic_pointer_cast<MassFlowController>(mfc)->setMassFlowRate(mass_flow);
     auto pc = newFlowDevice("PressureController", reactor, exhaust, "pc");
@@ -302,7 +315,7 @@ NetworkResult ReactorNetwork::run(double T3, double P3, double m_air, double m_f
     for (int k = 0; k < p.K; ++k) {
         threads.emplace_back([&, k] {
             try {
-                res.primary[k] = psr(sols_[k], inlets[k], mdot[k], w[k] * kFracPZ * V);
+                res.primary[k] = psr(static_cast<size_t>(k), inlets[k], mdot[k], w[k] * kFracPZ * V);
             } catch (...) {
                 errors[k] = std::current_exception();
             }
@@ -327,11 +340,11 @@ NetworkResult ReactorNetwork::run(double T3, double P3, double m_air, double m_f
     GasState qq_in = mix(th, pz, P, e_rel, el_rel);
     audit();
     m += res.alpha_qq * m_air;
-    res.quench = psr(sols_[0], qq_in, m, kFracQQ * V);
+    res.quench = psr(0, qq_in, m, kFracQQ * V);
     // Lean zone: n_lean equal PSRs in series.
     GasState state = res.quench.outlet;
     for (int i = 0; i < p.n_lean; ++i) {
-        res.lean.push_back(psr(sols_[0], state, m, kFracLean * V / p.n_lean));
+        res.lean.push_back(psr(0, state, m, kFracLean * V / p.n_lean));
         state = res.lean.back().outlet;
     }
     res.lean_exit = state;

@@ -95,6 +95,9 @@ public:
 private:
     std::string mechanism_, fuel_;
     std::vector<std::shared_ptr<Cantera::Solution>> sols_;
+    // P8.5-A3: per-thread inlet/reactor/exhaust Solutions loaded from the file, never cloned
+    // (cloning re-serialises the mechanism and rounds the HyChem stoichiometry)
+    std::vector<std::shared_ptr<Cantera::Solution>> psr_in_, psr_r_, psr_ex_;
     std::vector<double> fuel_Y_;  // fuel mass fractions (mechanism order)
     std::vector<double> lhv_;   // per species, J/kg (0 if not counted)
     std::vector<bool> counted_, uhc_;
@@ -104,8 +107,7 @@ private:
     GasState mix(Cantera::ThermoPhase& th, const std::vector<std::pair<GasState, double>>& streams,
                  double P, double& energy_rel, double& element_rel);
     GasState feed(Cantera::ThermoPhase& th, double T3, double P, double m_air, double m_fuel);
-    PsrState psr(std::shared_ptr<Cantera::Solution> sol, const GasState& inlet,
-                 double mass_flow, double volume);
+    PsrState psr(size_t slot, const GasState& inlet, double mass_flow, double volume);
 };
 
 }  // namespace catjet
