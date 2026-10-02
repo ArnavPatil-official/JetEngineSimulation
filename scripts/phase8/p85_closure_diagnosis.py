@@ -42,8 +42,9 @@ def psr(mech, fuel, rtol, reactor_cls, polish, vol=0.004, phi=1.8, T3=880.0, P=3
         net.advance_to_steady_state()
         if polish:
             net.solve_steady()
-    except ct.CanteraError as e:
-        return {"error": str(e).splitlines()[3][:90] if len(str(e).splitlines()) > 3 else str(e)[:90]}
+    except Exception as e:  # incl. Cantera 3.2 NameError in its own error path
+        lines = [l for l in str(e).splitlines() if l.strip() and "***" not in l]
+        return {"error": f"{type(e).__name__}: " + (lines[1] if len(lines) > 1 else str(e))[:80]}
     Y = r.phase.Y
     z = np.array([r.phase.elemental_mass_fraction(e) for e in els])
     return {"T": r.phase.T, "sumY-1": float(Y.sum() - 1.0),
@@ -54,9 +55,12 @@ def main() -> int:
     cases = []
     for rtol in (1e-9, 1e-11, 1e-13):
         cases.append(("A2NOx ConstP rtol %.0e" % rtol, "A2NOx.yaml", "POSF10325:1", rtol, ct.ConstPressureReactor, False))
-    cases.append(("A2NOx IdealGasConstP rtol 1e-9", "A2NOx.yaml", "POSF10325:1", 1e-9, ct.IdealGasConstPressureReactor, False))
     cases.append(("A2NOx ConstP 1e-9 + solve_steady", "A2NOx.yaml", "POSF10325:1", 1e-9, ct.ConstPressureReactor, True))
-    cases.append(("CRECK IdealGasConstP rtol 1e-9", "creck_c1c16_full.yaml", "NC12H26:1", 1e-9, ct.IdealGasConstPressureReactor, False))
+    for rtol in (1e-9, 1e-11, 1e-13):
+        cases.append(("A2NOx IdealGasConstP rtol %.0e" % rtol, "A2NOx.yaml", "POSF10325:1", rtol,
+                      ct.IdealGasConstPressureReactor, False))
+        cases.append(("CRECK IdealGasConstP rtol %.0e" % rtol, "creck_c1c16_full.yaml", "NC12H26:1", rtol,
+                      ct.IdealGasConstPressureReactor, False))
     for name, mech, fuel, rtol, cls, pol in cases:
         out = psr(mech, fuel, rtol, cls, pol)
         print(f"{name:38s}", {k: (f"{v:+.2e}" if isinstance(v, float) else v) for k, v in out.items()}, flush=True)
