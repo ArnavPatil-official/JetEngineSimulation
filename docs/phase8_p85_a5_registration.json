@@ -1,0 +1,201 @@
+{
+  "id": "P8.5-A5",
+  "registered_date": "2026-10-03",
+  "user_decisions_date": "2026-10-02",
+  "authorization": "User decisions of 2026-10-02; executed 2026-10-03. Registration committed before any A5 audit or network computation.",
+  "amendment": "docs/phase8_p85_amendment_a5.md",
+  "parents": [
+    "docs/phase8_p85_registration.md",
+    "docs/phase8_p85_amendment_a1.md",
+    "docs/phase8_p85_amendment_a2.md",
+    "docs/phase8_p85_amendment_a3.md",
+    "docs/phase8_p85_amendment_a4.md"
+  ],
+  "known_when_registered": {
+    "a5_audit": "not computed; B unknown",
+    "g1_rev2": {
+      "path": "outputs/phase8/p85_g1_rev2.json",
+      "commit": "43adda9",
+      "verdict": "FAIL",
+      "checks": {
+        "G1.1_long_residence_equilibrium": false,
+        "G1.2_element_energy_closure": false,
+        "G1.3_sigma_zero_identical": false
+      },
+      "tolerances": {
+        "dT_K": 0.1,
+        "dY": 1e-05,
+        "Y_floor": 1e-06,
+        "closure": 1e-10,
+        "sigma0": 1e-12
+      },
+      "G1.1_dT_K_s1e4": {
+        "TAKE-OFF": 1.3678895811608527e-06,
+        "APPROACH": 2.499427199490242,
+        "IDLE": 0.04104994369333781
+      },
+      "G1.1_max_dY_s1e4": {
+        "TAKE-OFF": 1.6312351469593978e-10,
+        "APPROACH": 0.0008950701367480498,
+        "IDLE": 2.178890745910267e-05
+      },
+      "G1.2_worst_closure": {
+        "TAKE-OFF": 2.6321400677651904e-08,
+        "APPROACH": 2.683501602723696e-08,
+        "IDLE": 2.70554265129126e-08
+      },
+      "G1.3_T_relative_spread": {
+        "TAKE-OFF": 2.5471491241810597e-12,
+        "APPROACH": 4.365754376925158e-13,
+        "IDLE": 7.558418716312547e-13
+      },
+      "G1.3_Y_relative_spread_all": {
+        "TAKE-OFF": 1.0,
+        "APPROACH": 1.2136496810410924,
+        "IDLE": 0.8893643449345395
+      },
+      "module_sha256": "29896dc6ad2cac7ea5501bcdfb3709842bc567bfc8c96a39c11af28e8008078d"
+    },
+    "historical_records_unchanged": [
+      "outputs/phase8/p85_g1.json",
+      "outputs/phase8/p85_g1_rev1.json",
+      "outputs/phase8/p85_g1_rev2.json"
+    ]
+  },
+  "mechanisms": {
+    "a2nox": {
+      "path": "data/A2NOx.yaml",
+      "sha256": "af3bc190f35736c7a572a510d63215843d4a939d019dbdc0db9c0883a230a087",
+      "fuel": "POSF10325"
+    },
+    "creck": {
+      "path": "data/creck_c1c16_full.yaml",
+      "sha256": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+      "fuel": "outputs/phase7/p72_registration.json fuel.mole_fractions"
+    }
+  },
+  "outputs": {
+    "audit": "outputs/phase8/p85_a5_audit.json",
+    "g1": "outputs/phase8/p85_g1_rerun4.json"
+  },
+  "audit": {
+    "loader": "fresh cantera.Solution(path) of the unchanged file, sha256 checked before and after loading; never a network phase or clone",
+    "coefficients": "Kinetics.reactant_stoich_coeffs and product_stoich_coeffs as loaded (float64); atom counts Solution.n_atoms",
+    "arithmetic": "exact rational: fractions.Fraction of each loaded float64 value; float64 values also reported",
+    "turnover": "R_ej = sum_k a_ek nu'_kj, P_ej = sum_k a_ek nu''_kj",
+    "delta": "P_ej - R_ej = sum_k a_ek (nu''_kj - nu'_kj)",
+    "denominator": "max(R_ej, P_ej)",
+    "pair_defect": "|delta|/denominator; 0 when denominator == 0 and delta == 0; audit error when denominator == 0 and delta != 0",
+    "mass_defect": "sum_k W_k (nu''_kj - nu'_kj), kg/kmol, exact rational of float64 W_k and float",
+    "threshold": null,
+    "B": "max pair_defect over every reaction and element of A2NOx; must be finite and > 0",
+    "closure_tolerance_multiplier": 10,
+    "control_rule": {
+      "mechanism": "creck",
+      "max_pair_defect_at_most": "2**-52",
+      "max_pair_defect_at_most_float": 2.220446049250313e-16,
+      "audit_errors_allowed": 0,
+      "rationale": "decimal coefficients stored with relative error <= 2**-53; integer atom counts; decimally balanced => |delta| <= 2**-53 (R+P) <= 2**-52 max(R,P)"
+    },
+    "scope_note": "B bounds the local stoichiometric defect per reaction event; 10*B is the user's mechanism-conditioned allowance, not a proof bounding accumulated network element or enthalpy error. B is never derived from observed residuals or outlets. No claim that species renormalization preserves a stoichiometric proof."
+  },
+  "g1": {
+    "engine": "02P23RR126",
+    "modes": [
+      "TAKE-OFF",
+      "APPROACH",
+      "IDLE"
+    ],
+    "design": "AE3 TAKE-OFF, used for every mode (P8.5-A4)",
+    "test_values": "NetworkParams defaults (phi_pz_design 1.8, sigma_rel 0.10, alpha_qq 0.45, volume_scale 1, K 7)",
+    "G1.1_temperature_convergence": {
+      "no_dilution": true,
+      "volume_scales": [
+        10000.0,
+        100000.0,
+        1000000.0
+      ],
+      "labels": [
+        "tau",
+        "10tau",
+        "100tau"
+      ],
+      "reference": "one HP equilibrium of the total inlet per mode, same inputs",
+      "require_all_converged": true,
+      "monotone": "abs T errors finite and non-increasing exactly in scale order, no slack",
+      "final_abs_dT_strictly_below_K": 0.1,
+      "composition_reported_only": {
+        "Y_floor": 1e-06,
+        "max_dY": 1e-05,
+        "note": "old composition criterion, reported at every scale; never gating; no full-state equilibrium claim if it fails"
+      }
+    },
+    "G1.2_closure": {
+      "metrics": [
+        "energy_relative",
+        "element_relative",
+        "max_mixer_energy_relative",
+        "max_mixer_element_relative"
+      ],
+      "a2nox": {
+        "strictly_below": "10*B (exact rational comparison)",
+        "require_finite": true,
+        "cases": [
+          "test_values",
+          "tau",
+          "10tau",
+          "100tau"
+        ]
+      },
+      "creck_control": {
+        "strictly_below": 1e-10,
+        "runs": "test values at each mode, take-off design (existing G1.6 runs)",
+        "require_all_converged": true,
+        "require_audit_control_rule": true,
+        "note": "control tolerance is separate from 10*B"
+      }
+    },
+    "G1.3_sigma0": {
+      "sigma_rel": 0.0,
+      "require_primary_converged": true,
+      "T_relative_spread_at_most": 1e-12,
+      "species_reference": "max |Y| over primary PSRs",
+      "relative_rule_if_reference_strictly_above": 1e-08,
+      "relative_spread_at_most": 1e-12,
+      "absolute_spread_at_most": 1e-12,
+      "scope": "mixed trace rule applies only to sigma0"
+    },
+    "reported_unchanged": [
+      "G1.4 K=7 vs K=9",
+      "G1.5 thermo consistency",
+      "G1.6 CRECK mechanism spread",
+      "P8.5-A2 mechanism imbalance diagnostic"
+    ],
+    "verdict": "PASS iff A2NOx audit B finite > 0 without error, CRECK audit control rule, and G1.1, G1.2 (A2NOx and CRECK), G1.3 pass at every mode; identity drift => ERROR"
+  },
+  "guards": {
+    "audit": [
+      "registration JSON, amendment and scripts/phase8/p85_audit.py committed and unmodified",
+      "mechanism sha256 equal to registration",
+      "write-once output"
+    ],
+    "rerun4": [
+      "explicit --a5 selection; output path fixed by this registration",
+      "registration JSON, amendment, p85_audit.py and reactor_validation.py committed and unmodified",
+      "audit output committed and unmodified; its registration, audit-source and mechanism hashes match; recomputed B equals recorded B",
+      "no uncommitted changes under cpp/ or scripts/",
+      "AC power (pmset)",
+      "no active main workflow owner: Python running a scripts/phase8/ script or module, the v6 LTO/calibration scripts, or a run_benchmark_queue.sh shell",
+      "protected manifest matches",
+      "write-once output",
+      "start identity rechecked at end; drift => ERROR"
+    ]
+  },
+  "order": "after the main benchmark/A2/Track4 sequence, on AC",
+  "commands": {
+    "audit": "nice -n 15 .venv/bin/python scripts/phase8/p85_audit.py",
+    "commit_audit": "git add outputs/phase8/p85_a5_audit.json && git commit",
+    "build": "bash cpp/build.sh",
+    "rerun4": "nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5"
+  }
+}
