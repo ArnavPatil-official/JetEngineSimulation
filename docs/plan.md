@@ -507,3 +507,152 @@ Verified primary reference links for the repair notes:
 - Wang/Yu/Perdikaris: https://doi.org/10.1016/j.jcp.2021.110768 (JCP449,2022)
 - Kennedy/O'Hagan: https://doi.org/10.1111/1467-9868.00294
 - Wang/Teng/Perdikaris gradient balancing: https://doi.org/10.1137/20M1318043
+
+
+# Track 4 pre-run review corrections — active continuation (2026-10-02)
+
+The reviewer paused the first executor pass before any diagnostic computation
+to correct the issues below. Its uncommitted package/tests/audit/notes are in
+the worktree: continue from them, do not rebuild from scratch. There is no
+completed diagnostic result to preserve or rescore. The protocol and all
+numeric budgets/tolerances remain unchanged. This section is authoritative
+where it refines the addendum above. Do not execute old Phase8 tasks.
+
+## Objective
+
+Finish the same isolated diagnostics with trustworthy refusal, failure,
+provenance and boundary behavior. Numerical work remains contingent on AC and
+absence of actual benchmark/calibration jobs. On a resource blocker, complete
+all static implementation/documentation, run non-numerical integrity checks,
+record the exact pending numerical commands, and report BLOCKED honestly.
+
+## Constraints
+
+Same protected sources, fixed prospective protocol, no production integration,
+no empirical targets, one CPU thread and no post-score tuning. Never treat
+CLI exit0 or dispatcher's DONE line as proof of successful work: the interrupted
+first pass printed Execution error but returned0. Inspect files/logs/statuses.
+Do not create placeholder diagnostic scores or freeze notes on battery.
+
+## Repo Context
+
+The implementation is still uncommitted. The Mac switched to battery after
+planning. Registered numerical diagnostics and numerical pytest were not run.
+Review findings below are static, and the actual formula implementations are
+otherwise consistent with the registration. The two prior test-rounding/
+small-corruption defects have already been corrected in current tests; do not
+reintroduce them. Old benchmark queue remains parked by its false process match.
+
+## Relevant Files
+
+Use exactly the implementation/documentation paths from the Track4 table
+above; no extra package or supervisor. The source guide IS present, read-only,
+at the user's supplied attachment path:
+`/Users/arnavpatil/.codex/attachments/8da7fbac-4294-4608-9c1f-f4f824ae6400/Pasted text.txt`.
+This external source path is a read-only planning reference, not a path to
+embed in runtime code. Read its E1–E7 and final Track4 instructions; the first
+pass's repair-notes assertion that it is absent from the machine is false.
+
+## Implementation Phases
+
+### Phase 4 — correct reviewed defects before any scored execution
+
+1. Runner gates must fail closed when ps, Git status or HEAD cannot be read.
+   Avoid Mac ps comm-column truncation: the real dispatch Python appears as
+   `/Library/Framewo` in `ps -Ao pid=,comm=,args=`. Parse actual executable from
+   `ps -Ao pid=,args=` with shlex or an equivalent reliable approach; recognize
+   Python absolute paths and both script/module invocation forms. Ignore parked
+   bash/caffeinate shells. Test command failures, actual Mac Python argv,
+   module-form jobs and parked shells using mocked text, not real jobs.
+2. Freeze a start identity (HEAD, exact registration bytes/hash, sources,
+   envelope identity) and use it consistently in config/checkpoint/report.
+   Recheck at end; flag drift without replacing the start identity. Missing
+   HEAD is BLOCKED. No checkpoint/report may claim a newly re-read config or
+   different source state generated its earlier predictions. Do not add a
+   supervisor or snapshots beyond these small identity dictionaries.
+3. Include all post-output-directory setup in finalizing error handling so
+   import/thread/environment/write failures get an ERROR/exit log and hashes.
+   Return nonzero for any FAIL, ERROR or required BLOCKED rung. Give report an
+   explicit aggregate status; completed failed diagnostics remain evidence.
+4. Read the synthetic envelope with round-trip float parsing before exact
+   extent checks (e.g. pandas float_precision='round_trip'). Confine an envelope
+   verification error to Track4a; continue independent MMS activations. Capture
+   errors separately for each activation. If either MMS activation fails/errors,
+   mark downstream exact-nozzle rungs BLOCKED, as required by the ladder.
+5. Use the registered Torch Sobol draw_base2 implementation for powers-of-two
+   samples. Reject training/grid overlap before any scoring; a contaminated
+   grid must never yield PASS. Add a mocked collision regression that performs
+   no training or score. Existing actual split-disjointness test remains.
+6. Ma loss-weight helper must compute CPU float64 even from Python scalar
+   inputs; add dtype and asymmetric-value regressions for that caller form.
+7. Backpressure inversion accepts both internal-shock-range endpoints, so
+   shock_profile must show the downstream exit pressure for a shock at the
+   exit. Use a consistent jump convention and test both endpoints in addition
+   to registered interior cases. Do not change the registered positions or
+   thresholds. Verify postshock p0 loss and actual side conservation.
+8. Fix docs/phase8_pinn_repair_notes.md source availability and numbering to
+   match the supplied guide exactly: E1 polytropic derivation/sensitivity;
+   E2 pressure-loss nonidentifiability and its missing log residual;
+   E3 global-normalization example (label legacy, not attempt2);
+   E4 ReLU/product derivatives; E5 duplicate-input MSE mean;
+   E6 area-Mach/choking/normal shock; E7 actual asymmetric Ma weights and
+   gradient-statistics comparison. Keep the four-feature/two-dimension insight
+   as an additional note. Do not claim the user completed exercises. Also the
+   exact pressure gate is log(1-threshold)<Delta<log(1+threshold), rather than
+   symmetric |Delta| iff log(1+threshold). Explain that distinction accurately.
+9. If numerical work remains BLOCKED, no outputs/freeze/NUMBERS.md exists and
+   no diagnostic score entries are eligible yet. Remove the first pass's
+   uncommitted mandatory Freeze record from build_manifest (it refers to an
+   absent file), keep generated manifests unchanged, and record the conditional
+   freeze step in execution status. Do not create an empty placeholder to make
+   manifest tests pass. If diagnostics actually complete before Oct16, follow
+   the original completed-diagnostic freeze instructions and register the file.
+
+## File-Level Edits
+
+Local corrections in turbine_map.py, nozzle_verification.py, run_diagnostics.py
+and tests/test_phase8_pinn_diagnostics.py; corrected repair notes, accurate status,
+conditional registry changes only. The already-written audit corrections are
+valid. No model/config/production/registered content changes. The attachment is
+read-only. Preserve pre-existing .DS_Store and benchmark queue log changes.
+
+## Commands to Run
+
+If AC/resource checks clear, run the originally registered focused tests,
+commit implementation, run the once-scored diagnostics, then full regression,
+manifest and protected-hash checks. Do not run the fixed diagnostic twice.
+If blocked, use AST parsing without importing/executing diagnostic functions,
+`git diff --check`, manifest --check (no new science), protected-file hashes,
+and byte-check unchanged protected sources/models/config. Run the resource
+refusal command to demonstrate BLOCKED without creating the attempt directory.
+Explicitly say focused/full numerical pytest remains pending; do not call it
+passed based on static checks. Commit only reviewed scope, with honest pending
+status. The user requested flagging blockers and moving on, not waiting forever.
+
+## Tests
+
+Add only the meaningful mocked/endpoint/scalar-dtype regressions described
+above. Keep previous synthetic mathematical tests. No registered score-grid
+predictions during pytest and no long training. Tests of refused resources or
+identity failures must create no real attempt outputs or launch workloads.
+
+## Acceptance Criteria
+
+All listed static defects fixed; syntax/manifest/protected checks pass. When
+numerical resources permit, all original numerical criteria and full regression
+pass. Otherwise report BLOCKED for each unrun numerical check and create no
+freeze score entries or production integration. Guide notes match E1–E7 and
+contain no false availability statement. No unexpected worktree files changed.
+A non-PASS diagnostic cannot return success. Logged identities remain coherent.
+
+## Rollback Notes
+
+Same additive-only rollback. Preserve user changes and historical records.
+Remove/revert only this task's own uncommitted or named changes; no reset,
+history rewrite, old model overwrite or killing unrelated jobs.
+
+## Escalation Guidance
+
+This is a bounded reviewer fix pass, not a new experiment. If AC stays absent,
+finish static work, clearly mark run/test/freeze steps pending, and report back.
+Do not create new training budgets, relax tolerances or add infrastructure.
