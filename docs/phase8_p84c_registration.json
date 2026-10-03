@@ -1,0 +1,256 @@
+{
+ "registration": "P8.4c / ladder A4c",
+ "date": "2026-10-03",
+ "user_decisions_date": "2026-10-02",
+ "document": "docs/phase8_p84c_registration.md",
+ "committed_before": "any A4c fit, profile, fallback, error-budget, input-convergence solve or held-out score; no A4c code exists at registration",
+ "parents": [
+  "docs/phase8_p84b_registration.md",
+  "docs/phase8_p84b_amendment_a1.md",
+  "docs/phase8_p83_amendment_a2.md",
+  "docs/phase8_registration.md (A1 rule, ledger template)",
+  "docs/phase8_r2_plan.md (P8-R2; P8.7 stages incl. stage 4 combustor fitting stay intact)",
+  "outputs/phase7/p72_registration.json (objective, weights, budgets, identifiability rule, held-out metrics)"
+ ],
+ "known_A4_facts": {
+  "note": "already-known committed aggregates; never optimization or selection targets; A4 is not rescored",
+  "A4_commit": "2dd705f",
+  "A4_heldout_group_weighted_mape_pct": 21.24,
+  "A4_unreachable_heldout_rows": 6,
+  "A4_unreachable_cause": "both Trent 1000-E records (11RR052, 12RR058) fail at the design point from the single registered guess",
+  "A4_converged_rows_mean_signed_error_pct": {"TAKE-OFF": 15.4, "APPROACH": 10.3, "IDLE": 8.3},
+  "references_pct": {"v6": 1.830, "A1": 1.835, "B0": 2.189, "B1": 1.076},
+  "AE3_A4_central_ff_kg_s": {"TAKE-OFF": 2.6996531004729607, "APPROACH": 0.6930259356332537, "IDLE": 0.255177548577739},
+  "AE3_A4_central_ff_source": "outputs/phase8/p84b_a1_g1.json ae3_central (calibration engine)"
+ },
+ "model": {
+  "name": "A4c",
+  "status": "new prospective model; not a corrected A4 score",
+  "physics": "P8.4b three-shaft cycle with the P8.4b-A1 handling-bleed rule, unchanged: scripts/phase8/trent_p84b.py make_engine and offdesign_point and cpp/catjet_core/offdesign.* are reused without edits",
+  "changes_from_A4": [
+   "nozzle coefficients from P8.3-A2: Cd 0.96, Cv 0.985 (core and bypass)",
+   "five shared calibrated parameters (below)",
+   "input-only design initialization: ordered starts, first closure-valid converged candidate"
+  ],
+  "fixed_inputs": {
+   "ipc_share": "8/14 (TCDS E.036 stage counts, P8.4b)",
+   "duct_dPqP": {"dPqP_duct4": 0.0048, "dPqP_duct6": 0.0101, "dPqP_duct11": 0.0051, "dPqP_duct_ipt_lpt": 0.0051, "dPqP_duct13": 0.0107, "dPqP_duct15": 0.0149},
+   "duct_scale": 1.0,
+   "ram_recovery": 0.999,
+   "sm_floor_pct": 10.0,
+   "burner_dPqP": "p72_registration.json fixed_central.combustor_pressure_loss (0.045)",
+   "eta_b": "p72_registration.json fixed_central.eta_b per ICAO mode",
+   "fuel": "p72_registration.json fuel.mole_fractions (Dooley 2012 Jet A surrogate), liquid basis -360 kJ/kg",
+   "efficiency_centers": {"eff_fan": 0.8948, "eff_ipc": 0.9243, "eff_hpc": 0.8707, "eff_hpt": 0.8888, "eff_ipt": 0.8888, "eff_lpt": 0.8996},
+   "cooling_cited": {"ngv_frac_of_hpc_exit": 0.0641, "rotor_frac_of_hpc_exit": 0.0275},
+   "nozzle": {"Cd_core": 0.96, "Cd_bypass": 0.96, "Cv_core": 0.985, "Cv_bypass": 0.985},
+   "handling_bleed": "P8.4b-A1 (beta = 0 first, SMN floor 10 %, 0 <= beta <= 0.5)",
+   "customer_bleed_power_offtake": 0.0,
+   "maps": "pyCycle 4.4.0 export, data/maps/pycycle_4.4.0 (fan FanMap, IPC LPCMap, HPC HPCMap, HPT/IPT HPTMap, LPT LPTMap)",
+   "ambient": "SLS ISA 288.15 K, 101325 Pa, M = 0",
+   "public_inputs": "ICAO OPR, BPR and rated thrust of each record (physical inputs, not fitted)"
+  }
+ },
+ "shared_parameters": {
+  "order": ["T4_K", "FPR", "eff_comp_offset", "eff_turb_offset", "cooling_scale"],
+  "T4_K": {"bounds": [1700.0, 1900.0], "central": 1800.0, "applies_to": "design take-off T4 target",
+           "central_source": "Martinez, Aerospace engine data (UPM): Trent XWB maximum TET 1800 K (sister engine, published specification only)",
+           "bounds_source": "P8.4b sensitivity range (engineering endpoints; outer 1500-2200 K envelope from the Trent 1000-A performance study, ResearchGate 329944773)"},
+  "FPR": {"bounds": [1.40, 1.55], "central": 1.45, "applies_to": "design fan pressure ratio (both streams)",
+          "central_source": "frozen v6 fpr_rated (p72_registration.json)",
+          "bounds_source": "upper 1.55 Martinez table (older lower-BPR engines); lower 1.40 engineering choice (P8.4b)"},
+  "eff_comp_offset": {"bounds": [-0.02, 0.02], "central": 0.0, "applies_to": "added to fan, IPC and HPC design isentropic efficiency centers",
+                      "central_source": "pinned pyCycle 4.4.0 HBTF generic values (IPC = LPC)",
+                      "bounds_source": "P8.4b +/-0.02 engineering endpoints (chosen, not measured)"},
+  "eff_turb_offset": {"bounds": [-0.02, 0.02], "central": 0.0, "applies_to": "added to HPT, IPT and LPT design isentropic efficiency centers",
+                      "central_source": "pinned pyCycle 4.4.0 HBTF generic values (IPT = HPT)",
+                      "bounds_source": "P8.4b +/-0.02 engineering endpoints (chosen, not measured)"},
+  "cooling_scale": {"bounds": [0.0, 1.0], "central": 1.0, "applies_to": "multiplies NGV 0.0641 and rotor 0.0275 HPT cooling fractions",
+                    "central_source": "NASA CR-168189 section 3.2.3 design values (other-machine rig)",
+                    "bounds_source": "0 = no cooling (limit), 1 = cited design (P8.4b range rule)"},
+  "midpoint": {"T4_K": 1800.0, "FPR": 1.475, "eff_comp_offset": 0.0, "eff_turb_offset": 0.0, "cooling_scale": 0.5},
+  "per_engine_free_parameters": "none; every fitted parameter is shared across all engines",
+  "certification_year": "not used; only if cited metadata is later prospectively registered; ICAO test dates are never substituted"
+ },
+ "calibration_data": {
+  "file": "outputs/phase7/calibration_v6_rows.csv",
+  "sha256": "e80ed0dd6585da830df75af42ce9ea1783e237af90aa095a9386a886332b86d1",
+  "whitelist_columns": ["Unique ID", "Model", "Mode", "Power (%)", "x", "Pressure Ratio", "Bypass Ratio", "Rated Thrust (kN)", "Target Thrust (kN)", "Group", "w", "Fuel Flow (kg/s)"],
+  "ignored": "every other column (old v6 predictions and diagnostics) is never parsed",
+  "assertions": ["exactly 93 rows", "set(Unique ID) == split_p61.json calibration_records (31 records)", "every Model in split_p61 calibration_models", "9 groups (0-8) as split_p61 calibration_groups", "sum(w) == 1 within 1e-12", "3 modes per record", "file sha256 equals the registered value"],
+  "split": {"file": "outputs/phase6/split_p61.json", "sha256": "0fbbbdfa7feb9532518a5e38019d4de61bd45f4ae4b2ac07dc5ae78c778beb10"},
+  "forbidden_readers": ["lto_v5.load_rows(..., with_targets=True)", "lto_v5.calibration_rows()", "any read of data/icao_engine_data.csv target columns before the score reservation"],
+  "pool_choice": "frozen 93-row Trent calibration split (9 groups, effective N 27), not the 12-family cross-family pool (no steering received)"
+ },
+ "objective": {
+  "definition": "SSE = sum_i w_i e_i^2, e_i = (FF_pred - FF_ICAO) / FF_ICAO; the existing group-balanced relative fuel-flow objective (lto_v5.residual_vector)",
+  "unreachable": "a row whose design point has no valid start, whose continuation or bleed solve fails, is status 'unreachable' with its reason and e = 1.0 (lto_v5.FAILED_ROW_ERROR)",
+  "exceptions": "any other exception aborts the run (not caught)",
+  "evaluation": "one design solve + thrust continuation per unique (OPR, BPR, rated thrust) record key, only the modes present, parallel over keys (ProcessPoolExecutor, default 6 workers); deterministic"
+ },
+ "fit": {
+  "candidates": [
+   {"name": "tpe_then_polish", "start": "Optuna TPESampler(seed 42), 150 trials over the box in shared_parameters.order; then polish from the best trial", "value": "min(polished SSE, best-trial SSE) exactly as lto_v5.fit"},
+   {"name": "polish_from_central", "start": "shared_parameters central values", "value": "polish result"},
+   {"name": "polish_from_midpoint", "start": "exact box midpoint", "value": "polish result"}
+  ],
+  "tpe_seed": 42,
+  "n_trials": 150,
+  "polish": {"method": "scipy.optimize.least_squares trf with bounds", "max_nfev": 100, "x_scale": "box widths", "diff_step": 1e-4},
+  "evaluation_order": "candidate 1, 2, 3 in one process (same model object)",
+  "selection": "lowest calibration SSE; exact ties: tpe_then_polish, then polish_from_central, then polish_from_midpoint",
+  "records": "every candidate, its start, polish status, nfev, box-scaled J^T J condition and the full evaluation log are written; no extra budget, no held-out choice"
+ },
+ "profile": {
+  "grid_points": 17,
+  "grid": "uniform numpy.linspace over each parameter's bounds",
+  "inner_max_nfev": 40,
+  "inner_fit": "the same least_squares polish over the other free parameters",
+  "warm_start": "as lto_v5.profile: from the grid point nearest the optimum upwards, then downwards, each inner fit started from the previous grid point's solution, the first from the optimum",
+  "n_eff": 27,
+  "D": "n_eff * ln(SSE_profile / SSE_min), SSE_min = min(fit SSE, profile minimum)",
+  "threshold": 3.841,
+  "rule": "IDENTIFIED iff D >= 3.841 at both box edges (95 % interval interior on both ends) AND interval width <= 50 % of the box width",
+  "penalty_guard": "lto_v6.apply_penalty_guard reused exactly: no verdict-deciding grid point may carry an unreachable calibration row or an unknown count; n_unreachable taken from the objective log at the returned optimum, re-evaluated once if absent (as lto_v6.run_profile)",
+  "reported_not_gating": ["inner fits at the 40-evaluation cap", "grid step and grid points inside each interval", "box-scaled J^T J condition at the optimum", "profile minimum below fit SSE", "every failed profile and verdict of the original pass"],
+  "A1": "PASS iff every fitted parameter of that pass is IDENTIFIED under the rule and the guard"
+ },
+ "fallback": {
+  "passes": 1,
+  "trigger": "the primary profile leaves at least one parameter not IDENTIFIED",
+  "action": "jointly fix ALL unidentified parameters at their cited central values; refit the remaining parameters with the same three registered starts (TPE seed 42 150 trials + polish, central, midpoint of the remaining box) and budgets; profile the remaining parameters once with the same settings",
+  "no_further_search": "no second fallback, no adaptive grid, no change of bounds",
+  "if_none_remain": "no refit; the model is all-fixed at cited centrals; report 'all fixed, A1 n/a', not a fitted identifiability success",
+  "verdict": "the primary A1 verdict is the A4c A1 verdict; an A1 FAIL stays a failure and G2 stays closed; the fallback verdict is reported beside it",
+  "frozen_model": "primary fit if primary A1 PASS; otherwise the fallback fit (or all-central if none remain), whatever the fallback profile verdict"
+ },
+ "design_initialization": {
+  "scope": "every A4c design solve (fit, profile, error budget, input convergence, score)",
+  "starts_order": "for d in (280, 220, 340): for FAR in (0.03, 0.02, 0.04): W = rated_thrust_N / d",
+  "turbine_PR_guess": {"three_shaft": [3.5, 2.0, 5.0], "two_shaft": [3.0, 4.0]},
+  "turbine_PR_guess_sources": {"three_shaft": "scripts/phase8/trent_p84b.py solve_engine (existing)", "two_shaft": "pyCycle HBTF example guesses (scripts/phase8/pycycle/compare_hbtf.py run_points)"},
+  "selection": "FIRST candidate in order that is converged and closure-valid; never by observed fuel flow or lowest fuel-flow error; all tries retained",
+  "solver": "unchanged C++ damped Newton: max scaled residual < 1e-10 within 50 iterations, existing bounds",
+  "closure_valid": ["converged", "all unknowns finite and > 0", "W, FAR, Wfuel, Fn_N, Tt3, Tt4, A_core_m2, A_byp_m2 finite and > 0", "every station W, Tt, Pt finite and > 0", "mass_closure < 1e-8", "energy_closure < 1e-8", "element_closure < 1e-10"],
+  "no_valid_start": "design status unreachable with all tries and reasons"
+ },
+ "input_convergence": {
+  "output": "outputs/phase8/p84_input_convergence.json (write-once, after the AC gates)",
+  "parameters": "A4c central prior (shared-parameter centrals, P8.3-A2 Cd/Cv, fixed inputs above)",
+  "design_only": true,
+  "scope": "representative design scope: the lowest eligible UID of each of the 20 eligible families in outputs/phase8/cross_family_split.json, plus BOTH original Trent 1000-E input records 11RR052 and 12RR058 (UIDs deduplicated); not all 89 eligible records",
+  "readers": {
+   "databank": "scripts/phase8/icao_families.read_sheet_columns (whitelisted identifier/design columns; target columns never decoded); xlsx sha256 must equal cross_family_split.json xlsx_sha256 57a9ff572458ad3a3141afc1aea932b5faa5796d279f0ac74600b27869302530; split content_sha256 recomputed",
+   "trent_1000_e": "data/icao_engine_data.csv read with usecols = Unique ID, Engine ID, Mode, Pressure Ratio, Bypass Ratio, Rated Thrust (kN) only (sha256 511ec57a31c4621e1f76754e3c92dbd6c7c151a4cfd0fcdb7f40c9ce6b34d7a7)"
+  },
+  "split_file": {"path": "outputs/phase8/cross_family_split.json", "sha256": "96c486a9ebff9af5a293bcd9b3883115803b44c1823cc4a3298d2dd9de9e23c5", "content_sha256": "63baef1b41234976e3c07606b6a0ec59a37bb3988a1bf01fb4da41c2b7efc258"},
+  "eligibility": "unchanged registered rule (docs/phase8_family_split.md); no eligibility change based on solves",
+  "architecture_policy": {
+   "three_shaft": {"families": ["Trent 1000", "Trent 7000", "Trent XWB", "D-36", "D-436"],
+                   "sources": {"Trent 1000": "EASA TCDS E.036", "Trent 7000": "certified 2018 under EASA TCDS E.036 as a Trent 1000 variant; Rolls-Royce Trent 7000 product page (three-shaft)", "Trent XWB": "EASA TCDS E.111", "D-36": "Ivchenko-Progress/Motor Sich D-36 three-shaft (secondary public description)", "D-436": "Progress D-436 three-spool (secondary public description)"},
+                   "builder": "trent_p84b.make_engine (three-shaft path) with A4c central overrides; IPC/HPC split by the Trent 8/14 stage-count rule used as a declared proxy for non-Trent three-shaft families"},
+   "two_shaft_direct": {"families": ["CF34-3", "CF34-8", "CF34-10", "CF6-80", "GE90", "GEnx-1B", "LEAP-1A", "LEAP-1B", "LEAP-1C", "PW4000"],
+                        "source": "manufacturer two-spool architecture (public descriptions); no three-shaft member"},
+   "geared_two_shaft": {"families": ["PW1100G", "PW1200G", "PW1400G", "PW1500G", "PW1900G"],
+                        "identification": "cross_family_split.json geared flag (^PW1\\d{3}G)",
+                        "proxy": "LOSSLESS gearbox design-power proxy: fan and LPC on the LP power balance with normalized speeds, which equals a lossless fixed-ratio gearbox at the design point; Hbtf has no gearbox field; no geared off-design validation claim"},
+   "two_shaft_builder": "existing C++ two-shaft Hbtf path (production thermo) at alt 0, M 0, dTs 0 on the pyCycle US 1976 table; LPC share of ln(core PR) = ln 1.935 / ln(1.935 * 9.369) from the pyCycle HBTF example (generic, declared); HPC bleeds cool1/cool2/cust = 0; HPT cooling = cited NGV/rotor into cool3/cool4",
+   "two_shaft_proxy_limits": "the existing two-shaft C++ path has no P8.3 Cd/real-gas choking law (pyCycle Cv nozzle, Cv 0.985), no eta_b temperature-rise scaling (full HP equilibrium) and no ISA override (US 1976 table at 0 m); no C++ edit is authorized, so these differences are declared limits of a convergence check, not a model claim"
+  },
+  "gate": "coverage == 20 families AND every case (including both Trent 1000-E records) has a converged closure-valid design; no family skipped, no missing binary or databank treated as PASS, convergence never inferred from initialization",
+  "known_static_risk": "offdesign.cpp solve_design bounds W to 1000 lbm/s (453.6 kg/s) on the two-shaft path and 3000 lbm/s (1360.8 kg/s) on the three-shaft path; large two-shaft families (e.g. GE90, GEnx-1B, CF6-80, PW4000) and possibly Trent XWB may need more inlet flow. This is a source reading, not a result; any failure is recorded, not tuned, and changing the bounds needs a separate C++ registration"
+ },
+ "error_budget": {
+  "script": "scripts/phase8/a4_error_budget.py",
+  "output_dir": "outputs/phase8/a4_error_budget/20261003_attempt1/ (write-once)",
+  "engine": "AE3 Trent 1000-AE3 02P23RR126 (calibration engine) only; modes TAKE-OFF, APPROACH, IDLE",
+  "observed_ff_source": "calibration reader above (AE3 rows only)",
+  "baselines": [
+   "old_A4_central: trent_p84b.solve_engine with trent_p84b.CENTRAL exactly (Cd 0.96, Cv 0.95, single registered guess); compared with outputs/phase8/p84b_a1_g1.json ae3_central (reproduction, old files untouched)",
+   "old_A4_central_new_builder: A4c builder with the old A4 nozzle and single guess (builder regression)",
+   "new_central_prior: A4c builder at the A4c central prior with ordered design starts"
+  ],
+  "oat_from_new_central": {
+   "Cv_core": [0.95, 1.0], "Cv_bypass": [0.95, 1.0], "Cv_joint": [0.95, 1.0],
+   "Cd_core": [0.90, 0.99], "Cd_bypass": [0.90, 0.99], "Cd_joint": [0.90, 0.99],
+   "T4_K": [1700.0, 1900.0], "FPR": [1.40, 1.55],
+   "eff_fan": [0.8748, 0.9148], "eff_ipc": [0.9043, 0.9443], "eff_hpc": [0.8507, 0.8907],
+   "eff_hpt": [0.8688, 0.9088], "eff_ipt": [0.8688, 0.9088], "eff_lpt": [0.8796, 0.9196],
+   "ngv_cooling_frac": [0.0, 0.0641], "rotor_cooling_frac": [0.0, 0.0275]
+  },
+  "per_case": "re-solve the design, freeze its geometry, solve the three modes by the registered continuation",
+  "reported": ["FF per mode and delta vs new central", "AE3 calibration error and its change in percentage points", "core/bypass areas", "W and FAR", "design and mode residual norms and iterations", "mass/energy/element closure", "map extrapolation", "every failure with reason", "all design tries"],
+  "share_diagnostic": "share_m = (change of AE3 calibration error in pp caused by the intervention) / known A4 aggregate_m with aggregates TO 15.4, APP 10.3, IDLE 8.3 (%). ILLUSTRATIVE ONLY: not an additive causal allocation of held-out errors; shares are not claimed to sum to 100 %; central values are not tuned by them; no held-out row is inspected"
+ },
+ "heldout_score": {
+  "rows": "the original 87 Trent held-out rows of outputs/phase6/split_p61.json (heldout_records, heldout_groups)",
+  "once": true,
+  "deadline": "by 2026-10-15 (America/New_York); otherwise reported in progress; no deadline-driven retuning",
+  "preconditions": [
+   "this registration and docs/phase8_p83_a2_registration.json committed and clean",
+   "A4c implementation sources committed and clean",
+   "fit, profile and (if triggered) fallback fit/profile records committed and clean",
+   "outputs/phase8/p84_input_convergence.json committed and clean (its verdict is copied into the score; a FAIL is reported, not hidden)",
+   "frozen parameter, source and input identities computed from those committed files",
+   "AC power and no other heavy job"
+  ],
+  "reservation": "outputs/phase8/ladder/A4c/heldout_score_reservation.json is created atomically (exclusive create) BEFORE any held-out target is read; it holds the frozen parameters and identities; it is retained even if scoring fails; its existence refuses any later score",
+  "target_reader": "lto_v5.load_rows(split heldout_records, with_targets=True) + attach_groups, called only after the reservation exists",
+  "metrics": "unchanged: lto_v5.holdout_tables with the v6 base registration (group-weighted MAPE, record-level, per mode, B0, B1, unreachable APE 100 %), lto_v6.a4_informativeness",
+  "interpretation": "if A1 FAILs, the score of the frozen failed model is diagnostic only and never opens G2",
+  "no_new_cross_family_targets": true
+ },
+ "outputs": {
+  "dir": "outputs/phase8/ladder/A4c/",
+  "files": ["fit_primary.json", "fit_primary_evaluations.csv", "fit_primary_calibration_rows.csv", "profile_primary.json", "profile_primary.csv", "profile_primary_progress.log", "fit_fallback.json", "fit_fallback_evaluations.csv", "fit_fallback_calibration_rows.csv", "profile_fallback.json", "profile_fallback.csv", "profile_fallback_progress.log", "heldout_score_reservation.json", "holdout_p8_A4c.csv", "holdout_p8_A4c_summary.csv", "holdout_p8_A4c.json"],
+  "write_once": "every file is created exclusively; an existing file refuses the step"
+ },
+ "runtime_gates": {
+  "power": "pmset reports 'AC Power'; unreadable = refuse",
+  "processes": "no other Python process running benchmark, ladder, v6/v5 calibration, trent_p84b or any A4c script (parked shells ignored); ps unreadable = refuse",
+  "sources": "registration and implementation files committed and clean at HEAD; HEAD or git status unreadable = refuse",
+  "launch_order": "set by the main workflow record (after the benchmark, A2 and Track 4 AC chain); these scripts never launch themselves"
+ },
+ "seeds": {"tpe": 42},
+ "inputs_sha256": {
+  "outputs/phase7/calibration_v6_rows.csv": "e80ed0dd6585da830df75af42ce9ea1783e237af90aa095a9386a886332b86d1",
+  "outputs/phase6/split_p61.json": "0fbbbdfa7feb9532518a5e38019d4de61bd45f4ae4b2ac07dc5ae78c778beb10",
+  "outputs/phase7/p72_registration.json": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c",
+  "outputs/phase8/cross_family_split.json": "96c486a9ebff9af5a293bcd9b3883115803b44c1823cc4a3298d2dd9de9e23c5",
+  "outputs/phase8/p84b_a1_g1.json": "b05b95111a44968d95e8b89ee6637d339d13a7114a5e4fcd6e8a63f294c26f58",
+  "data/icao_engine_data.csv": "511ec57a31c4621e1f76754e3c92dbd6c7c151a4cfd0fcdb7f40c9ce6b34d7a7",
+  "data/creck_c1c16_full.yaml": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+  "data/thermo/pycycle_us1976.json": "cab231e3e715a0f3e19638e4b3236f41fbc8100375bcd511fcb75c76abb87947",
+  "data/maps/pycycle_4.4.0/FanMap.json": "5f20b51cdc19734e95e645f99498b47b78f58f021b790596381ef06f9cb7b1f8",
+  "data/maps/pycycle_4.4.0/HPCMap.json": "33e0664a6d7784285830fb95bdc20a2038285ccdff3b9c67177fbaedb353b8aa",
+  "data/maps/pycycle_4.4.0/HPTMap.json": "fa604795dc68334010a007207e26572d773d65128b00244fa9614d698618fea6",
+  "data/maps/pycycle_4.4.0/LPCMap.json": "b1c54cb8935aef8e4be96d2f66d5d35f2d4abcfcaba12266f4cb014b9d1006b6",
+  "data/maps/pycycle_4.4.0/LPTMap.json": "30fd2caa14bbda1f370a4ee3925cf514ab0b3c872bf6cacb31b619ac6f57c55c",
+  "data/empirical/raw/icao_edb_2026-03.xlsx (untracked)": "57a9ff572458ad3a3141afc1aea932b5faa5796d279f0ac74600b27869302530"
+ },
+ "sources_sha256": {
+  "scripts/phase8/trent_p84b.py": "7d40459419a3f128dfd30898da4751588de68cc2dee94380a1580267a413943e",
+  "cpp/catjet_core/offdesign.cpp": "e33df5aee8a787e59c2f947a42519cb4a642a77aca8fddfdd819b25e7cfbfe5f",
+  "cpp/catjet_core/offdesign.hpp": "8d9ebb0dc68c0be78a75bf8ae9381dca6a3ba7c24d90a6138329e4abf7db0c21",
+  "cpp/catjet_core/choking_nozzle.cpp": "da128ff6823d900c40c4cda0672e3c34e8ba9c66aa3ebabd8e561377b195f909",
+  "cpp/bindings/catjet_core.cpp": "862982bdaeea4e60af4126c19fb294ce447f65187eb798d2a9246520bf073cee",
+  "scripts/phase8/pycycle/compare_hbtf.py": "c0286d4b944c8403493c80d64ae941d5649d8baaae3f4a2154368aef23b5553d",
+  "scripts/optimization/lto_v5.py": "2790e7a0c446fdc7fe054bec63908d7f820ca569bd7e1ed483317f2246826b93",
+  "scripts/optimization/lto_v6.py": "9c47cef382c010055c7b7d9cb27a00c449a821140a80a4b063dfc9c221623f40",
+  "scripts/phase8/icao_families.py": "761990ce3a63e8270d71208acfd18bb8a9ebac1a3c7d02e76330aa0a9efce312",
+  "scripts/phase8/cross_family_split.py": "edfd0a47edb4c460078e0b6915f151c7a6064aee45ae260493158ae0de5a9a00"
+ },
+ "config_sha256": {
+  "docs/phase8_p83_a2_registration.json": "87f8d60438d5ae9b3572a4bb956d1a2ac15db704f60e816346d258f63506f25d",
+  "docs/phase8_p83_amendment_a2.md": "90c523f031f2c5f2426b9f086821ed17317b565f3ba15a294d18888347224806",
+  "docs/phase8_p84b_registration.md": "5531a396c09ae09adc1e631d2c7894dec7bff55867aca33203b1cbfd7ae47e41",
+  "docs/phase8_p84b_amendment_a1.md": "a8c11fee767163524809a05ce723ab0bbf58afd81efe87f2486ad956991982d0"
+ },
+ "implementation_files": [
+  "scripts/phase8/trent_p84c.py",
+  "scripts/phase8/a4c_profile.py",
+  "scripts/phase8/a4_error_budget.py",
+  "scripts/phase8/public_engine_inputs.py",
+  "scripts/phase8/p84_input_convergence.py"
+ ]
+}
