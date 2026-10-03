@@ -18,7 +18,9 @@ today); its result is reported but is not the gate.
 
 Outputs (write-once): outputs/phase8/g0/*.csv (regenerated tables) and
 outputs/phase8/g0_parity.json (verdict, per-column max relative difference).
-Usage: .venv/bin/python scripts/phase8/g0_parity.py [--workers 6]
+With --out-dir DIR (a new directory under outputs/phase8/) the tables and
+DIR/g0_parity.json go there instead; rules, inputs and backends are unchanged.
+Usage: .venv/bin/python scripts/phase8/g0_parity.py [--workers 6] [--out-dir DIR]
 """
 
 from __future__ import annotations
@@ -85,7 +87,18 @@ def compare(frozen: Path, new: Path) -> dict:
     return res
 
 
-def regenerate(backend: str, n_workers: int, tag: str) -> dict:
+def output_paths(out_dir: str | None) -> tuple[Path, Path]:
+    """(table directory, verdict JSON): the historical paths, or a new write-once DIR."""
+    if out_dir is None:
+        return OUT_DIR, OUT_JSON
+    d = Path(out_dir)
+    d = (d if d.is_absolute() else ROOT / d).resolve()
+    if not d.is_relative_to((ROOT / "outputs" / "phase8").resolve()) or d == OUT_DIR.resolve():
+        raise ValueError(f"--out-dir must be a new directory under outputs/phase8/, not {d}")
+    return d, d / "g0_parity.json"
+
+
+def regenerate(backend: str, n_workers: int, tag: str, out_dir: Path = OUT_DIR) -> dict:
     reg6 = lto_v6.load_registration_v6()
     base = lto_v6.base_registration(reg6)
     split = v5.load_split()
@@ -105,16 +118,16 @@ def regenerate(backend: str, n_workers: int, tag: str) -> dict:
     wall = time.perf_counter() - t0
     rows_out = rows.drop(columns=["CO (g/kg)", "HC (g/kg)", "NOx (g/kg)"]).join(pred_cal)
     df, summary, _ = v5.holdout_tables(base, cal, held, pred_hold)
-    paths = {"cal": OUT_DIR / f"calibration_v6_rows_{tag}.csv",
-             "hold": OUT_DIR / f"holdout_icao_validation_v6_{tag}.csv",
-             "hold_summary": OUT_DIR / f"holdout_icao_validation_summary_v6_{tag}.csv"}
+    paths = {"cal": out_dir / f"calibration_v6_rows_{tag}.csv",
+             "hold": out_dir / f"holdout_icao_validation_v6_{tag}.csv",
+             "hold_summary": out_dir / f"holdout_icao_validation_summary_v6_{tag}.csv"}
     rows_out.to_csv(paths["cal"], index=False)
     df.to_csv(paths["hold"], index=False)
     summary.to_csv(paths["hold_summary"], index=False)
     return {"paths": paths, "wall_s": wall}
 
 
-def regenerate_ae3_design_point(tag: str) -> Path:
+def regenerate_ae3_design_point(tag: str, out_dir: Path = OUT_DIR) -> Path:
     """design_point_summary.py --v5 with the C++ engine (same rows, same columns)."""
     from integrated_engine import FUEL_LIBRARY
     from simulation.catjet_backend import CppEngine
@@ -152,29 +165,35 @@ def regenerate_ae3_design_point(tag: str) -> Path:
             "total_air_mass_flow_kg_s": p["total_air_mass_flow"],
             "NOx_corr_g_s": res["emissions"]["NOx_g_s"],
         })
-    path = OUT_DIR / f"design_point_summary_v5_{tag}.csv"
+    path = out_dir / f"design_point_summary_v5_{tag}.csv"
     pd.DataFrame(out_rows).to_csv(path, index=False)
     return path
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=6)
-    a = ap.parse_args()
-    if OUT_JSON.exists() or OUT_DIR.exists():
+    ap.add_argument("--out-dir", default=None,
+                    help="new write-once directory under outputs/phase8/ for the tables and g0_parity.json")
+    a = ap.parse_args(argv)
+    try:
+        out_dir, out_json = output_paths(a.out_dir)
+    except ValueError as exc:
+        ap.error(str(exc))
+    if out_json.exists() or out_dir.exists():
         print("G0 outputs exist; refusing to overwrite")
         return 1
-    OUT_DIR.mkdir(parents=True)
+    out_dir.mkdir(parents=True)
     sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True,
                          check=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "--", "cpp", "simulation", "scripts"],
                            cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
     runs = {}
     for backend in ("cpp", "python"):
-        g = regenerate(backend, a.workers, backend)
+        g = regenerate(backend, a.workers, backend, out_dir)
         runs[backend] = {"wall_s": g["wall_s"],
                          "checks": {k: compare(FROZEN[k], p) for k, p in g["paths"].items()}}
-    ae3 = regenerate_ae3_design_point("cpp")
+    ae3 = regenerate_ae3_design_point("cpp", out_dir)
     runs["cpp"]["checks"]["ae3"] = compare(FROZEN["ae3"], ae3)
     g0 = all(c["match"] for c in runs["cpp"]["checks"].values())
     doc = {
@@ -186,7 +205,7 @@ def main() -> int:
         "backends": runs,
         "note": "python backend = A0 reproducibility of the frozen artifacts today (reported, not the gate)",
     }
-    OUT_JSON.write_text(json.dumps(doc, indent=2, default=str) + "\n")
+    out_json.write_text(json.dumps(doc, indent=2, default=str) + "\n")
     for be, r in runs.items():
         for k, c in r["checks"].items():
             worst = max((v.get("max_rel_diff", 0.0) for v in c["columns"].values()), default=0.0)
