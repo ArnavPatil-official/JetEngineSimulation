@@ -326,13 +326,20 @@ def commit_blockers(paths: list, ls_files_output: str | None, status_output: str
 
 
 def audit_match_blockers(audit_doc: dict, current: dict) -> list:
-    """The committed audit must match the current registration, audit source and mechanisms."""
+    """The committed audit must match the current registration, audit source and mechanisms,
+    and must itself have succeeded: empty identity_drift and passing allowance/control gates
+    (missing metadata fails closed)."""
     out = []
     for key in ("registration_sha256", "audit_source_sha256", "a2nox_sha256", "creck_sha256"):
         if audit_doc.get("identity", {}).get(key) != current.get(key):
             out.append(f"audit {key} does not match the current file")
     if "B_exact" not in audit_doc.get("a2nox", {}):
         out.append("audit has no A2NOx B")
+    if audit_doc.get("identity_drift") != []:
+        out.append(f"audit identity_drift is {audit_doc.get('identity_drift')!r} (must be an empty list)")
+    for gate in ("allowance_gate", "creck_control_gate"):
+        if not isinstance(audit_doc.get(gate), dict) or audit_doc[gate].get("pass") is not True:
+            out.append(f"audit {gate} failed or missing")
     return out
 
 

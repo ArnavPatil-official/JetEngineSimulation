@@ -189,7 +189,7 @@
     "rerun4": [
       "explicit --a5 selection; output path fixed by this registration",
       "registration JSON, amendment, p85_audit.py and reactor_validation.py committed and unmodified",
-      "audit output committed and unmodified; its registration, audit-source and mechanism hashes match; recomputed B equals recorded B",
+      "audit output committed and unmodified; its registration, audit-source and mechanism hashes match; identity_drift empty and allowance/control gates recorded as passing (missing metadata blocks); re-derived B and both gates equal the record and pass, before any network call",
       "no uncommitted changes under cpp/ or scripts/",
       "AC power and main workflow idle (guards.main_workflow)",
       "protected manifest matches",
@@ -227,6 +227,15 @@
         "G1.2: every A2NOx closure case (test values and tau/10tau/100tau) must have all_converged true; small closures of a failed solve never pass",
         "G1.1: only a finite, converged APPROACH/IDLE shortfall may be labelled a kinetics/extinction limit; nonconvergence and CVODES errors stay numerical failures unless independently diagnosed",
         "guards: the main workflow is identified by docs/phase8_queue_recovery_registration.json (lease and terminal chain record), not by process names; the audit and rerun 4 both wait on it and on AC; an absent main registration is a run blocker"
+      ]
+    },
+    {
+      "date": "2026-10-03",
+      "before_any_a5_calculation": true,
+      "source": "docs/plan.md, P8.5-A5 pre-run review clarifications (audit acceptance)",
+      "changes": [
+        "rerun 4 rejects a committed audit whose identity_drift is not an empty list or whose recorded allowance_gate/creck_control_gate failed or is missing; checked before any network call",
+        "rerun 4 then independently re-derives B and both audit gates from the unchanged files; any difference or failure blocks (nothing written)"
       ]
     }
   ]

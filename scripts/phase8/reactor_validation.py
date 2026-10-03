@@ -346,13 +346,16 @@ def main_a5() -> int:
         print(f"REFUSED: {output} exists; output is write-once", file=sys.stderr)
         return 2
     start = a5_identity(reg_bytes, reg)
-    # B is frozen by the committed audit; recompute it from the unchanged files before any network solve
+    # B is frozen by the committed (passing) audit; re-derive B and both audit gates from the
+    # unchanged files before any network solve
     audits = a5.audit_mechanisms(reg)
-    if any(audits[m]["B_exact"] != audit_doc[m]["B_exact"] for m in ("a2nox", "creck")):
-        print("BLOCKED (nothing written): recomputed audit differs from the committed audit", file=sys.stderr)
+    allowance = a5.allowance_gate(audits["a2nox"])
+    control = a5.control_gate(audits["creck"])
+    if any(audits[m]["B_exact"] != audit_doc[m]["B_exact"] for m in ("a2nox", "creck")) \
+            or not (allowance["pass"] and control["pass"]):
+        print("BLOCKED (nothing written): re-derived audit differs from the committed audit or fails "
+              f"(allowance {allowance}, control {control})", file=sys.stderr)
         return 3
-    allowance = a5.allowance_gate(audit_doc["a2nox"])
-    control = a5.control_gate(audit_doc["creck"])
     tol = a5.closure_tolerance(a5.audit_B(audit_doc["a2nox"])) if allowance["pass"] else None
     c11 = reg["g1"]["G1.1_temperature_convergence"]
     comp = c11["composition_reported_only"]
@@ -448,7 +451,8 @@ def main_a5() -> int:
     doc = {"gate": "P8.5 G1 (P8.5-A5 rerun 4)", "registration": reg["id"], "verdict": verdict, "checks": checks,
            "audit": {"path": reg["outputs"]["audit"], "B_exact": audit_doc["a2nox"]["B_exact"],
                      "B_float": audit_doc["a2nox"]["B_float"], "allowance_gate": allowance,
-                     "creck_control_gate": control, "recomputed_B_equal": True, "scope_note": a5.SCOPE_NOTE},
+                     "creck_control_gate": control, "recomputed_B_and_gates_equal": True,
+                     "scope_note": a5.SCOPE_NOTE},
            "closure_tolerance_10B_exact": None if tol is None else str(tol),
            "closure_tolerance_10B_float": None if tol is None else float(tol),
            "G1.1_temperature_convergence": g11, "G1.1_runs": g11_runs, "G1.2_A2NOx": g12,

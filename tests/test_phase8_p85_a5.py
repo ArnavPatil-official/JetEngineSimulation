@@ -254,10 +254,27 @@ def test_commit_and_audit_match_blockers():
     assert a5.commit_blockers(paths, "\n".join(paths), " M docs/phase8_p85_a5_registration.json\n")
     assert a5.commit_blockers(paths, None, "")
     ident = {"registration_sha256": "r", "audit_source_sha256": "s", "a2nox_sha256": "a", "creck_sha256": "c"}
-    doc = {"identity": dict(ident), "a2nox": {"B_exact": "1/3"}}
+    doc = {"identity": dict(ident), "a2nox": {"B_exact": "1/3"}, "identity_drift": [],
+           "allowance_gate": {"pass": True, "reasons": []}, "creck_control_gate": {"pass": True, "reasons": []}}
     assert a5.audit_match_blockers(doc, ident) == []
     assert a5.audit_match_blockers(doc, {**ident, "a2nox_sha256": "changed"})
-    assert a5.audit_match_blockers({"identity": dict(ident), "a2nox": {}}, ident)
+    assert a5.audit_match_blockers({**doc, "a2nox": {}}, ident)
+
+
+def test_matching_hash_but_drifted_or_failed_audit_is_rejected():
+    ident = {"registration_sha256": "r", "audit_source_sha256": "s", "a2nox_sha256": "a", "creck_sha256": "c"}
+    good = {"identity": dict(ident), "a2nox": {"B_exact": "1/3"}, "identity_drift": [],
+            "allowance_gate": {"pass": True}, "creck_control_gate": {"pass": True}}
+    assert a5.audit_match_blockers(good, ident) == []
+    bad = [{**good, "identity_drift": ["git_head"]},
+           {**good, "allowance_gate": {"pass": False, "reasons": ["B is not finite and strictly positive"]}},
+           {**good, "creck_control_gate": {"pass": False}},
+           {**good, "creck_control_gate": {"pass": "true"}}]
+    for doc in bad:
+        assert len(a5.audit_match_blockers(doc, ident)) == 1
+    for key in ("identity_drift", "allowance_gate", "creck_control_gate"):           # missing metadata
+        missing = {k: v for k, v in good.items() if k != key}
+        assert len(a5.audit_match_blockers(missing, ident)) == 1
 
 
 def test_registration_matches_module_and_new_paths():
@@ -280,6 +297,7 @@ def test_registration_matches_module_and_new_paths():
     wf = reg["guards"]["main_workflow"]
     assert wf["registration"] == str(a5.QUEUE_REGISTRATION.relative_to(ROOT)) and wf["id"] == a5.QUEUE_ID
     assert wf["terminal_chain_statuses"] == list(a5.TERMINAL_CHAIN)
+    assert reg["prospective_corrections"][1]["before_any_a5_calculation"] is True
 
 
 def test_validator_keeps_historical_default_and_explicit_a5():
