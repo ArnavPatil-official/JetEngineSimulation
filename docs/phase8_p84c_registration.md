@@ -215,3 +215,109 @@ Create: `scripts/phase8/trent_p84c.py`, `a4c_profile.py`,
 `a4_error_budget.py`, `public_engine_inputs.py`, `p84_input_convergence.py`,
 `tests/test_phase8_p84c.py` and `tests/test_phase8_p84_input_convergence.py`.
 Modify: `docs/phase8_parameter_ledger.md` (new dated rows only).
+
+## P8.4c-C1 — prospective clarification, 2026-10-03
+
+This note follows the original registration commit `ee1fcdf` and an unfinished
+implementation draft. **No A4c fit, profile, error budget, family solve,
+held-out score, C++ modification or build has run.** The preceding registration
+text is preserved as history. C1 supersedes only its no-C++-edit constraint,
+active source-hash handling and incomplete verification details below. All
+priors, five shared parameters, physical equations, objective, budgets,
+17-point A1 rule, penalty guard, one fallback, splits and one-shot score remain
+unchanged. The JSON `clarifications` entry is authoritative.
+
+### Opt-in numerical flow bound and separate build
+
+Register `HbtfSpec.design_W_max_kg_s`, default **0**. Zero preserves the exact
+old upper bound: `1000*0.45359237` kg/s on two shafts and
+`3000*0.45359237` kg/s on three shafts. Existing A4 and benchmark callers keep
+zero. New A4c/input-convergence builders set the bound to
+`max(3000*0.45359237, 4*rated_thrust_N/220)` kg/s from public rated thrust
+alone. This is a declared numerical box, not a fitted parameter or measured
+flow. Explicit overrides must be finite and positive; negative/nonfinite
+values refuse. Old-A4 reproduction and the old-input builder regression retain
+the default box. Every other bound, residual, physical equation, tolerance and
+iteration limit stays unchanged.
+
+The only allowed C++ edits are the field, its binding and its use as the design
+W upper bound in `cpp/catjet_core/offdesign.hpp`,
+`cpp/catjet_core/offdesign.cpp` and `cpp/bindings/catjet_core.cpp`. Audit three-
+shaft residuals through the correctly dispatched `solve_design` result, not
+the raw two-shaft residual binding. Default/override and existing-reference
+regressions remain required; all-20-family convergence is still pending.
+
+Add only a backward-compatible `--build-dir` option to `cpp/build.sh`; its
+default remains `cpp/build`. The new validation build command is
+`bash cpp/build.sh --build-dir cpp/build_next`, **after benchmark/A2 records
+validate**, on AC and without overlapping heavy work. Never replace the
+benchmark module in `cpp/build`. Record committed source hashes, command/exit
+evidence and the resulting binary hash in write-once
+`outputs/phase8/p84c_build_next.json`. Select that module with an absolute
+`CATJET_BUILD` path. For full pytest, preload the new module in a fresh process,
+or put absolute `cpp/build_next` first and `cpp/build` already present in
+`PYTHONPATH`; otherwise the protected backend can prepend/cache the older
+module. No protected Python backend edit is authorized.
+
+### Evidence and frozen identities
+
+Original parent-source hashes remain explicitly historical in
+`historical_sources_sha256`; unchanged parent sources retain their active
+pins. They must never be presented as hashes of modified C++ files. Freeze
+actual committed/clean implementation, verification and transitive C++ source
+bytes, registration/input/config hashes, build provenance and loaded core
+binary before each numerical run. Artifact-only commits may change HEAD only
+when these scientific bytes remain identical.
+
+A profile must identify the exact fit it profiles. A fallback must identify
+its primary fit/profile and follow their registered fixed/free plan. Before
+reservation, validate that the fit, profile, fallback, convergence and current
+scientific identities agree, including the binary used. Require the complete
+applicable evidence: fit JSON/evaluation CSV/calibration-row CSV and profile
+JSON/table CSV/progress log, including fallback files when applicable. Check
+schemas, coverage, dependency identities and hashes; every applicable record
+must be committed and clean before held-out scoring. All-fixed fallback has
+no profile artifacts and remains A1 n/a.
+
+The exclusive scoring reservation freezes that complete evidence before any
+target access and remains after failure. Recheck source/input/config/binary
+identity after computation and before publishing its scientific verdict.
+Drift makes the run **ERROR with nonzero exit**, preserves evidence and cannot
+produce PASS or an accepted score. Resource checks include the Track 4 runner
+as well as benchmark, calibration, ladder and A4c jobs.
+
+### Singleton profile and architecture labels
+
+If fallback leaves exactly one free parameter, evaluate its residual vector
+directly once at each of the same 17 grid points; do not invoke an empty
+nuisance optimizer. Record direct evaluation, `nfev=1`, `status=1`, and no
+inner-fit message. Keep unreachable-count lookup/re-evaluation and the exact
+penalty guard, D statistic, interpolation and interval rule. This adds no
+search budget or scientific tolerance.
+
+D-36/D-436 and two-shaft assignments lacking a resolvable verified primary
+citation are **declared diagnostic architecture proxies**, not manufacturer-
+verified claims. The Trent-family three-shaft reference has a primary
+[Rolls-Royce description](https://www.rolls-royce.com/media/our-stories/discover/2025/celebrating-30-years-of-trent-designed-to-last.aspx).
+The lossless geared design-power proxy and two-shaft physics limitations
+remain explicit. Convergence of a proxy is not engine validation.
+
+### AC and main-record gate
+
+Use the committed main workflow registration
+`docs/phase8_queue_recovery_registration.json` and its strict completion
+validator. Benchmark/A2 dependencies are both queue completion records,
+`benchmark_owner_released.json` and `stages/a2_calibration.json` under
+`outputs/phase8/operations/20261003_recovery/records/`. Validate the exact
+registered plan/spec/command identities and underlying manifest/result/
+progress/log/retained hashes. Missing, partial, malformed or foreign evidence
+refuses; flags and failures remain visible. Process names, a dead PID and log
+phrases are never completion evidence.
+
+A separate build/all-20 validation may run within an **explicitly registered,
+serialized main validation stage** after those predecessor records validate,
+with matching live owner/child identity. Standalone fit/profile/error-budget/
+score additionally require the validated terminal `chain.<session>.json`
+record, released ownership and no overlapping heavy stage. C1 adds no automatic
+queue stage or ownership takeover. Recheck AC immediately before every heavy
+launch and after every wait; unknown power/source/record state fails closed.
