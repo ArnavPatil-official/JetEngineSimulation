@@ -60,7 +60,15 @@
     ],
     "adam_eps": 1e-08,
     "adam_weight_decay": 0.0,
-    "lbfgs_max_eval": 1250
+    "lbfgs_max_eval": 1250,
+    "loss": "mean squared error on raw log-ratio target; no output scaling",
+    "batch": "full 4096-row batch",
+    "sobol_implementation": "torch.quasirandom.SobolEngine(dimension=2,scramble=True,seed=20261002).draw_base2(m=12,dtype=torch.float64)",
+    "initialization": "nn.Linear default initialization, bias=True, float64 at construction; torch.manual_seed(20261002)",
+    "output": "unconstrained scalar; no analytic skip or hardwired analytic correction",
+    "final_state": "Adam exactly2000 steps, LBFGS only registered tolerances/max_iter/max_eval; retain final optimizer state without held-out or extra stopping",
+    "score_grid_endpoints": "inclusive",
+    "cp_over_R_scaling_bounds": "gamma_max/(gamma_max-1), gamma_min/(gamma_min-1)"
   },
   "manufactured": {
     "coordinates": [
@@ -143,7 +151,8 @@
     "interpretation": "dimensionless algebra verification; published dimensional thermal coefficient is ambiguous",
     "absolute_residual_max": 1e-10,
     "relative_forcing_disagreement_max": 1e-09,
-    "negative_control_min_discrepancy": 1e-07
+    "negative_control_min_discrepancy": 1e-07,
+    "relative_forcing_denominator": "per-component max absolute analytic forcing; zero-reference component checked by absolute tolerance only"
   },
   "nozzle": {
     "gamma": 1.33,
