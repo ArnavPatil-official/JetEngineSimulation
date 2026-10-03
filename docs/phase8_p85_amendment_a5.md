@@ -179,3 +179,15 @@ are `nice -n 15 bash cpp/build.sh --build-dir cpp/build_next` and
 `CATJET_BUILD=cpp/build_next nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5`.
 The build option requires implementation and review before use. The independent
 audit and every A5 scientific rule are unchanged; no A5 calculation has run.
+
+## Verification correction before computation (2026-10-03)
+
+Audit and rerun 4 use the shared strict `validate_terminal_context` in
+`scripts/phase8/ac_workflow.py`, with released ownership and complete validated
+main queue/stage/chain evidence. A matching terminal status alone cannot
+authorize a run. Rerun 4 verifies its actually loaded `cpp/build_next` core
+against the validated PASS build-stage record, and freezes actual committed
+C++ source, calibration inlet/fuel configuration, validator and binary hashes
+before network work. Recheck AC/ownership after the independent re-audit.
+Unreadable or changed identity/resource state yields ERROR/nonzero and retained
+evidence. All scientific rules and historical outputs remain unchanged.
