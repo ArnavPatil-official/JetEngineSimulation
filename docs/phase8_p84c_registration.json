@@ -30,7 +30,8 @@
   "changes_from_A4": [
    "nozzle coefficients from P8.3-A2: Cd 0.96, Cv 0.985 (core and bypass)",
    "five shared calibrated parameters (below)",
-   "input-only design initialization: ordered starts, first closure-valid converged candidate"
+   "input-only design initialization: ordered starts, first closure-valid converged candidate",
+   "P8.4c-C1 opt-in public-input numerical design-flow bound; default zero preserves the old architecture-specific bounds"
   ],
   "fixed_inputs": {
    "ipc_share": "8/14 (TCDS E.036 stage counts, P8.4b)",
@@ -130,7 +131,7 @@
   "turbine_PR_guess": {"three_shaft": [3.5, 2.0, 5.0], "two_shaft": [3.0, 4.0]},
   "turbine_PR_guess_sources": {"three_shaft": "scripts/phase8/trent_p84b.py solve_engine (existing)", "two_shaft": "pyCycle HBTF example guesses (scripts/phase8/pycycle/compare_hbtf.py run_points)"},
   "selection": "FIRST candidate in order that is converged and closure-valid; never by observed fuel flow or lowest fuel-flow error; all tries retained",
-  "solver": "unchanged C++ damped Newton: max scaled residual < 1e-10 within 50 iterations, existing bounds",
+  "solver": "C++ damped Newton, residual definitions, all other bounds, max scaled residual < 1e-10 and 50 iterations unchanged; only the prospectively registered P8.4c-C1 opt-in upper design-flow box differs on new paths",
   "closure_valid": ["converged", "all unknowns finite and > 0", "W, FAR, Wfuel, Fn_N, Tt3, Tt4, A_core_m2, A_byp_m2 finite and > 0", "every station W, Tt, Pt finite and > 0", "mass_closure < 1e-8", "energy_closure < 1e-8", "element_closure < 1e-10"],
   "no_valid_start": "design status unreachable with all tries and reasons"
  },
@@ -146,19 +147,55 @@
   "split_file": {"path": "outputs/phase8/cross_family_split.json", "sha256": "96c486a9ebff9af5a293bcd9b3883115803b44c1823cc4a3298d2dd9de9e23c5", "content_sha256": "63baef1b41234976e3c07606b6a0ec59a37bb3988a1bf01fb4da41c2b7efc258"},
   "eligibility": "unchanged registered rule (docs/phase8_family_split.md); no eligibility change based on solves",
   "architecture_policy": {
-   "three_shaft": {"families": ["Trent 1000", "Trent 7000", "Trent XWB", "D-36", "D-436"],
-                   "sources": {"Trent 1000": "EASA TCDS E.036", "Trent 7000": "certified 2018 under EASA TCDS E.036 as a Trent 1000 variant; Rolls-Royce Trent 7000 product page (three-shaft)", "Trent XWB": "EASA TCDS E.111", "D-36": "Ivchenko-Progress/Motor Sich D-36 three-shaft (secondary public description)", "D-436": "Progress D-436 three-spool (secondary public description)"},
-                   "builder": "trent_p84b.make_engine (three-shaft path) with A4c central overrides; IPC/HPC split by the Trent 8/14 stage-count rule used as a declared proxy for non-Trent three-shaft families"},
-   "two_shaft_direct": {"families": ["CF34-3", "CF34-8", "CF34-10", "CF6-80", "GE90", "GEnx-1B", "LEAP-1A", "LEAP-1B", "LEAP-1C", "PW4000"],
-                        "source": "manufacturer two-spool architecture (public descriptions); no three-shaft member"},
-   "geared_two_shaft": {"families": ["PW1100G", "PW1200G", "PW1400G", "PW1500G", "PW1900G"],
-                        "identification": "cross_family_split.json geared flag (^PW1\\d{3}G)",
-                        "proxy": "LOSSLESS gearbox design-power proxy: fan and LPC on the LP power balance with normalized speeds, which equals a lossless fixed-ratio gearbox at the design point; Hbtf has no gearbox field; no geared off-design validation claim"},
+   "three_shaft": {
+    "families": [
+     "Trent 1000",
+     "Trent 7000",
+     "Trent XWB",
+     "D-36",
+     "D-436"
+    ],
+    "sources": {
+     "Trent 1000": "EASA TCDS E.036",
+     "Trent 7000": "certified 2018 under EASA TCDS E.036 as a Trent 1000 variant; Rolls-Royce Trent 7000 product page (three-shaft)",
+     "Trent XWB": "EASA TCDS E.111",
+     "D-36": "Declared three-shaft diagnostic proxy assignment; no verified primary architecture citation is supplied by this registration",
+     "D-436": "Declared three-shaft diagnostic proxy assignment; no verified primary architecture citation is supplied by this registration"
+    },
+    "builder": "trent_p84b.make_engine (three-shaft path) with A4c central overrides; IPC/HPC split by the Trent 8/14 stage-count rule used as a declared proxy for non-Trent three-shaft families"
+   },
+   "two_shaft_direct": {
+    "families": [
+     "CF34-3",
+     "CF34-8",
+     "CF34-10",
+     "CF6-80",
+     "GE90",
+     "GEnx-1B",
+     "LEAP-1A",
+     "LEAP-1B",
+     "LEAP-1C",
+     "PW4000"
+    ],
+    "source": "Declared two-shaft diagnostic proxy assignments where no resolvable primary architecture citation is supplied; not manufacturer-verified architecture claims"
+   },
+   "geared_two_shaft": {
+    "families": [
+     "PW1100G",
+     "PW1200G",
+     "PW1400G",
+     "PW1500G",
+     "PW1900G"
+    ],
+    "identification": "cross_family_split.json geared flag (^PW1\\d{3}G)",
+    "proxy": "LOSSLESS gearbox design-power proxy: fan and LPC on the LP power balance with normalized speeds, which equals a lossless fixed-ratio gearbox at the design point; Hbtf has no gearbox field; no geared off-design validation claim"
+   },
    "two_shaft_builder": "existing C++ two-shaft Hbtf path (production thermo) at alt 0, M 0, dTs 0 on the pyCycle US 1976 table; LPC share of ln(core PR) = ln 1.935 / ln(1.935 * 9.369) from the pyCycle HBTF example (generic, declared); HPC bleeds cool1/cool2/cust = 0; HPT cooling = cited NGV/rotor into cool3/cool4",
-   "two_shaft_proxy_limits": "the existing two-shaft C++ path has no P8.3 Cd/real-gas choking law (pyCycle Cv nozzle, Cv 0.985), no eta_b temperature-rise scaling (full HP equilibrium) and no ISA override (US 1976 table at 0 m); no C++ edit is authorized, so these differences are declared limits of a convergence check, not a model claim"
+   "two_shaft_proxy_limits": "Existing two-shaft path: pyCycle Cv nozzle without Cd/P8.3 choking, full HP-equilibrium burner without eta_b scaling, US 1976 sea-level table. P8.4c-C1 authorizes only an opt-in numerical design-flow upper bound and its binding; these physics limitations remain. No geared off-design or engine-validation claim.",
+   "citation_policy": "Use a resolvable primary URL for any verified architecture claim. Unsourced assignments are explicitly declared diagnostic proxies; their convergence is not validation of the real architecture."
   },
   "gate": "coverage == 20 families AND every case (including both Trent 1000-E records) has a converged closure-valid design; no family skipped, no missing binary or databank treated as PASS, convergence never inferred from initialization",
-  "known_static_risk": "offdesign.cpp solve_design bounds W to 1000 lbm/s (453.6 kg/s) on the two-shaft path and 3000 lbm/s (1360.8 kg/s) on the three-shaft path; large two-shaft families (e.g. GE90, GEnx-1B, CF6-80, PW4000) and possibly Trent XWB may need more inlet flow. This is a source reading, not a result; any failure is recorded, not tuned, and changing the bounds needs a separate C++ registration"
+  "known_static_risk": "Historical parent solver caps W at 1000 lbm/s on two shafts and 3000 lbm/s on three shafts. P8.4c-C1 prospectively registers an opt-in wider numerical design box computed only from public rated thrust. No new solve has run; the all-20-family plus both Trent 1000-E convergence gate remains pending and every failure must be recorded."
  },
  "error_budget": {
   "script": "scripts/phase8/a4_error_budget.py",
@@ -192,7 +229,11 @@
    "fit, profile and (if triggered) fallback fit/profile records committed and clean",
    "outputs/phase8/p84_input_convergence.json committed and clean (its verdict is copied into the score; a FAIL is reported, not hidden)",
    "frozen parameter, source and input identities computed from those committed files",
-   "AC power and no other heavy job"
+   "AC power and no other heavy job",
+   "P8.4c-C1 committed and clean; actual implementation/C++ source identity and loaded core binary match the committed build provenance and all fit/profile/fallback/input-convergence evidence",
+   "all applicable fit evaluation/calibration-row CSVs, profile tables/progress logs and JSON records committed and clean, complete and hash-validated; profile dependencies identify the exact fitted record",
+   "validated terminal main-workflow record and dependency evidence under docs/phase8_queue_recovery_registration.json; no unowned or overlapping heavy stage",
+   "the complete frozen scientific identity is verified before the one-shot reservation; source/input/registration/binary drift at any stage invalidates that run"
   ],
   "reservation": "outputs/phase8/ladder/A4c/heldout_score_reservation.json is created atomically (exclusive create) BEFORE any held-out target is read; it holds the frozen parameters and identities; it is retained even if scoring fails; its existence refuses any later score",
   "target_reader": "lto_v5.load_rows(split heldout_records, with_targets=True) + attach_groups, called only after the reservation exists",
@@ -207,9 +248,9 @@
  },
  "runtime_gates": {
   "power": "pmset reports 'AC Power'; unreadable = refuse",
-  "processes": "no other Python process running benchmark, ladder, v6/v5 calibration, trent_p84b or any A4c script (parked shells ignored); ps unreadable = refuse",
-  "sources": "registration and implementation files committed and clean at HEAD; HEAD or git status unreadable = refuse",
-  "launch_order": "set by the main workflow record (after the benchmark, A2 and Track 4 AC chain); these scripts never launch themselves"
+  "processes": "No overlapping benchmark, calibration, ladder, A4c or Track 4 diagnostic Python job; parked shells ignored. Unreadable process state refuses. Serialized ownership and main-record checks are also required; process names or a dead PID are never completion evidence.",
+  "sources": "Actual registration and implementation/C++ sources committed and clean at the frozen pre-run identity. Historical source hashes are retained as history, not substituted for active modified C++ source hashes. Loaded core module must match the frozen build record. Unreadable status, HEAD, hash or provenance refuses.",
+  "launch_order": "No automatic A4c stage is added. Validate the main workflow registration and its strict benchmark/A2 completion evidence before the separate build or controlled validation; standalone A4c numerical work follows the terminal main-chain record. An active workflow owner permits only its explicitly registered, serialized child stage."
  },
  "seeds": {"tpe": 42},
  "inputs_sha256": {
@@ -230,10 +271,7 @@
  },
  "sources_sha256": {
   "scripts/phase8/trent_p84b.py": "7d40459419a3f128dfd30898da4751588de68cc2dee94380a1580267a413943e",
-  "cpp/catjet_core/offdesign.cpp": "e33df5aee8a787e59c2f947a42519cb4a642a77aca8fddfdd819b25e7cfbfe5f",
-  "cpp/catjet_core/offdesign.hpp": "8d9ebb0dc68c0be78a75bf8ae9381dca6a3ba7c24d90a6138329e4abf7db0c21",
   "cpp/catjet_core/choking_nozzle.cpp": "da128ff6823d900c40c4cda0672e3c34e8ba9c66aa3ebabd8e561377b195f909",
-  "cpp/bindings/catjet_core.cpp": "862982bdaeea4e60af4126c19fb294ce447f65187eb798d2a9246520bf073cee",
   "scripts/phase8/pycycle/compare_hbtf.py": "c0286d4b944c8403493c80d64ae941d5649d8baaae3f4a2154368aef23b5553d",
   "scripts/optimization/lto_v5.py": "2790e7a0c446fdc7fe054bec63908d7f820ca569bd7e1ed483317f2246826b93",
   "scripts/optimization/lto_v6.py": "9c47cef382c010055c7b7d9cb27a00c449a821140a80a4b063dfc9c221623f40",
@@ -251,6 +289,128 @@
   "scripts/phase8/a4c_profile.py",
   "scripts/phase8/a4_error_budget.py",
   "scripts/phase8/public_engine_inputs.py",
-  "scripts/phase8/p84_input_convergence.py"
+  "scripts/phase8/p84_input_convergence.py",
+  "cpp/catjet_core/offdesign.hpp",
+  "cpp/catjet_core/offdesign.cpp",
+  "cpp/bindings/catjet_core.cpp",
+  "cpp/build.sh"
+ ],
+ "active_clarification": "P8.4c-C1",
+ "historical_sources_sha256": {
+  "scripts/phase8/trent_p84b.py": "7d40459419a3f128dfd30898da4751588de68cc2dee94380a1580267a413943e",
+  "cpp/catjet_core/offdesign.cpp": "e33df5aee8a787e59c2f947a42519cb4a642a77aca8fddfdd819b25e7cfbfe5f",
+  "cpp/catjet_core/offdesign.hpp": "8d9ebb0dc68c0be78a75bf8ae9381dca6a3ba7c24d90a6138329e4abf7db0c21",
+  "cpp/catjet_core/choking_nozzle.cpp": "da128ff6823d900c40c4cda0672e3c34e8ba9c66aa3ebabd8e561377b195f909",
+  "cpp/bindings/catjet_core.cpp": "862982bdaeea4e60af4126c19fb294ce447f65187eb798d2a9246520bf073cee",
+  "scripts/phase8/pycycle/compare_hbtf.py": "c0286d4b944c8403493c80d64ae941d5649d8baaae3f4a2154368aef23b5553d",
+  "scripts/optimization/lto_v5.py": "2790e7a0c446fdc7fe054bec63908d7f820ca569bd7e1ed483317f2246826b93",
+  "scripts/optimization/lto_v6.py": "9c47cef382c010055c7b7d9cb27a00c449a821140a80a4b063dfc9c221623f40",
+  "scripts/phase8/icao_families.py": "761990ce3a63e8270d71208acfd18bb8a9ebac1a3c7d02e76330aa0a9efce312",
+  "scripts/phase8/cross_family_split.py": "edfd0a47edb4c460078e0b6915f151c7a6064aee45ae260493158ae0de5a9a00",
+  "cpp/build.sh": "46a964fa37669a72e585606ac96d9682f0e54acd7b7c176420f8e43e428a48aa"
+ },
+ "historical_source_hash_role": "Parent/baseline source bytes as registered before this clarification. Active sources_sha256 still pins unchanged parents; modified allowed C++/build files must instead have their actual committed source hashes frozen in the pre-run/build records. No original baseline hash is erased or presented as a modified source hash.",
+ "verification_files": [
+  "tests/test_phase8_p84c.py",
+  "tests/test_phase8_p84_input_convergence.py"
+ ],
+ "pre_run_identity_validation": {
+  "scientific_identity": "Exact registration/config/input hashes, the actual committed implementation and verification files, transitive called source hashes and tracked C++ source tree, loaded core binary SHA256, and its build/source provenance. HEAD is recorded, but artifact-only commits may differ only when every scientific byte remains identical.",
+  "build_provenance_record": "outputs/phase8/p84c_build_next.json (write-once)",
+  "build_record_fields": [
+   "source_commit",
+   "actual_cpp_and_build_script_sha256",
+   "registration_sha256",
+   "command",
+   "build_directory",
+   "exit_evidence",
+   "loaded_core_path",
+   "loaded_core_sha256"
+  ],
+  "stage_dependencies": "Each fit/profile/fallback/convergence record carries its start scientific identity and exact dependency artifact hashes. A profile must name and hash the fit it profiles; fallback must hash its primary fit/profile and follow the registered fixed/free plan; the frozen model must validate the entire chain against current scientific bytes before reservation.",
+  "artifact_sets": {
+   "fit_primary": [
+    "fit_primary.json",
+    "fit_primary_evaluations.csv",
+    "fit_primary_calibration_rows.csv"
+   ],
+   "profile_primary": [
+    "profile_primary.json",
+    "profile_primary.csv",
+    "profile_primary_progress.log"
+   ],
+   "fit_fallback_if_triggered": [
+    "fit_fallback.json",
+    "fit_fallback_evaluations.csv",
+    "fit_fallback_calibration_rows.csv"
+   ],
+   "profile_fallback_if_free_parameters_remain": [
+    "profile_fallback.json",
+    "profile_fallback.csv",
+    "profile_fallback_progress.log"
+   ]
+  },
+  "artifact_validation": "Require every applicable artifact to exist, parse with the registered schema, hash as recorded and be committed/clean before held-out reservation. Validate table/grid/evaluation coverage and dependency identities, not only JSON presence, process exit or a status word. All-fixed fallback has no profile artifacts and is reported A1 n/a.",
+  "reservation": "Freeze all applicable artifact, scientific source/input/config and loaded core identities before any held-out target access. Verify the loaded binary equals the one used for the selected fit and profiles. Preserve the atomic reservation after any failure.",
+  "drift": "Capture source/input/config/core binary identity before computation and compare it after computation and immediately before publishing a terminal scientific verdict. Any drift yields ERROR, nonzero exit and retained evidence; never PASS or an accepted score. Recheck resource/ownership state immediately before each heavy launch."
+ },
+ "clarifications": [
+  {
+   "id": "P8.4c-C1",
+   "date": "2026-10-03",
+   "timing": "after ee1fcdf and the unfinished source draft, before any A4c computation or C++ modification/build; no new scientific result exists",
+   "scope": "Prospective numerical-box and verification clarification only; five shared parameters, priors, objective, optimizer/profile budgets, original A1 failure, splits, one fallback and one-shot score remain unchanged",
+   "historical_registration_sha256": {
+    "docs/phase8_p84c_registration.json": "39f4dbdf9cb73c4024c3e4ecf25e88477ac2b0297919934eaa11e14b24002135",
+    "docs/phase8_p84c_registration.md": "d9d71bcd4177a89db4a12e4ec340a6f81562d074a005a666370bcd14f80dbfa2"
+   },
+   "historical_static_risk": "offdesign.cpp solve_design bounds W to 1000 lbm/s (453.6 kg/s) on the two-shaft path and 3000 lbm/s (1360.8 kg/s) on the three-shaft path; large two-shaft families (e.g. GE90, GEnx-1B, CF6-80, PW4000) and possibly Trent XWB may need more inlet flow. This is a source reading, not a result; any failure is recorded, not tuned, and changing the bounds needs a separate C++ registration",
+   "design_flow_box": {
+    "field": "HbtfSpec.design_W_max_kg_s",
+    "units": "kg/s",
+    "default": 0.0,
+    "default_semantics": "Zero uses the EXACT old architecture-specific upper bound: two shafts 1000*0.45359237 kg/s, three shafts 3000*0.45359237 kg/s. Existing A4/benchmark callers leave it zero; their behavior is unchanged.",
+    "new_path_rule": "max(3000*0.45359237, 4*rated_thrust_N/220) kg/s",
+    "rule_basis": "Declared numerical search box derived from public rated thrust alone, not a fitted parameter, flow measurement, fuel-flow target or architecture-validation statement",
+    "scope": "New A4c design and representative input-convergence paths only. Old A4 reference and old-input builder regression retain the zero/default box.",
+    "validation": "An explicit override must be finite and positive; zero is the default sentinel. Negative or nonfinite values refuse. All other bounds, residuals, physics, tolerance and iteration limit remain unchanged.",
+    "allowed_cpp_files": [
+     "cpp/catjet_core/offdesign.hpp",
+     "cpp/catjet_core/offdesign.cpp",
+     "cpp/bindings/catjet_core.cpp"
+    ],
+    "allowed_changes": "Add the optional field, expose it in the binding, and use it solely for the design W upper bound. Use correctly dispatched solve_design result residuals; do not use the raw two-shaft residual binding for a three-shaft audit.",
+    "backward_compatibility": "Verify the zero/default two- and three-shaft bounds and existing reference regressions; separately test the public-input override. No result is declared before the tests/solves actually execute."
+   },
+   "separate_build": {
+    "allowed_script": "cpp/build.sh",
+    "new_option": "--build-dir",
+    "default": "cpp/build (unchanged)",
+    "new_directory": "cpp/build_next",
+    "command": "bash cpp/build.sh --build-dir cpp/build_next",
+    "ordering": "Only after validated terminal benchmark and A2 stage records and released benchmark ownership; on AC, under the registered serialized validation context or with no active workflow owner. Never rebuild/overwrite the benchmark cpp/build module.",
+    "module_selection": "Set CATJET_BUILD to the absolute cpp/build_next path for new validation. In a fresh full-pytest process preload that core, or set PYTHONPATH with absolute cpp/build_next first and cpp/build already present, so protected catjet_backend.load_core cannot prepend and cache the older module.",
+    "provenance": "Capture actual committed C++/build-source hashes, command/exit evidence and binary hash in the write-once build record. Freeze source and loaded binary before every numerical run; commit/validate build provenance before standalone fitting or scoring."
+   },
+   "singleton_profile": {
+    "condition": "Exactly one free parameter remains; no nuisance parameter remains at its fixed profile grid point",
+    "action": "Evaluate the objective residual vector directly once at each of the same 17 grid points instead of calling least_squares with an empty vector. Retain exact unreachable-count logging/lookup and penalty guard.",
+    "record": "Mark direct evaluation/no inner optimizer, nfev=1, status=1 and no-inner-fit message; no capped-inner-fit claim. The registered one-time re-evaluation for a missing unreachable lookup remains allowed.",
+    "unchanged": "Same D statistic, threshold, interpolation, interval-width rule, penalty guard and single fallback; no new search or scientific tolerance."
+   },
+   "main_record_gate": {
+    "registration": "docs/phase8_queue_recovery_registration.json (committed and clean before launch)",
+    "dependencies": [
+     "outputs/phase8/operations/20261003_recovery/records/run2_ac.completion.json",
+     "outputs/phase8/operations/20261003_recovery/records/run2_ac_rerun.completion.json",
+     "outputs/phase8/operations/20261003_recovery/records/benchmark_owner_released.json",
+     "outputs/phase8/operations/20261003_recovery/records/stages/a2_calibration.json"
+    ],
+    "validation": "Use the strict main-workflow completion validator: exact registered plan/spec/command identities and full underlying manifest/result/progress/log/retained evidence hashes. Flags/failures stay visible; partial, malformed, absent or foreign evidence refuses. A PID, process name or queue-log phrase is never completion proof.",
+    "inside_workflow": "Build/all-20 validation is allowed only as an explicitly registered serialized validation stage with validated predecessor records and the matching live owner/child identity. This clarification adds no automatic chain stage or lease takeover.",
+    "standalone_numerical": "Fit/profile/error-budget/score require a validated terminal main chain.<session>.json record with the matching dependencies, ownership released, AC power and no overlapping heavy stage. No numerical work is authorized by the absence of a process alone.",
+    "power": "Recheck AC immediately before every build/numerical launch and after every wait; unreadable or unknown power refuses."
+   }
+  }
  ]
 }
