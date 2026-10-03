@@ -140,8 +140,11 @@ integrated into main the main registration is absent here; that is a run
 blocker. Both also require AC power (`pmset -g ps`). Rerun 4 further refuses
 (nothing written) unless: the registration, this amendment, `p85_audit.py`
 and `reactor_validation.py` are committed and unmodified; the audit output
-is committed, unmodified, and matches the current registration, audit
-source and mechanism hashes; `cpp/` and `scripts/` have no uncommitted
+is committed, unmodified, matches the current registration, audit source
+and mechanism hashes, has an empty `identity_drift` and records passing
+allowance and control gates (missing metadata blocks), and B and both gates
+re-derived from the unchanged files equal the record and pass, all before
+any network call; `cpp/` and `scripts/` have no uncommitted
 changes; and the protected manifest matches. Both
 outputs are write-once; rerun 4 is selected only with `--a5` and its path is
 fixed by the registration (the historical default, the occupied rev2 path,
@@ -163,3 +166,7 @@ converged APPROACH/IDLE shortfalls; (3) the main-workflow guard reads the
 queue-recovery lease and terminal chain record instead of process names, and
 applies to the audit as well as rerun 4. Sections 2 and 3 above state the
 corrected rules; `prospective_corrections` in the JSON lists them.
+
+Second correction, same date and status: rerun 4 rejects a committed audit
+that drifted or failed, or lacks that metadata, and re-derives B and both
+audit gates itself before any network call (section 3).
