@@ -39,6 +39,16 @@ and Eq. 24 has the same structure for v. So the numbered equations keep:
 The energy residual (Eq. 25) likewise uses ∂/∂x((λ + μ_t/Pr) ∂T/∂x) plus the
 dissipation Φ.
 
+*Correction (2026-10-02, Track 4; re-read from the printed p. 5):* in Eq. 25 λ is
+the thermal conductivity (W m⁻¹ K⁻¹) and μ_t/Pr has units of viscosity
+(Pa s), so the printed coefficient adds quantities of different dimensions.
+The usual dimensional form is λ + c_p μ_t/Pr_t, but the paper does not say
+which form its code uses. This thermal-unit ambiguity is **unresolved**. The
+Track 4 verifier (`scripts/phase8/pinn_diagnostics/nozzle_verification.py`)
+implements the coefficient literally, as a dimensionless algebra check, and
+does not multiply μ_t by c_p. Φ follows from Eqs. 7–10:
+Φ = μ(4/3 (u_x² + v_y² − u_x v_y) + (u_y + v_x)²).
+
 Under ReLU a network is piecewise linear, so every second derivative is zero
 almost everywhere. With the numbered equations, the μ u_xx part vanishes, but
 μ_x u_x and the Reynolds-stress divergence survive. The repo's
@@ -57,9 +67,18 @@ refer to numbered Eqs. 23–25. Which form the authors' code implements is
 
 ### (b) Loss weights — Eqs. 30–33 (p. 5)
 
-Eq. 30 is the weighted total. Eqs. 31–33 set each weight as
-λ = 0.1 + 0.9·sigmoid((sum of the other two losses − own loss)/(own loss + ε)).
-Every weight is a function of the **current loss values**. The repo's
+Eq. 30 is the weighted total. Eqs. 31–33 are **not** symmetric. *Correction
+(2026-10-02, Track 4; re-read from the printed p. 5):* an earlier version of this
+audit said every weight compares "the sum of the other two losses" with its own
+loss. Only the data weight does that. The printed equations are
+
+- λ_data = 0.1 + 0.9·sigmoid((L_physics + L_BC − L_data)/(L_data + ε)) (Eq. 31);
+- λ_physics = 0.1 + 0.9·sigmoid((L_data − L_physics)/(L_physics + ε)) (Eq. 32);
+- λ_BC = 0.1 + 0.9·sigmoid((L_data − L_BC)/(L_BC + ε)) (Eq. 33).
+
+The physics and BC weights each compare with the data loss only. Every weight
+is a function of the **current loss values**. The Track 4 implementation
+detaches the weights from the gradient. The paper does not say whether its code does. The repo's
 `AdaptiveLossWeighting.compute_weights(epoch)` is a sigmoid of **training
 progress (epoch)**, independent of the losses. The registered P4.3 gate
 attempts used a fixed physics weight of 0.05 (attempt 1 with a linear
