@@ -559,6 +559,7 @@ REG_PATH = ROOT / "docs" / "phase8_track4_registration.json"
 def test_execute_non_pass_exits_nonzero_and_blocks_nozzle_ladder(tmp_path, monkeypatch, no_global_torch_state):
     """Mocked rungs only: a turbine error is confined, a failed MMS activation blocks the ladder."""
     ident = _identity()
+    monkeypatch.setattr(rd, "check_inputs", lambda reg, b: {})
     monkeypatch.setattr(rd, "end_identity", lambda p, reg: dict(ident))
     monkeypatch.setattr(tm, "run", _raise(RuntimeError("mock turbine")))
     monkeypatch.setattr(nv, "verify_manufactured", lambda m, act: _mms("PASS" if act == "tanh" else "FAIL"))
@@ -567,6 +568,7 @@ def test_execute_non_pass_exits_nonzero_and_blocks_nozzle_ladder(tmp_path, monke
     assert rd.execute(REG, REG_PATH, ident, b"", out) == 1
     rep = json.loads((out / "report.json").read_text())
     assert rep["status"] == "ERROR" and rep["turbine"]["status"] == "ERROR"
+    assert "mock turbine" in rep["turbine"]["reason"]
     assert rep["manufactured"]["silu"]["status"] == "FAIL"
     assert set(rep["nozzle"]) == set(nv.RUNGS) and all(r["status"] == "BLOCKED" for r in rep["nozzle"].values())
     assert rep["start_identity"] == ident and rep["identity_drift"] == []

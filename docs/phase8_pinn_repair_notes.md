@@ -95,8 +95,9 @@ Over the registered box (τ 0.2593–0.3985, γ 1.2795–1.3152, η_p 0.9), k ru
 of only (1 − τ) · 10⁻³/k ≈ 1.2–1.6 × 10⁻⁴.
 
 Error metric: p_pred/p_exact − 1 = e^Δ − 1 = expm1(Δ). This is exact, and p4
-cancels, so the score does not depend on the pressure scale (tested with
-p4 = 1, 101325 and 4.2 × 10⁶). `expm1` avoids cancellation when Δ is tiny.
+cancels, so the score does not depend on the pressure scale (covered by
+pending tests with p4 = 1, 101325 and 4.2 × 10⁶). `expm1` avoids cancellation
+when Δ is tiny.
 The gate interval is two-sided and asymmetric (source correction 6).
 
 ### E2 — Why the legacy turbine loss could not pin down pressure
@@ -156,7 +157,8 @@ tanh and SiLU, with closed-form derivatives
   h″ = 2s(1 − s) + z s(1 − s)(1 − 2s);
 
 and the chain rule for Ma Eq. 16 min–max scaling, x_n = (x − x_min)/Δx:
-∂q/∂x = (1/Δx) ∂q/∂x_n and ∂²q/∂x² = (1/Δx²) ∂²q/∂x_n² (tested).
+∂q/∂x = (1/Δx) ∂q/∂x_n and ∂²q/∂x² = (1/Δx²) ∂²q/∂x_n² (covered by a
+pending test).
 
 ### E5 — What mean-squared error learns from one-to-many data
 
@@ -221,10 +223,10 @@ with ε = 10⁻¹² here and the weights detached from the gradient. For the
 guide's losses (data, physics, BC) = (10⁻², 10⁻⁴, 10⁻³): the data argument
 is (10⁻⁴ + 10⁻³ − 10⁻²)/10⁻² = −0.89, giving λ_data = 0.362. The physics
 argument is 99, giving λ_phys = 1.000. The BC argument is 9, giving
-λ_BC = 0.99989. These match the guide's "about 0.36, 1.00, 1.00" (tested with
-plain-float inputs in CPU float64). A second example, L = (1, 2, 3), gives
-λ_data = 0.9838, λ_phys = 0.4398 and λ_BC = 0.4053, where the symmetric
-shorthand would give λ_phys = 0.7580.
+λ_BC = 0.99989. These match the guide's "about 0.36, 1.00, 1.00" (covered
+by pending tests with plain-float inputs in CPU float64). A second example,
+L = (1, 2, 3), gives λ_data = 0.9838, λ_phys = 0.4398 and λ_BC = 0.4053,
+where the symmetric shorthand would give λ_phys = 0.7580.
 
 Which term it favours: a residual or BC loss that is *already small relative
 to the data loss* gets weight near 1. The data term is damped when it

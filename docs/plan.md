@@ -656,3 +656,21 @@ history rewrite, old model overwrite or killing unrelated jobs.
 This is a bounded reviewer fix pass, not a new experiment. If AC stays absent,
 finish static work, clearly mark run/test/freeze steps pending, and report back.
 Do not create new training budgets, relax tolerances or add infrastructure.
+
+### Final static-review follow-up (2026-10-03, America/New_York)
+
+The implementation is committed and numerical validation remains blocked by
+battery power. Finish only these trivial review corrections before reporting:
+
+- In `test_execute_non_pass_exits_nonzero_and_blocks_nozzle_ladder`, stub
+  `rd.check_inputs` just as in the following all-PASS test, and assert the
+  reported turbine error contains `mock turbine`. The empty envelope fixture
+  currently fails hash verification before it reaches the intended exception.
+- In `docs/phase8_pinn_repair_notes.md`, replace language saying the examples
+  were tested with accurate wording that they are covered by pending tests.
+  The Results section already states that none of the tests have run.
+- Preserve all diagnostic procedures, registered content and deferred work.
+  Repeat static syntax, whitespace, manifest, protected-hash and naming checks;
+  do not run numerical tests while on battery. Check for active Git processes
+  and an index lock before committing only these review corrections and this
+  plan update. Leave the two pre-existing dirty files unstaged.
