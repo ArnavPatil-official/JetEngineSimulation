@@ -148,3 +148,55 @@ Still open:
    `simulation/catjet_backend.py` was blocked by the permission classifier
    in this session, so no fresh 180-row g0_parity run is in the P8.2/P8.3
    G1 records (v6 sources byte-identical to the G0 commit instead).
+
+## Track 4 — PINN diagnosis (diagnostic only; updated 2026-10-03 UTC)
+
+Plan: `docs/plan.md` (Track 4 addendum + pre-run review corrections).
+Registration: `docs/phase8_track4_registration.json`
+(P8-TRACK4-20261002-attempt1, committed before any computation).
+Implementation, tests, audit corrections and repair notes: `0ae5588`.
+Notes: `docs/phase8_pinn_repair_notes.md`. Not an engine, turbine or PINN
+validation; no empirical/held-out/Sajben/WIND data opened; G2/G3 not reopened.
+
+**State: BLOCKED — no diagnostic has run.** The Mac is on battery, and the
+registration requires mains power. At `0ae5588` the registered command
+refused with exit 3 ("not on mains (AC) power"; no heavy Python job, sources
+clean, HEAD readable) and created no attempt directory.
+
+| Item | State |
+|---|---|
+| Track 4a turbine map (train once, score 65×65 once, gate < 0.001) | **not run (BLOCKED)** |
+| MMS Ma Eqs. 22–26, tanh and SiLU | **not run (BLOCKED)** |
+| Nozzle ladder rungs 1–4 | **not run (BLOCKED)** |
+| Focused pytest `tests/test_phase8_pinn_diagnostics.py` | **pending, not passed** |
+| Full pytest `tests/` | **pending, not passed** |
+| Static checks at `0ae5588` | done: AST parse and pyflakes clean; `git diff --check` clean; `build_manifest.py --check` stale none; protected hashes 40/134/184, 0 mismatched; models, data, simulation, requirements, registration and plan byte-identical to HEAD; no retired label/sponsor word; envelope sha256 and registered box re-checked with stdlib parsing |
+
+Historical retired turbine PINN (P4.4 attempt 2): 6.390 % held-out max
+|Δp5|/p5. That result stays as recorded. The new analytic score will sit beside
+it once it exists. Its root cause is not established. It is not the legacy 4.2 MPa scale
+(see the notes, source correction 1).
+
+Pending commands, in order, once on AC with no active benchmark/calibration
+Python job (parked shells do not count):
+1. `nice -n 15 .venv/bin/python -m pytest tests/test_phase8_pinn_diagnostics.py -v`
+   (an implementation bug may be fixed and committed only before step 2).
+2. `nice -n 15 .venv/bin/python -m scripts.phase8.pinn_diagnostics.run_diagnostics --registration docs/phase8_track4_registration.json`
+   (exactly once; a FAIL ends attempt 1 and any rerun needs a new prospective attempt).
+3. Inspect `report.json` aggregate status, `run_log.txt` and `hashes.json` (exit 0 alone is not proof), then commit
+   `outputs/phase8/track4/20261002_attempt1/**` and this status.
+4. Conditional freeze step: only if diagnostics completed before 2026-10-16
+   (America/New_York), create `outputs/freeze/NUMBERS.md` with the completed
+   entries marked diagnostic, add its record to `scripts/build_manifest.py`,
+   run `.venv/bin/python scripts/build_manifest.py` then `--check`. No local tag
+   now. Until then, no freeze file or manifest record exists (none is created
+   as a placeholder).
+5. `nice -n 15 .venv/bin/python -m pytest tests/ -v` and
+   `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase7 --phase8`.
+
+Blockers and deferred work: Ma Eq. 25 thermal-unit ambiguity (flagged,
+not repaired); loss-balancing cross-validation, M1 empirical residuals,
+R7-1..R7-3 and the post-freeze Sajben low-label study remain deferred. The
+pre-existing benchmark-queue wait predicate still matches the parked A2
+chain shell (PIDs 48047/48049). Each waits for the other. The queue and shells were
+not altered.
