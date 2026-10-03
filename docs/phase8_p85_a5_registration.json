@@ -128,7 +128,12 @@
         "Y_floor": 1e-06,
         "max_dY": 1e-05,
         "note": "old composition criterion, reported at every scale; never gating; no full-state equilibrium claim if it fails"
-      }
+      },
+      "shortfall_label_modes": [
+        "APPROACH",
+        "IDLE"
+      ],
+      "shortfall_rule": "kinetics/extinction limit only for a finite, converged shortfall at APPROACH/IDLE with no integrator error; nonconvergence, CVODES errors or non-finite values are numerical failures, not physics, unless independently diagnosed; a take-off shortfall is not labelled physics"
     },
     "G1.2_closure": {
       "metrics": [
@@ -145,7 +150,8 @@
           "tau",
           "10tau",
           "100tau"
-        ]
+        ],
+        "require_all_converged_every_case": true
       },
       "creck_control": {
         "strictly_below": 1e-10,
@@ -171,25 +177,39 @@
       "G1.6 CRECK mechanism spread",
       "P8.5-A2 mechanism imbalance diagnostic"
     ],
-    "verdict": "PASS iff A2NOx audit B finite > 0 without error, CRECK audit control rule, and G1.1, G1.2 (A2NOx and CRECK), G1.3 pass at every mode; identity drift => ERROR"
+    "verdict": "PASS iff A2NOx audit B finite > 0 without error, CRECK audit control rule, and G1.1, G1.2 (A2NOx and CRECK, every case converged), G1.3 pass at every mode; identity drift => ERROR"
   },
   "guards": {
     "audit": [
       "registration JSON, amendment and scripts/phase8/p85_audit.py committed and unmodified",
       "mechanism sha256 equal to registration",
-      "write-once output"
+      "write-once output",
+      "AC power and main workflow idle (guards.main_workflow)"
     ],
     "rerun4": [
       "explicit --a5 selection; output path fixed by this registration",
       "registration JSON, amendment, p85_audit.py and reactor_validation.py committed and unmodified",
       "audit output committed and unmodified; its registration, audit-source and mechanism hashes match; recomputed B equals recorded B",
       "no uncommitted changes under cpp/ or scripts/",
-      "AC power (pmset)",
-      "no active main workflow owner: Python running a scripts/phase8/ script or module, the v6 LTO/calibration scripts, or a run_benchmark_queue.sh shell",
+      "AC power and main workflow idle (guards.main_workflow)",
       "protected manifest matches",
       "write-once output",
       "start identity rechecked at end; drift => ERROR"
-    ]
+    ],
+    "main_workflow": {
+      "registration": "docs/phase8_queue_recovery_registration.json",
+      "id": "P8-QUEUE-RECOVERY-20261003",
+      "lease": "registration lease_path must not exist (live or stale lease blocks)",
+      "chain_record": "at least one registration records.chain_record file with registration_id and registration_sha256 equal to the current main registration and a terminal status",
+      "terminal_chain_statuses": [
+        "COMPLETE",
+        "STOPPED_WITH_BLOCKERS",
+        "FINISHED_WITH_FLAGS_OR_FAILURES"
+      ],
+      "power": "pmset -g ps, first line contains 'AC Power'; unreadable blocks",
+      "absent": "main registration absent or unreadable in this checkout is a run blocker",
+      "process_names": "not used"
+    }
   },
   "order": "after the main benchmark/A2/Track4 sequence, on AC",
   "commands": {
@@ -197,5 +217,17 @@
     "commit_audit": "git add outputs/phase8/p85_a5_audit.json && git commit",
     "build": "bash cpp/build.sh",
     "rerun4": "nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5"
-  }
+  },
+  "prospective_corrections": [
+    {
+      "date": "2026-10-03",
+      "before_any_a5_calculation": true,
+      "source": "docs/plan.md, P8.5-A5 'Pre-run review clarifications'",
+      "changes": [
+        "G1.2: every A2NOx closure case (test values and tau/10tau/100tau) must have all_converged true; small closures of a failed solve never pass",
+        "G1.1: only a finite, converged APPROACH/IDLE shortfall may be labelled a kinetics/extinction limit; nonconvergence and CVODES errors stay numerical failures unless independently diagnosed",
+        "guards: the main workflow is identified by docs/phase8_queue_recovery_registration.json (lease and terminal chain record), not by process names; the audit and rerun 4 both wait on it and on AC; an absent main registration is a run blocker"
+      ]
+    }
+  ]
 }
