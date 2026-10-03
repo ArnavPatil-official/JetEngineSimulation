@@ -21,6 +21,28 @@
     "No automatic retry of any stage. A failed or refused stage is recorded; independent later stages still run and report truthfully. No COMPLETE marker after a partial stage.",
     "Heavy stages run strictly one at a time; no other heavy work during benchmark timings (coordination is by this lease, not by process matching)."
   ],
+  "amendment_1": {
+    "id": "P8-QUEUE-RECOVERY-20261003-A1",
+    "date": "2026-10-03",
+    "before_any_launch": true,
+    "source": "docs/plan.md, 'Queue pre-launch review correction pass'",
+    "kind": "operational clarification only; no scientific protocol, gate, tolerance, budget, split or held-out rule changes",
+    "rules": [
+      "One strict queue-completion validator serves resume, benchmark-owner release and the A2 dependency. It checks the exact expected run-name set from the registered plan, the plan hash, registration id and sha256, queue and spec identities, every spec-record hash and every underlying manifest/result/progress/log hash. A completion whose evidence was deleted or altered is invalid.",
+      "A cached command-stage record is honoured only if its registration id/sha256, source identity (tracked tree and built modules) and command equal the current ones, its waited-exit evidence is present and its log, output, retained-file and report/hashes.json evidence still hash as recorded. A foreign or stale focused-test PASS cannot authorize the diagnostic.",
+      "Spec records have a state and a completion_eligible flag. Only the terminal benchmark verdicts (PASS, FAIL, INCOMPLETE, INVALID_POWER) with complete manifest/result/progress evidence are completion-eligible; FAIL, INCOMPLETE and INVALID_POWER are terminal with flags, never PASS. A run that leaves no output (REFUSED) or a partial/malformed directory (ERROR_PARTIAL) gets a terminal execution record that blocks queue completion; it is never retried and its directory is never overwritten.",
+      "Before each spawn the lease is set to STARTING_CHILD with a handshake path. The child is a stdlib launcher that writes its PID and birth time to the handshake file and waits for an explicit go from the driver before exec of the registered command (same PID). The driver records the child identity, rechecks AC and source identity, then sends go; otherwise it sends abort and records the waited exit. An exception or signal between STARTING_CHILD and a waited exit keeps the lease (AMBIGUOUS_CHILD) and fails closed; it is never released because the child identity is absent. A successful wait() is exit evidence even when the birth time was unreadable.",
+      "Stale recovery holds an exclusive flock on a recovery lock file, re-reads the lease and revalidates its file identity (device, inode, sha256) immediately before removal. A live (including stopped) owner or child is not stale. An ambiguous STARTING_CHILD/AMBIGUOUS_CHILD lease is recoverable only if its handshake process is provably dead or reused, or with an explicit recorded operator attestation. No lease is completion proof.",
+      "benchmark.script_sha256 is enforced before any benchmark work of a queue and again with source identity and AC immediately before each launch.",
+      "A session whose record writing or lease release fails exits nonzero; no success is reported without its records."
+    ],
+    "spec_states": {"completion_eligible": ["PASS", "FAIL", "INCOMPLETE", "INVALID_POWER"],
+                    "blocking": ["REFUSED", "ERROR_PARTIAL"]},
+    "queue_completion_statuses": ["TERMINAL_COMPLETE", "TERMINAL_COMPLETE_WITH_FLAGS"],
+    "chain_statuses": ["COMPLETE", "STOPPED_WITH_BLOCKERS", "FINISHED_WITH_FLAGS_OR_FAILURES", "ABORTED"],
+    "recovery_lock": "outputs/phase8/operations/20261003_recovery/owner.lease.json.recovery.lock",
+    "handshakes": "outputs/phase8/operations/20261003_recovery/sessions/<session>/handshakes/<n>.json"
+  },
   "not_authorized_as_chain_actions": [
     "ablation_ladder.py --phase holdout (A2 held-out scoring needs its committed calibration and a separate decision)",
     "g0_parity.py (supplied as a one-line Terminal command for after the chain)",

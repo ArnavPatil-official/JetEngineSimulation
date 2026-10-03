@@ -873,3 +873,46 @@ High complexity/Opus for lifecycle and scientific provenance. Finish the
 record/test/queue repair autonomously. Put non-blocking issues in FIXES.
 Power, missing scientific inputs and mandatory gates may block computation,
 but do not block independent registrations or static implementation.
+
+## Queue pre-launch review correction pass
+
+The first queue implementation was intentionally interrupted before tests,
+commit or arming. No numerical child was launched. Execute this correction
+pass and finish the original queue/G0/tests/status/FIXES implementation only;
+scientific integration is root's responsibility after both worktrees finish.
+Do NOT arm a background driver in this pass. Root will review and arm it after
+all named commits have been integrated, without needing user confirmation.
+
+1. Share one strict queue-completion validator across resume, benchmark-owner
+   release and A2 dependencies. Validate exact expected run-name set, plan,
+   registration ID/hash, queue/spec identities, spec-record hashes AND every
+   underlying manifest/result/progress/historical-log hash. A cached completion
+   must not survive deletion or alteration of its evidence.
+2. Validate cached command-stage registration/source/command identity, exit
+   evidence, log/output/retained hashes and diagnostic report/hash evidence.
+   A foreign or stale focused-test PASS cannot authorize the diagnostic.
+3. Missing benchmark outputs produce terminal execution/error records, but
+   NEVER queue COMPLETE. Record partial/refused cases as blocked for queue
+   completion; do not retry them or overwrite their occupied outputs. A failed
+   benchmark with complete evidence may be terminal with flags, not PASS.
+4. Persist STARTING_CHILD/ambiguous ownership BEFORE spawn. An exception or
+   signal in the spawn/record interval must retain the lease and fail closed;
+   never release it because child identity is absent. A handshake before heavy
+   execution is preferable. Recovery must not assume an ambiguous child ended.
+   Preserve explicit waited-exit evidence; a fast child whose birth time was
+   unreadable/dead may nevertheless be proven ended by successful wait().
+5. Serialize stale recovery with exclusive recovery ownership and revalidate
+   file identity before removing it. Concurrent recovery cannot unlink a new
+   live lease. No lease is completion proof; a stopped live owner is not stale.
+6. Enforce the registration's benchmark script SHA before any benchmark work.
+   Recheck power AND source identity after waits immediately before launch.
+   Finalization failure must produce a nonzero result, never false success.
+7. Add focused fake-process/record tests for each finding; no scientific runs.
+   Validate full shell-wrapper compatibility and G0 fresh output selection.
+   Finish status/FIXES with old user-decision list explicitly superseded.
+
+Commit the prospective operational clarifications before any numerical launch,
+then reviewed implementation/tests/status in a separate corrective commit.
+Check no other Git process/index lock before each commit. Leave the old paused
+queue owners in place for root's verified retirement after review, and keep
+the two original dirty files unstaged. Report the named commits and checks.
