@@ -11,11 +11,14 @@ product-side atoms), pair defect = |delta| / denominator. B = max over A2NOx.
 No threshold discards any defect. CRECK is the balanced control.
 
 Pure scoring (no mechanism, no network): closure against 10*B and the CRECK
-control, sigma0 with the mixed trace rule, temperature convergence toward HP,
-the reported-only composition criterion, and the run guards. Tolerances are
-the user's mechanism-conditioned allowance, never derived from observed
-residuals. Writes outputs/phase8/p85_a5_audit.json once (exit 2 if it exists;
-exit 3, nothing written, if the registration or this file is not committed).
+control (every case converged), sigma0 with the mixed trace rule, temperature
+convergence toward HP with its shortfall labels, the reported-only composition
+criterion, and the run guards. Tolerances are the user's mechanism-conditioned
+allowance, never derived from observed residuals. Writes
+outputs/phase8/p85_a5_audit.json once (exit 2 if it exists; exit 3, nothing
+written, if the registration or this file is not committed, the Mac is not on
+AC, or the main workflow of docs/phase8_queue_recovery_registration.json holds
+its lease or has no terminal chain record).
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import platform
 import subprocess
 import sys
@@ -37,13 +41,17 @@ SOURCE = ROOT / "scripts" / "phase8" / "p85_audit.py"
 VALIDATOR = ROOT / "scripts" / "phase8" / "reactor_validation.py"
 if str(ROOT / "scripts" / "phase8") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts" / "phase8"))
-from pinn_diagnostics.run_diagnostics import is_heavy_target, on_mains, python_target  # noqa: E402
+from pinn_diagnostics.run_diagnostics import on_mains  # noqa: E402
 
 CLOSURE_MULTIPLIER = 10
 CONTROL_BOUND = Fraction(1, 2 ** 52)          # registered CRECK equality rule
 CONTROL_CLOSURE = 1e-10
 CLOSURE_METRICS = ("energy_relative", "element_relative",
                    "max_mixer_energy_relative", "max_mixer_element_relative")
+SHORTFALL_MODES = ("APPROACH", "IDLE")
+QUEUE_REGISTRATION = ROOT / "docs" / "phase8_queue_recovery_registration.json"
+QUEUE_ID = "P8-QUEUE-RECOVERY-20261003"
+TERMINAL_CHAIN = ("COMPLETE", "STOPPED_WITH_BLOCKERS", "FINISHED_WITH_FLAGS_OR_FAILURES")
 SCOPE_NOTE = ("B bounds the local stoichiometric defect per reaction event; 10*B is the user's "
               "mechanism-conditioned allowance, not a proof bounding accumulated network element or "
               "enthalpy error. B is not derived from observed residuals or outlets. No claim that "
@@ -169,10 +177,13 @@ def strictly_below(value, tol) -> bool:
 
 
 def closure_gate(cases: dict, tol, metrics=CLOSURE_METRICS) -> dict:
-    """Every metric of every case finite and strictly below tol (None: no tolerance, fail)."""
+    """Every case converged (all_converged is True) and every metric finite and strictly
+    below tol (None: no tolerance, fail). Small closures of a failed solve never pass."""
     out = {}
     for name, vals in cases.items():
         out[name] = {m: {"value": vals.get(m), "pass": strictly_below(vals.get(m), tol)} for m in metrics}
+        out[name]["all_converged"] = {"value": vals.get("all_converged"),
+                                      "pass": vals.get("all_converged") is True}
     ok = tol is not None and bool(out) and all(v["pass"] for c in out.values() for v in c.values())
     return {"tolerance_float": None if tol is None else float(tol),
             "tolerance_exact": None if tol is None else str(Fraction(tol)), "cases": out, "pass": ok}
@@ -181,9 +192,8 @@ def closure_gate(cases: dict, tol, metrics=CLOSURE_METRICS) -> dict:
 def control_closure_gate(runs: dict, control_audit_pass: bool, tol: float = CONTROL_CLOSURE) -> dict:
     """CRECK base-value runs: all converged and every closure strictly below 1e-10."""
     closure = closure_gate(runs, tol)
-    converged = {m: bool(r.get("all_converged")) for m, r in runs.items()}
-    return {"audit_control_pass": bool(control_audit_pass), "converged": converged, "closure": closure,
-            "pass": bool(control_audit_pass) and bool(runs) and all(converged.values()) and closure["pass"]}
+    return {"audit_control_pass": bool(control_audit_pass), "closure": closure,
+            "pass": bool(control_audit_pass) and closure["pass"]}
 
 
 # ---------------------------------------------------------------------------
@@ -218,8 +228,21 @@ def sigma0_gate(T: list, Y: list, converged: list, names: list, t_tol: float = 1
             "pass": bool(all_conv and finite and t_ok and not failing)}
 
 
-def temperature_convergence_gate(runs: list, T_eq: float, tol: float = 0.1) -> dict:
-    """runs: [{"label", "scale", "converged", "T"}] in increasing scale order.
+def shortfall_label(mode: str, converged: bool, abs_dT: float, errors: list, tol: float = 0.1) -> str:
+    """Only a finite, converged APPROACH/IDLE shortfall may be called a kinetics/extinction
+    limit; nonconvergence and integrator (CVODES) errors stay numerical failures."""
+    if not converged or errors or not math.isfinite(abs_dT):
+        return "numerical failure (nonconvergence or integrator error); not physics unless independently diagnosed"
+    if abs_dT < tol:
+        return "none"
+    if mode in SHORTFALL_MODES:
+        return "kinetics/extinction limit at this residence time (finite, converged shortfall)"
+    return "finite, converged shortfall; not labelled physics at this mode"
+
+
+def temperature_convergence_gate(runs: list, T_eq: float, tol: float = 0.1, mode: str = "") -> dict:
+    """runs: [{"label", "scale", "converged", "T", "errors"}] in increasing scale order
+    ("errors": integrator messages of the run's PSRs, optional).
 
     Pass iff every solve converged, |T - T_eq| is finite and non-increasing
     exactly, and the final error is strictly below tol.
@@ -233,6 +256,8 @@ def temperature_convergence_gate(runs: list, T_eq: float, tol: float = 0.1) -> d
             "scales": {r["label"]: r["scale"] for r in runs}, "converged": conv,
             "monotone_non_increasing": bool(monotone), "final_abs_dT_K": errs[-1] if errs else None,
             "final_strictly_below_K": tol, "final_pass": bool(final_ok),
+            "shortfall": {r["label"]: shortfall_label(mode, r["converged"], e, r.get("errors", []), tol)
+                          for r, e in zip(runs, errs)},
             "pass": bool(runs and all(conv.values()) and monotone and final_ok)}
 
 
@@ -263,32 +288,30 @@ def a5_verdict(allowance: dict, g11: dict, g12_a2: dict, g12_control: dict, g13:
 # Run guards (pure on command output)
 # ---------------------------------------------------------------------------
 
-def main_workflow_owners(ps_output: str, own_pid: int) -> list:
-    """Active owners of the main sequence (``ps -Ao pid=,args=``): Python running any
-    scripts/phase8/ script or module or a heavy v6 job, or a run_benchmark_queue.sh shell."""
-    hits = []
-    for line in ps_output.splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) < 2 or not parts[0].isdigit() or int(parts[0]) == own_pid:
-            continue
-        target = python_target(parts[1])
-        if (target is not None and ("scripts/phase8/" in target or is_heavy_target(target))) \
-                or "run_benchmark_queue.sh" in parts[1]:
-            hits.append(line.strip())
-    return hits
-
-
-def run_blockers(pmset_output: str | None, ps_output: str | None, own_pid: int) -> list:
+def workflow_blockers(queue_reg: dict | None, queue_reg_sha256: str | None, lease_exists: bool,
+                      chain_records: list) -> list:
+    """Main workflow state from its registered records, never from process names:
+    no owner lease on disk (live or stale) and a terminal chain record of the same
+    registration (id and sha256) with a status in TERMINAL_CHAIN."""
+    if queue_reg is None:
+        return [f"main workflow registration {rel(QUEUE_REGISTRATION)} absent or unreadable "
+                "(integrate this worktree into main first)"]
     out = []
-    if not on_mains(pmset_output):
-        out.append("not on mains (AC) power, or power source unknown")
-    if ps_output is None or not ps_output.strip():
-        out.append("process list unreadable; refusing (fail closed)")
-    else:
-        owners = main_workflow_owners(ps_output, own_pid)
-        if owners:
-            out.append("active main workflow owner: " + " | ".join(owners))
+    if queue_reg.get("id") != QUEUE_ID:
+        out.append(f"main workflow registration id is {queue_reg.get('id')!r}, expected {QUEUE_ID}")
+    if lease_exists:
+        out.append(f"main workflow lease {queue_reg.get('lease_path')} is held (live or stale)")
+    terminal = [r for r in chain_records if isinstance(r, dict) and r.get("registration_id") == QUEUE_ID
+                and r.get("registration_sha256") == queue_reg_sha256 and r.get("status") in TERMINAL_CHAIN]
+    if not terminal:
+        out.append("no terminal chain record of the main workflow")
     return out
+
+
+def run_blockers(power_output: str | None, queue_reg: dict | None, queue_reg_sha256: str | None,
+                 lease_exists: bool, chain_records: list) -> list:
+    out = [] if on_mains(power_output) else ["not on mains (AC) power, or power source unknown"]
+    return out + workflow_blockers(queue_reg, queue_reg_sha256, lease_exists, chain_records)
 
 
 def commit_blockers(paths: list, ls_files_output: str | None, status_output: str | None) -> list:
@@ -329,6 +352,27 @@ def git_commit_blockers(paths: list) -> list:
 def git_head() -> str | None:
     head = (cmd(["git", "rev-parse", "--verify", "HEAD"]) or "").strip()
     return head if len(head) == 40 else None
+
+
+def _read_json(path: Path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def live_run_blockers() -> list:
+    """AC (``pmset -g ps``, as the main workflow reads it) and the main workflow records."""
+    power = cmd(["pmset", "-g", "ps"])
+    try:
+        qbytes = QUEUE_REGISTRATION.read_bytes()
+        q = json.loads(qbytes)
+        lease = ROOT / q["lease_path"]
+        pattern = Path(q["records"]["chain_record"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return run_blockers(power, None, None, False, [])
+    records = [_read_json(p) for p in sorted((ROOT / pattern.parent).glob(pattern.name.replace("<session>", "*")))]
+    return run_blockers(power, q, hashlib.sha256(qbytes).hexdigest(), os.path.lexists(lease), records)
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +429,7 @@ def main(argv=None) -> int:
     ap.parse_args(argv)
     reg_bytes = REGISTRATION.read_bytes()
     reg = json.loads(reg_bytes)
-    blockers = git_commit_blockers([REGISTRATION, AMENDMENT, SOURCE])
+    blockers = git_commit_blockers([REGISTRATION, AMENDMENT, SOURCE]) + live_run_blockers()
     head = git_head()
     if head is None:
         blockers.append("git HEAD unreadable")

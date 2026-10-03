@@ -18,7 +18,9 @@ below 1e-10), sigma0 with the mixed trace rule, and G1.1 replaced by
 temperature convergence toward HP at s = 1e4, 1e5, 1e6 (composition reported
 only). Writes the registered outputs/phase8/p85_g1_rerun4.json once; refuses
 (exit 3, nothing written) unless the registration, audit and sources are
-committed and match, the Mac is on AC and no main workflow owner is active.
+committed and match, the Mac is on AC, and the main workflow
+(docs/phase8_queue_recovery_registration.json) holds no lease and has a
+terminal chain record.
 Without --a5 the historical behaviour (rev2 default path) is unchanged.
 """
 
@@ -291,7 +293,11 @@ def psr_report(z: dict) -> dict:
 
 
 def closures(r: dict) -> dict:
-    return {k: r[k] for k in a5.CLOSURE_METRICS}
+    return {**{k: r[k] for k in a5.CLOSURE_METRICS}, "all_converged": r["all_converged"]}
+
+
+def psr_errors(r: dict) -> list:
+    return [z["error"][:300] for z in r["primary"] + [r["quench"]] + r["lean"] if z["error"]]
 
 
 def a5_identity(reg_bytes: bytes, reg: dict) -> dict:
@@ -315,7 +321,7 @@ def a5_blockers(reg: dict, reg_bytes: bytes) -> tuple:
         out.append("cpp/ or scripts/ has uncommitted changes (or git status unreadable)")
     if a5.git_head() is None:
         out.append("git HEAD unreadable")
-    out += a5.run_blockers(a5.cmd(["pmset", "-g", "batt"]), a5.cmd(["ps", "-Ao", "pid=,args="]), os.getpid())
+    out += a5.live_run_blockers()
     audit_doc = None
     if audit_path.exists():
         audit_doc = json.loads(audit_path.read_text())
@@ -367,16 +373,15 @@ def main_a5() -> int:
         eq = net.equilibrium(T3, P, ma, mf)
         runs = {lab: net.run(T3, P3, ma, mf, params(no_dilution=True, volume_scale=s), d) for lab, s in scales}
         g11[mode] = a5.temperature_convergence_gate(
-            [{"label": lab, "scale": s, "converged": runs[lab]["all_converged"], "T": runs[lab]["lean_exit"]["T"]}
-             for lab, s in scales], eq.T, c11["final_abs_dT_strictly_below_K"])
+            [{"label": lab, "scale": s, "converged": runs[lab]["all_converged"], "T": runs[lab]["lean_exit"]["T"],
+              "errors": psr_errors(runs[lab])} for lab, s in scales],
+            eq.T, c11["final_abs_dT_strictly_below_K"], mode)
         g11[mode]["composition_reported_only"] = {
             lab: a5.composition_report(runs[lab]["lean_exit"]["Y"], list(eq.Y), names,
                                        comp["Y_floor"], comp["max_dY"]) for lab in runs}
-        g11[mode]["physics_note"] = ("a shortfall is the network's kinetic/extinction behaviour at these "
-                                     "residence times, reported as physics; no slack is applied")
         g11_runs[mode] = {lab: {"volume_scale": s, "all_converged": runs[lab]["all_converged"],
                                 "any_extinguished": runs[lab]["any_extinguished"],
-                                "lean_exit_T": runs[lab]["lean_exit"]["T"],
+                                "lean_exit_T": runs[lab]["lean_exit"]["T"], "psr_errors": psr_errors(runs[lab]),
                                 "primary": [psr_report(z) for z in runs[lab]["primary"]],
                                 "quench": psr_report(runs[lab]["quench"]),
                                 "lean": [psr_report(z) for z in runs[lab]["lean"]]} for lab, s in scales}
@@ -425,7 +430,7 @@ def main_a5() -> int:
     control_runs, spread = {}, {}
     for mode, (T3, P3, ma, mf) in pts.items():
         rc = creck.run(T3, P3, ma, mf, params(), dcr)
-        control_runs[mode] = {**closures(rc), "all_converged": rc["all_converged"]}
+        control_runs[mode] = closures(rc)
         ra = out["test_value_outputs"][mode]
         spread[mode] = {"eta_b": {"A2NOx": ra["eta_b"], "CRECK": rc["eta_b"]},
                         "EI_CO_g_kg": {"A2NOx": ra["EI_CO_g_kg"], "CRECK": rc["EI_CO_g_kg"]},

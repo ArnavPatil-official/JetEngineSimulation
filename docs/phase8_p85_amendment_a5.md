@@ -91,8 +91,11 @@ converged (`all_converged`), the absolute temperature errors
 (`e(10tau) ≤ e(tau)` and `e(100tau) ≤ e(10tau)`, float comparison, no slack),
 and `e(100tau) < 0.1 K` strictly. No posterior slack at a numerical floor.
 All PSR residence times and outlet states, extinguished flags and integrator
-errors of these runs are reported; a shortfall at APPROACH/IDLE is reported
-as the kinetic/extinction physics of the network at those residence times.
+errors of these runs are reported. Only a finite, converged shortfall at
+APPROACH/IDLE (no integrator error) may be labelled a kinetics/extinction
+limit of the network at those residence times; nonconvergence, CVODES errors
+or non-finite values remain numerical failures unless independently
+diagnosed, and a take-off shortfall is not labelled physics.
 The old composition criterion (max |ΔY| ≤ 1e-5 over species with
 Y_eq > 1e-6) is **reported only**, at every scale. If it fails, no full-state
 equilibrium is claimed; G1.1 then shows temperature convergence only.
@@ -100,7 +103,9 @@ equilibrium is claimed; G1.1 then shows temperature convergence only.
 **G1.2 closure.** A2NOx: whole-network energy, whole-network element, max
 mixer energy and max mixer element relative errors (P8.2 denominators,
 unchanged) must all be finite and **strictly** `< 10·B` (exact rational
-comparison), for the test-value run and the three G1.1 runs at every mode.
+comparison), for the test-value run and the three G1.1 runs at every mode,
+and every one of these cases must have converged (`all_converged`): small
+closures of a failed solve with a near-initial state never pass.
 CRECK control (separate tolerance): the CRECK audit must pass the equality
 rule; its three base-value runs (test values, take-off design; the existing
 G1.6 runs) must all converge and all four closures must be strictly
@@ -125,14 +130,19 @@ record ERROR.
 ## 3. Run guards and order
 
 The audit and rerun 4 are queued after the main benchmark/A2/Track 4
-sequence. Rerun 4 refuses (nothing written) unless: the registration, this
-amendment, `p85_audit.py` and `reactor_validation.py` are committed and
-unmodified; the audit output is committed, unmodified, and matches the
-current registration, audit source and mechanism hashes; `cpp/` and
-`scripts/` have no uncommitted changes; the Mac is on AC power; no main
-workflow owner is active (any Python process running a `scripts/phase8/`
-script or module, the v6 LTO/calibration scripts, or a
-`run_benchmark_queue.sh` shell); and the protected manifest matches. Both
+sequence. Both wait on the main workflow's own records
+(`docs/phase8_queue_recovery_registration.json`, P8-QUEUE-RECOVERY-20261003),
+never on process names: its owner lease must not exist (a live or stale
+lease blocks) and a terminal chain record of the same registration (id and
+SHA-256; status COMPLETE, STOPPED_WITH_BLOCKERS or
+FINISHED_WITH_FLAGS_OR_FAILURES) must exist. Until this worktree is
+integrated into main the main registration is absent here; that is a run
+blocker. Both also require AC power (`pmset -g ps`). Rerun 4 further refuses
+(nothing written) unless: the registration, this amendment, `p85_audit.py`
+and `reactor_validation.py` are committed and unmodified; the audit output
+is committed, unmodified, and matches the current registration, audit
+source and mechanism hashes; `cpp/` and `scripts/` have no uncommitted
+changes; and the protected manifest matches. Both
 outputs are write-once; rerun 4 is selected only with `--a5` and its path is
 fixed by the registration (the historical default, the occupied rev2 path,
 is unchanged and still refuses). Pending commands, in order:
@@ -143,3 +153,13 @@ git add outputs/phase8/p85_a5_audit.json && git commit   # audit record
 bash cpp/build.sh                                       # dev module from the committed cpp/
 nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5
 ```
+
+## Prospective correction (2026-10-03, before any A5 calculation)
+
+Pre-run review clarifications, recorded after the implementation commit and
+before any audit or network solve: (1) every A2NOx closure case must have
+converged; (2) the kinetics/extinction label is restricted to finite,
+converged APPROACH/IDLE shortfalls; (3) the main-workflow guard reads the
+queue-recovery lease and terminal chain record instead of process names, and
+applies to the audit as well as rerun 4. Sections 2 and 3 above state the
+corrected rules; `prospective_corrections` in the JSON lists them.

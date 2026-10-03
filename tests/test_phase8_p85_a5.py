@@ -87,8 +87,8 @@ def test_tolerance_independent_of_observed_residuals():
     B = a5.audit_B(fake_audit([BALANCED, LUMPED]))
     tol = a5.closure_tolerance(B)
     assert tol == 10 * B
-    small = {"test_values": dict.fromkeys(a5.CLOSURE_METRICS, 1e-12)}
-    large = {"test_values": dict.fromkeys(a5.CLOSURE_METRICS, 3e-6)}
+    small = {"test_values": {**dict.fromkeys(a5.CLOSURE_METRICS, 1e-12), "all_converged": True}}
+    large = {"test_values": {**dict.fromkeys(a5.CLOSURE_METRICS, 3e-6), "all_converged": True}}
     g_small, g_large = a5.closure_gate(small, tol), a5.closure_gate(large, tol)
     assert g_small["tolerance_exact"] == g_large["tolerance_exact"] == str(10 * B)
     assert g_small["pass"] and not g_large["pass"]
@@ -106,12 +106,24 @@ def test_closure_strict_equality_and_finite():
     assert a5.strictly_below(float(odd), odd) == (Fraction(float(odd)) < odd)
     for bad in (math.nan, math.inf, None, True):
         assert not a5.strictly_below(bad, tol)
-    case = dict.fromkeys(a5.CLOSURE_METRICS, 0.0)
+    case = {**dict.fromkeys(a5.CLOSURE_METRICS, 0.0), "all_converged": True}
     assert a5.closure_gate({"c": case}, tol)["pass"]
     assert not a5.closure_gate({"c": {**case, "element_relative": edge}}, tol)["pass"]
     assert not a5.closure_gate({"c": {**case, "max_mixer_energy_relative": math.nan}}, tol)["pass"]
     assert not a5.closure_gate({"c": {k: v for k, v in case.items() if k != "energy_relative"}}, tol)["pass"]
     assert not a5.closure_gate({"c": case}, None)["pass"]
+
+
+def test_closure_requires_convergence_of_every_case():
+    tol = a5.closure_tolerance(Fraction(1, 2 ** 30))
+    ok = {**dict.fromkeys(a5.CLOSURE_METRICS, 0.0), "all_converged": True}
+    stalled = {**dict.fromkeys(a5.CLOSURE_METRICS, 0.0), "all_converged": False}   # near-initial state
+    cases = {"test_values": stalled, "tau": ok, "10tau": ok, "100tau": ok}
+    g = a5.closure_gate(cases, tol)
+    assert not g["pass"] and not g["cases"]["test_values"]["all_converged"]["pass"]
+    assert not a5.closure_gate({"test_values": {k: v for k, v in ok.items() if k != "all_converged"}}, tol)["pass"]
+    assert not a5.closure_gate({"test_values": {**ok, "all_converged": 1}}, tol)["pass"]
+    assert a5.closure_gate({**cases, "test_values": ok}, tol)["pass"]
 
 
 def test_creck_control_closure():
@@ -159,6 +171,21 @@ def runs(errors, converged=(True, True, True)):
             for lab, s, e, c in zip(("tau", "10tau", "100tau"), (1e4, 1e5, 1e6), errors, converged)]
 
 
+def test_shortfall_labels():
+    assert a5.shortfall_label("IDLE", True, 0.04, []) == "none"
+    for mode in ("APPROACH", "IDLE"):
+        assert a5.shortfall_label(mode, True, 2.5, []).startswith("kinetics/extinction limit")
+        for conv, err, dT in ((False, [], 2.5), (True, ["CVODES error -3"], 2.5), (True, [], math.nan)):
+            assert a5.shortfall_label(mode, conv, dT, err).startswith("numerical failure")
+    assert "not labelled physics" in a5.shortfall_label("TAKE-OFF", True, 2.5, [])
+    g = a5.temperature_convergence_gate(
+        [{"label": "tau", "scale": 1e4, "converged": True, "T": 2.5},
+         {"label": "10tau", "scale": 1e5, "converged": False, "T": 1.0, "errors": ["CVODES"]},
+         {"label": "100tau", "scale": 1e6, "converged": True, "T": 0.5}], 0.0, 0.1, "APPROACH")
+    assert g["shortfall"]["tau"].startswith("kinetics") and g["shortfall"]["10tau"].startswith("numerical")
+    assert not g["pass"]
+
+
 def test_temperature_convergence_gate():
     assert a5.temperature_convergence_gate(runs([0.5, 0.25, 0.0625]), 0.0)["pass"]
     assert a5.temperature_convergence_gate(runs([0.05, 0.05, 0.05]), 0.0)["pass"]       # ties allowed
@@ -190,31 +217,34 @@ def test_composition_is_reported_only():
 
 # --- run guards and registration ---------------------------------------------
 
-PS = """\
-  101 /Users/x/.venv/bin/python scripts/phase8/benchmark.py --arm 1
-  102 /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 -m scripts.phase8.pinn_diagnostics.run_diagnostics --registration r.json
-  103 bash /Users/x/scripts/phase8/run_benchmark_queue.sh out "1 a b 4"
-  104 zsh -c nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5
-  105 /usr/bin/python3 -m http.server
-  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5
-"""
+QREG = {"id": a5.QUEUE_ID, "lease_path": "outputs/phase8/operations/20261003_recovery/owner.lease.json"}
+AC = "Now drawing from 'AC Power'\n -InternalBattery-0 100%; charged\n"
+BATTERY = "Now drawing from 'Battery Power'\n -InternalBattery-0 100%; discharging\n"
 
 
-def test_main_workflow_owners():
-    hits = a5.main_workflow_owners(PS, own_pid=200)
-    assert [h.split()[0] for h in hits] == ["101", "102", "103"]
-    assert a5.main_workflow_owners("  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5\n", 200) == []
+def chain(status, rid=a5.QUEUE_ID, sha="q"):
+    return {"registration_id": rid, "registration_sha256": sha, "session": "s1", "status": status}
 
 
-def test_run_blockers():
-    ac = "Now drawing from 'AC Power'\n -InternalBattery-0 100%; charged\n"
-    battery = "Now drawing from 'Battery Power'\n -InternalBattery-0 100%; discharging\n"
-    quiet = "  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5\n"
-    assert a5.run_blockers(ac, quiet, 200) == []
-    assert any("AC" in b for b in a5.run_blockers(battery, quiet, 200))
-    assert any("AC" in b for b in a5.run_blockers(None, quiet, 200))
-    assert any("unreadable" in b for b in a5.run_blockers(ac, None, 200))
-    assert any("owner" in b for b in a5.run_blockers(ac, PS, 200))
+def test_workflow_blockers_use_lease_and_terminal_chain_record():
+    for status in a5.TERMINAL_CHAIN:
+        assert a5.workflow_blockers(QREG, "q", False, [chain(status)]) == []
+    assert a5.workflow_blockers(None, None, False, [chain("COMPLETE")])                 # absent here: blocker
+    assert any("lease" in b for b in a5.workflow_blockers(QREG, "q", True, [chain("COMPLETE")]))
+    assert any("terminal" in b for b in a5.workflow_blockers(QREG, "q", False, []))
+    for bad in (chain("ABORTED"), chain(None), chain("COMPLETE", rid="other"),
+                chain("COMPLETE", sha="older registration"), None, ["not a record"]):
+        assert any("terminal" in b for b in a5.workflow_blockers(QREG, "q", False, [bad]))
+    assert a5.workflow_blockers({**QREG, "id": "X"}, "q", False, [chain("COMPLETE")])
+    assert a5.workflow_blockers(QREG, "q", False, [chain("ABORTED"), chain("COMPLETE")]) == []
+
+
+def test_run_blockers_need_ac_and_idle_workflow():
+    done = [chain("COMPLETE")]
+    assert a5.run_blockers(AC, QREG, "q", False, done) == []
+    assert any("AC" in b for b in a5.run_blockers(BATTERY, QREG, "q", False, done))
+    assert any("AC" in b for b in a5.run_blockers(None, QREG, "q", False, done))
+    assert len(a5.run_blockers(BATTERY, QREG, "q", True, [])) == 3
 
 
 def test_commit_and_audit_match_blockers():
@@ -243,6 +273,13 @@ def test_registration_matches_module_and_new_paths():
     assert reg["outputs"] == {"audit": "outputs/phase8/p85_a5_audit.json",
                               "g1": "outputs/phase8/p85_g1_rerun4.json"}
     assert reg["known_when_registered"]["a5_audit"].startswith("not computed")
+    corr = reg["prospective_corrections"][0]
+    assert corr["date"] == "2026-10-03" and corr["before_any_a5_calculation"] is True
+    assert reg["g1"]["G1.2_closure"]["a2nox"]["require_all_converged_every_case"] is True
+    assert reg["g1"]["G1.1_temperature_convergence"]["shortfall_label_modes"] == list(a5.SHORTFALL_MODES)
+    wf = reg["guards"]["main_workflow"]
+    assert wf["registration"] == str(a5.QUEUE_REGISTRATION.relative_to(ROOT)) and wf["id"] == a5.QUEUE_ID
+    assert wf["terminal_chain_statuses"] == list(a5.TERMINAL_CHAIN)
 
 
 def test_validator_keeps_historical_default_and_explicit_a5():
