@@ -29,9 +29,9 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.1 A1 C++ port of v6 (brentq, compressor, fan, FAR, burner with per-call state reset, analytic turbine, nozzle, NOx, run_full_cycle, run_at_thrust) | `243cc1d` | unit parity **PASS** at 1e-12 (35 pytest cases incl. AE3 thrust solves with identical evaluation counts and identical unreachable reasons); brentq bit-exact vs SciPy 1.16.3 on 24 cases (Catch2) |
 | P8.1 **G0** | script `fadc08d`, result `74f53c8` | **PASS** (`outputs/phase8/g0_parity.json`): 93 calibration rows max rel diff 2.2e-12; 87 held-out rows 1.4e-10 (the 'Model APE (%)' column; predicted fuel flow 9.4e-13); held-out summary 7.4e-12; AE3 design point (v5 artifact, 3 modes, incl. p5) 2.2e-12. Python backend also reproduces the frozen v6 artifacts today (max 1.9e-12). Wall times in that run are not benchmark data (4 helper jobs were loading the Mac) |
 | P8.1 benchmark variants b, c (gates) | `72f4ce3`, `a83ac7f`, `c938bf2` | arm 2b G0 **PASS** (180 rows + AE3, worst 4.0e-13). Arm 2c approximation gate **PASS** (FF 2.2e-9 rel, T4 1.4e-7 K, MAPE change 3.5e-9 pp); the first c gate preceded an uncommitted post-gate edit of the shared probe bracket (0.20/None→0.25/0.10), which was **discarded**: bracket restored to the gated b code, c re-gated on it (`arm2c_gate_rev2.json`, identical numbers, source hash recorded). Native arms 3/4: variant b (V6Engine + probe), c (benchmark-only copy with 12-species products-only equilibrium) and the copy in full-equilibrium mode: **PASS** (`native_variants_gate.json`; full and b worst 1.8e-12, c same as arm 2c). Variant b saves little: median W3 solve 27 → 25 cycle evaluations. |
-| P8.1 benchmark timings | run 2 running | Run 2 (`outputs/phase8/benchmark/run2_ac/`, 56 runs) started on AC 2026-10-01 ~14:50Z; arm 1a W1 0.305 s (25 evaluations), W2 14.55 s, W3 12.97 s (no timing gaps now that progress lines are timestamped). **Overlap note:** during arm1a_W4_1w the executor compiled and tested P8.4 (single niced job; load average ~4.5 logged per repeat; repeat 2 364.8 s vs 359.8 s for repeat 1). Run 1 (battery) is a superseded record. | A ~20 s single-core development run overlapped `arm1a_W2_11w` (repeats 1–2; median 2.457 s, repeat 5 3.10 s): flagged; a clean supplementary rerun is queued after run 2. |
+| P8.1 benchmark timings | legacy queue retired; recovery pending | Run 2 (`outputs/phase8/benchmark/run2_ac/`, 56 runs) started on AC 2026-10-01 ~14:50Z; arm 1a W1 0.305 s (25 evaluations), W2 14.55 s, W3 12.97 s (no timing gaps now that progress lines are timestamped). **Overlap note:** during arm1a_W4_1w the executor compiled and tested P8.4 (single niced job; load average ~4.5 logged per repeat; repeat 2 364.8 s vs 359.8 s for repeat 1). Run 1 (battery) is a superseded record. | A ~20 s single-core development run overlapped `arm1a_W2_11w` (repeats 1–2; median 2.457 s, repeat 5 3.10 s): flagged; a clean supplementary rerun is queued after run 2. |
 | P8.2 implementation | `5d59209` | GasThermo state, enthalpy mixing, liquid-fuel enthalpy (360 kJ/kg), cited HP cooling (CR-168189: NGV 0.0641, rotor 0.0275), RK4 polytropic HP/IP/LP stages (P8.2-A1), HP inversion 1e-13 (P8.2-A2). |
-| P8.2 **G1** | `df3a6c1` | **PASS** at AE3 TAKE-OFF, APPROACH, IDLE (`outputs/phase8/p82_g1.json`): constant-cp vs v6 T5/p5 ≤ 6e-16; A1 vs zero-cooling A2 interface ≤ 1.3e-16; worst closure 2.9e-11 (1e-10); 50→100 steps 2.9e-11 (1e-8). Burner energy closure is definitional (reported, not counted). A fresh 180-row `g0_parity` rerun is **not** in the record (v6 sources byte-identical to the G0 commit instead; see Blocked). The P8.2 compressor's ideal-outlet `setState_SP` keeps Cantera's 1e-9 default (~1e-9 precision; noted for P8.4). |
+| P8.2 **G1** | `df3a6c1` | **PASS** at AE3 TAKE-OFF, APPROACH, IDLE (`outputs/phase8/p82_g1.json`): constant-cp vs v6 T5/p5 ≤ 6e-16; A1 vs zero-cooling A2 interface ≤ 1.3e-16; worst closure 2.9e-11 (1e-10); 50→100 steps 2.9e-11 (1e-8). Burner energy closure is definitional (reported, not counted). A fresh 180-row `g0_parity` rerun is **not** in the record (v6 sources byte-identical to the G0 commit instead; see the registered decisions and AC work below). The P8.2 compressor's ideal-outlet `setState_SP` keeps Cantera's 1e-9 default (~1e-9 precision; noted for P8.4). |
 | P8.3 implementation + **G1** | `88319ec`, `6bf7918`, `ef4e928` | Development Catch2 run failed 1/5 (mass flow 2.76e-10 off at 1e-12: `setState_SP` default 1e-9); recorded in `docs/phase8_p83_amendment_a1.md` before G1, isentrope inversion set to 1e-13. G1 **PASS** (`outputs/phase8/p83_g1.json`): constant-cp p*/p0 3.6e-15; mass-flow/force jumps at p*(1±1e-9) 1.2e-15 / 1.6e-9 (1e-8); unchoked Cd=Cv=1 vs v6 force 8.5e-14; real-gas core/bypass exit energy ≤ 5.6e-13, Y and elements unchanged. AE3 take-off core nozzle chokes (p0/pa 1.87, real-gas p*/p0 0.537). |
 | P8-A2 ladder solver fix | `b415ddd` | Before any ladder result: P8.2's thrust solve replaced by `thrust_match.hpp`, a template copy of the v6 solve; pytest proves it identical to `V6Engine::run_at_thrust` (phi, evaluation count, fuel flow, reasons) at AE3 three modes, cold/warm, above/below range. |
 | Ladder A1 calibration | `5e03692` | Frozen `lto_v6.run_calibration`, P8.2 level 1: selected polish_from_v5_A2, SSE 4.5887e-4 (v6 4.5708e-4), in-sample MAPE 1.786 % (v6 1.785 %), W_ref 103.474, a_thrust 1.10891, k_pi 1.34377, k_mdot 0.414514, 0 unreachable; TPE candidate SSE 8.2e-3. Took 74 min vs v6's 11 min for a similar evaluation count (not profiled yet). |
@@ -100,30 +100,89 @@ The module still binds conda's own `libfmt` (the fmt that `libcantera.a` was
 built against), which is correct. Every future `catjet_core` module must use
 the same recipe; standalone executables may keep the shared library.
 
-## Running / queued (2026-10-02 ~03:30Z)
+## Registered decisions and AC work (updated 2026-10-03)
 
-- Benchmark run 2 (`run2_ac`, remaining arms 2–4) then reruns
-  (`run2_ac_rerun`: arm1a_W2_11w, arm1a_W4_11w), waiting for AC power; runs
-  now fail as INVALID_POWER if any repeat is off mains.
-- Ladder A2 calibration chained after the reruns, on AC
-  (`outputs/phase8/ladder/A2/run.log`); held-out scoring needs a commit first.
+The user's 2026-10-02 decisions, repeated on 2026-10-03, supersede the former
+"Blocked / needs the user" list. No additional scientific decision is awaited.
 
-## Blocked / needs the user (updated 2026-10-02)
+- **P8.5-A5:** registration `18df7a4`; implementation `71c6aed`, reviewed
+  corrections `d0dc7d4` and `b9d638f`. No edit to `data/A2NOx.yaml`.
+  Independently audit every reaction/element in the uncloned mechanism; use
+  exactly 10 times its registered dimensionless bound for closure and a
+  balanced control at strict 1e-10. Mixed trace-species rule: relative above
+  Y = 1e-8, absolute 1e-12 at or below it. Temperature convergence at
+  tau/10tau/100tau must shrink monotonically and end below 0.1 K; a converged
+  approach/idle kinetics limit is recorded as physics. Failed integration is
+  still numerical failure. Twenty pure gate/audit tests passed; the actual
+  independent audit and rerun 4 remain pending on AC, due 2026-10-16.
+- **P8.3-A2:** registration `2f5bbe5`. Re-cited full-scale TP-2171 and
+  modelling evidence; new Cv central 0.985, sensitivity range 0.95–1.00.
+  Cd central 0.96, range 0.90–0.99. These are declared engineering envelopes,
+  and gross-thrust coefficient is not equated with Cv or Cd. Cv is included
+  in the error-budget sensitivity list. The prior changed after A4; A4
+  remains scored once at `2dd705f` with its original inputs and result.
+- **A4c:** prospective registration `0e32a29`, before the 2026-10-08 deadline
+  and before any computation. Five shared parameters with declared cited
+  centrals/ranges, the 93-row calibration group only, A1 profile plus the
+  exact guard, and one registered fallback. Public OPR/BPR/rated thrust
+  remain inputs; no per-engine fitted parameter. Score the Trent held-out
+  set exactly once by 2026-10-15, or report in progress. Pre-computation C1
+  clarification `9e4db00` registers the opt-in public-input flow bound,
+  separate build and complete frozen-evidence checks. Currently in progress;
+  no fit, profile or held-out target access has occurred.
+- **Calibration-only work:** registered OAT Cv, Cd, T4, FPR, six efficiencies
+  and cooling error budget, reporting illustrative shares of the known
+  +15.4/+10.3/+8.3 % aggregates; input-only Trent 1000-E convergence repair
+  and an all-20-family design-convergence assertion. Implementation is an
+  unfinished draft in the separate A4c worktree, with review defects in
+  `docs/FIXES.md`. No error-budget or convergence result exists.
+- **G0:** the requested file reads now succeed. Fresh output selection `634ecb1` has
+  been implemented by Claude and its path rules statically checked; no G0
+  regeneration has run. Use a new write-once directory, preserving old G0.
 
-Resolved by the user on 2026-10-01: C3 (geared admitted, split drawn), ladder
-A3 (merged into A4), A4 knobs (none), A4 IPC stall (handling bleed).
-Still open:
-1. **P8.5 G1 FAIL (rev2)** — closure ~2.7e-8 is the protected A2NOx's own
-   HyChem imbalance (needs a decision: rebalanced mechanism copy, or a
-   closure tolerance tied to it); strict σ=0 rule fails only on trace
-   species (threshold decision); long-τ misses at APPROACH (2.5 K) and IDLE
-   (dY 2.2e-5) at s = 1e4 (larger s or a different limit test).
-2. **G0 re-run for G1 item 4** — reading `scripts/phase8/g0_parity.py` /
-   `simulation/catjet_backend.py` is blocked by the permission classifier.
-3. **Nozzle Cv prior** — the P8.3 analog prior Cv = 0.95 (TN-1757 small cone
-   nozzles) likely dominates the +16 % take-off fuel flow; it is not in the
-   P8.4b sensitivity list. Revisiting it is a registration change → user
-   (digitised TN-1757 data would constrain it under P8.7).
+### Queue deadlock recovery
+
+The old queue's process-name predicate matched the parked A2 chain command,
+while A2 waited for that queue to exit. Verified PIDs 48047/48049 were stopped
+under the user's authorization. The old queue owners 45935/45938 were then
+paused, verified to have no numerical descendants and retired without
+resuming their already parsed loop; caffeinate 45937 was also retired.
+No benchmark repeat ran during this recovery. Seven existing run-2 result
+directories and all old outputs are preserved; no rerun result files exist.
+
+Replacement registration: `0c71b49`, pre-launch review correction `5ab1c30`,
+separate-build prerequisite `7a6f9cb`,
+`docs/phase8_queue_recovery_registration.json`. Completion must use registered
+run records and validated completion files, never process-name matches.
+A2 starts only after both benchmark completion files and the benchmark-owner
+release record validate. Existing invalid-power and overlap flags remain;
+terminal completion is not a clean benchmark claim.
+
+**Replacement is not armed yet.** Static review found incomplete cached-record
+evidence checks. Claude's queue-review and A4c sessions hit the shared session
+limit, resetting at 10:10 pm America/New_York; their unfinished work is
+preserved for completion/review in `phase8-queue-recovery-20261003` and
+`phase8-p83-a2-a4c-20261003`. The main queue wrapper remains unchanged until
+the replacement passes review; all old queue processes have ended. See
+`docs/FIXES.md`. The Mac is on battery.
+
+Registered AC order, after reviewed code is committed:
+
+1. Benchmark run 2 (skip validated existing records; finish missing specs).
+2. The two registered rerun jobs: arm1a_W2_11w and arm1a_W4_11w.
+3. A2 calibration from the benchmark completion evidence; no held-out score.
+4. Separate validation build in `cpp/build_next`, preserving `cpp/build`.
+5. Track 4 focused pytest, then its single registered diagnostic attempt.
+6. Full pytest with the validation core preloaded and its path asserted, then
+   phase-7/phase-8 protected hashes.
+
+Independent numerical tracks wait until the main sequence releases ownership
+and the registered records validate. Parallel planning/implementation uses
+worktrees (`phase8-p85-a5-20261003`, `phase8-p83-a2-a4c-20261003`,
+`phase8-queue-recovery-20261003`). Non-blocking
+defects go to `docs/FIXES.md`. Registration before scoring, one-shot held-out
+scores, protected files and no push are never deferred. Freeze package:
+`outputs/freeze/` on 2026-10-18; local tag `freeze-2026-10-18`, not created yet.
 
 ## Superseded blocked list (2026-10-01 morning)
 
@@ -177,8 +236,8 @@ Historical retired turbine PINN (P4.4 attempt 2): 6.390 % held-out max
 it once it exists. Its root cause is not established. It is not the legacy 4.2 MPa scale
 (see the notes, source correction 1).
 
-Pending commands, in order, once on AC with no active benchmark/calibration
-Python job (parked shells do not count):
+Pending commands run after benchmark run 2, its two rerun jobs, A2 and the
+separate validation build. The recovery registration owns the order:
 1. `nice -n 15 .venv/bin/python -m pytest tests/test_phase8_pinn_diagnostics.py -v`
    (an implementation bug may be fixed and committed only before step 2).
 2. `nice -n 15 .venv/bin/python -m scripts.phase8.pinn_diagnostics.run_diagnostics --registration docs/phase8_track4_registration.json`
@@ -191,12 +250,34 @@ Python job (parked shells do not count):
    run `.venv/bin/python scripts/build_manifest.py` then `--check`. No local tag
    now. Until then, no freeze file or manifest record exists (none is created
    as a placeholder).
-5. `nice -n 15 .venv/bin/python -m pytest tests/ -v` and
+5. The recovery registration’s full-pytest command preloads and verifies
+   `cpp/build_next` before collection, then
    `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase7 --phase8`.
 
 Blockers and deferred work: Ma Eq. 25 thermal-unit ambiguity (flagged,
 not repaired); loss-balancing cross-validation, M1 empirical residuals,
-R7-1..R7-3 and the post-freeze Sajben low-label study remain deferred. The
-pre-existing benchmark-queue wait predicate still matches the parked A2
-chain shell (PIDs 48047/48049). Each waits for the other. The queue and shells were
-not altered.
+R7-1..R7-3 and the post-freeze Sajben low-label study remain deferred. The parked A2 chain was stopped
+and legacy queue retired during the
+authorized recovery above; replacement is awaiting implementation review.
+
+## Recovery review checks (2026-10-03)
+
+- Twenty pure P8.5-A5 tests passed in the integrated main checkout.
+- G0 output-path checks passed for unchanged defaults, fresh relative output
+  selection and path-traversal rejection; no regeneration ran.
+- Registration JSON parsing, Python AST, shell syntax and G0 CLI help checks passed.
+- Protected manifests 40/134/184 each have zero mismatches; an independent
+  310-file retained/protected/historical snapshot also has zero mismatches.
+- The required case-insensitive naming scan returned no matches.
+- No Git process or index lock was present before integration/commits.
+- Full pytest, Track 4, all-family convergence, error budget, A4c fitting/
+  profiling/scoring, A5 audit/rerun 4 and G0 regeneration remain pending.
+
+After the reviewed main AC sequence finishes, a fresh G0 command is:
+
+```sh
+cd /Users/arnavpatil/Documents/JetEngineSimulation && caffeinate -i nice -n 15 .venv/bin/python scripts/phase8/g0_parity.py --workers 6 --out-dir outputs/phase8/g0_rerun_20261003
+```
+
+This preserves historical G0 files and rules. The read-permission problem
+did not recur: both requested source files were read successfully.
