@@ -194,7 +194,8 @@
       "AC power and main workflow idle (guards.main_workflow)",
       "protected manifest matches",
       "write-once output",
-      "start identity rechecked at end; drift => ERROR"
+      "start identity rechecked at end; drift => ERROR",
+      "The actually loaded core must resolve inside cpp/build_next and equal the binary hash in the validated PASS validation_build stage; freeze actual committed C++ source hashes, selected binary, calibration inlet/fuel configuration and main validator identity before compute; source/input/binary/resource drift invalidates the result."
     ],
     "main_workflow": {
       "registration": "docs/phase8_queue_recovery_registration.json",
@@ -208,7 +209,8 @@
       ],
       "power": "pmset -g ps, first line contains 'AC Power'; unreadable blocks",
       "absent": "main registration absent or unreadable in this checkout is a run blocker",
-      "process_names": "not used"
+      "process_names": "not used",
+      "validation": "scripts/phase8/ac_workflow.py validate_terminal_context: strict registration/source identity, both queue completions, owner-release and referenced stage/chain evidence; require_idle=True. A matching terminal-status word alone is insufficient."
     }
   },
   "order": "after the main benchmark/A2/Track4 sequence, on AC",
@@ -243,6 +245,14 @@
       "before_any_a5_calculation": true,
       "changes": [
         "Build/use cpp/build_next after the main sequence; preserve cpp/build benchmark binary. Audit and all A5 scientific rules unchanged. The build option is pending implementation and review before any run."
+      ]
+    },
+    {
+      "date": "2026-10-03",
+      "before_any_a5_calculation": true,
+      "changes": [
+        "Replace the summary-only main-record gate with the shared strict terminal-context validator; audit and rerun still follow the main sequence on AC.",
+        "Rerun 4 verifies the actually loaded separate-build module against validated build evidence and freezes actual committed C++/input/core identity before any network call. Recheck power and ownership after the independent re-audit and before network work; drift or unreadable identity yields ERROR/nonzero. No scientific rule or historical behavior changes."
       ]
     }
   ]
