@@ -1,0 +1,254 @@
+"""P8.5-A5 pure gate and audit-fixture contracts (no mechanism load, no network)."""
+
+import ast
+import json
+import math
+import sys
+from fractions import Fraction
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts" / "phase8"))
+import p85_audit as a5  # noqa: E402
+
+ELEMENTS = ["C", "H", "N"]
+# species: CH2, C2H4, X (one C), Y (one C), Z (one C)
+ATOMS = [[1.0, 2.0, 0.0], [2.0, 4.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+WEIGHTS = [14.027, 28.054, 12.011, 12.011, 12.011]
+
+
+def rxn(reactants, products, eq="fixture"):
+    return {"equation": eq, "reactants": reactants, "products": products}
+
+
+def fake_audit(reactions):
+    return a5.audit_reactions(ELEMENTS, ATOMS, WEIGHTS, reactions)
+
+
+LUMPED = rxn({0: 2.0}, {1: 0.9999999}, "2 CH2 => 0.9999999 C2H4")   # rounded lumped coefficient
+BALANCED = rxn({0: 2.0}, {1: 1.0}, "2 CH2 => C2H4")
+
+
+# --- source audit ------------------------------------------------------------
+
+def test_audit_exact_defect_and_bound():
+    audit = fake_audit([BALANCED, LUMPED])
+    B = a5.audit_B(audit)
+    assert B == 1 - Fraction(0.9999999)            # |2 nu - 2| / max(2, 2 nu), exact
+    assert audit["argmax"]["index"] == 1
+    assert audit["n_reactions_with_nonzero_defect"] == 1
+    rec = audit["reactions_with_nonzero_defect"][0]
+    assert Fraction(rec["signed_atoms_exact"]["C"]) == 2 * Fraction(0.9999999) - 2
+    assert Fraction(rec["reactant_turnover"]["C"]) == 2 and "N" not in rec["signed_atoms_exact"]
+    assert Fraction(rec["mass_defect_kg_kmol_exact"]) == Fraction(28.054) * Fraction(0.9999999) - 2 * Fraction(14.027)
+    assert rec["signed_atoms_float64"]["H"] == 2.0 * -2.0 + 4.0 * 0.9999999   # float64 evaluation
+    assert a5.allowance_gate(audit)["pass"]
+
+
+def test_zero_turnover_pairs_contribute_zero():
+    audit = fake_audit([BALANCED])
+    assert a5.audit_B(audit) == 0 and audit["errors"] == []
+    assert audit["max_by_element"]["N"]["exact"] == "0"
+    gate = a5.allowance_gate(audit)
+    assert not gate["pass"] and "strictly positive" in gate["reasons"][0]
+    with pytest.raises(ValueError):
+        a5.closure_tolerance(a5.audit_B(audit))
+
+
+def test_nonzero_defect_at_zero_turnover_is_an_error():
+    audit = fake_audit([LUMPED, rxn({2: -1.0}, {})])     # R_C = -1, P_C = 0: denominator 0, delta 1
+    assert audit["errors"] and audit["errors"][0]["index"] == 1
+    assert not a5.allowance_gate(audit)["pass"]
+
+
+def test_tiny_cyclic_defect_is_kept_no_threshold():
+    audit = fake_audit([rxn({2: 0.1, 3: 0.2}, {4: 0.3})])
+    delta = Fraction(0.3) - Fraction(0.1) - Fraction(0.2)
+    assert delta != 0 and a5.audit_B(audit) == abs(delta) / max(Fraction(0.1) + Fraction(0.2), Fraction(0.3))
+    assert audit["n_reactions_with_nonzero_defect"] == 1 and audit["threshold"] is None
+
+
+def test_balanced_control_rule():
+    decimal = fake_audit([BALANCED, rxn({2: 0.1, 3: 0.2}, {4: 0.3})])
+    assert a5.control_gate(decimal)["pass"]                          # representation-level only
+    assert not a5.control_gate(fake_audit([LUMPED]))["pass"]         # 1e-7 defect
+    assert not a5.control_gate(fake_audit([rxn({2: -1.0}, {})]))["pass"]   # audit error
+    edge = {"errors": [], "B_exact": str(Fraction(1, 2 ** 52))}
+    assert a5.control_gate(edge)["pass"]
+    edge["B_exact"] = str(Fraction(1, 2 ** 52) + Fraction(1, 2 ** 80))
+    assert not a5.control_gate(edge)["pass"]
+
+
+# --- closure -----------------------------------------------------------------
+
+def test_tolerance_independent_of_observed_residuals():
+    B = a5.audit_B(fake_audit([BALANCED, LUMPED]))
+    tol = a5.closure_tolerance(B)
+    assert tol == 10 * B
+    small = {"test_values": dict.fromkeys(a5.CLOSURE_METRICS, 1e-12)}
+    large = {"test_values": dict.fromkeys(a5.CLOSURE_METRICS, 3e-6)}
+    g_small, g_large = a5.closure_gate(small, tol), a5.closure_gate(large, tol)
+    assert g_small["tolerance_exact"] == g_large["tolerance_exact"] == str(10 * B)
+    assert g_small["pass"] and not g_large["pass"]
+    # stoichiometry alone moves the tolerance
+    assert a5.closure_tolerance(a5.audit_B(fake_audit([rxn({0: 2.0}, {1: 0.999999})]))) != tol
+
+
+def test_closure_strict_equality_and_finite():
+    tol = a5.closure_tolerance(Fraction(1, 2 ** 30))              # 10 * 2^-30 is a float exactly
+    edge = float(tol)
+    assert Fraction(edge) == tol
+    assert not a5.strictly_below(edge, tol)
+    assert a5.strictly_below(math.nextafter(edge, 0.0), tol)
+    odd = a5.closure_tolerance(Fraction(1, 3) * Fraction(1, 10 ** 8))   # not a float
+    assert a5.strictly_below(float(odd), odd) == (Fraction(float(odd)) < odd)
+    for bad in (math.nan, math.inf, None, True):
+        assert not a5.strictly_below(bad, tol)
+    case = dict.fromkeys(a5.CLOSURE_METRICS, 0.0)
+    assert a5.closure_gate({"c": case}, tol)["pass"]
+    assert not a5.closure_gate({"c": {**case, "element_relative": edge}}, tol)["pass"]
+    assert not a5.closure_gate({"c": {**case, "max_mixer_energy_relative": math.nan}}, tol)["pass"]
+    assert not a5.closure_gate({"c": {k: v for k, v in case.items() if k != "energy_relative"}}, tol)["pass"]
+    assert not a5.closure_gate({"c": case}, None)["pass"]
+
+
+def test_creck_control_closure():
+    ok = {m: {**dict.fromkeys(a5.CLOSURE_METRICS, 1e-15), "all_converged": True}
+          for m in ("TAKE-OFF", "APPROACH", "IDLE")}
+    assert a5.control_closure_gate(ok, True)["pass"]
+    assert not a5.control_closure_gate(ok, False)["pass"]                      # failing audit blocks
+    assert not a5.control_closure_gate({**ok, "IDLE": {**ok["IDLE"], "all_converged": False}}, True)["pass"]
+    assert not a5.control_closure_gate({**ok, "IDLE": {**ok["IDLE"], "energy_relative": 1e-10}}, True)["pass"]
+    assert a5.control_closure_gate({**ok, "IDLE": {**ok["IDLE"], "energy_relative": 9.9e-11}}, True)["pass"]
+
+
+# --- sigma0 ------------------------------------------------------------------
+
+def test_sigma0_mixed_trace_rule():
+    names = ["major", "edge", "just_above", "trace", "absent"]
+    edge_ref = 1e-8
+    above = math.nextafter(edge_ref, 1.0)
+    Y = [[0.2, edge_ref, above, 1e-12, 0.0],
+         [0.2, edge_ref, above, 0.0, 0.0]]
+    g = a5.sigma0_gate([1800.0, 1800.0], Y, [True, True], names)
+    rules = {s["name"]: s["rule"] for s in g["species"]}
+    assert rules == {"major": "relative", "edge": "absolute", "just_above": "relative",
+                     "trace": "absolute", "absent": "absolute"}
+    assert g["pass"]                                   # trace spread exactly 1e-12 passes
+    Y[1][3] = -1e-13                                   # spread 1.1e-12 > 1e-12
+    g = a5.sigma0_gate([1800.0, 1800.0], Y, [True, True], names)
+    assert not g["pass"] and g["failing_species"] == ["trace"]
+    assert {"reference", "spread", "metric"} <= set(g["species"][0])
+
+
+def test_sigma0_convergence_temperature_and_finite():
+    Y = [[0.5, 0.5], [0.5, 0.5]]
+    assert not a5.sigma0_gate([1800.0, 1800.0], Y, [True, False], ["a", "b"])["pass"]
+    assert not a5.sigma0_gate([1800.0, 1800.0 * (1 + 1e-11)], Y, [True, True], ["a", "b"])["pass"]
+    assert not a5.sigma0_gate([1800.0, math.nan], Y, [True, True], ["a", "b"])["pass"]
+    assert not a5.sigma0_gate([1800.0, 1800.0], [[0.5, math.nan], [0.5, 0.5]], [True, True], ["a", "b"])["pass"]
+    assert a5.sigma0_gate([1800.0, 1800.0], Y, [True, True], ["a", "b"])["pass"]
+
+
+# --- G1.1 temperature convergence and composition (reported only) -------------
+
+def runs(errors, converged=(True, True, True)):
+    return [{"label": lab, "scale": s, "converged": c, "T": e}
+            for lab, s, e, c in zip(("tau", "10tau", "100tau"), (1e4, 1e5, 1e6), errors, converged)]
+
+
+def test_temperature_convergence_gate():
+    assert a5.temperature_convergence_gate(runs([0.5, 0.25, 0.0625]), 0.0)["pass"]
+    assert a5.temperature_convergence_gate(runs([0.05, 0.05, 0.05]), 0.0)["pass"]       # ties allowed
+    assert not a5.temperature_convergence_gate(runs([0.5, 0.25, 0.1]), 0.0)["pass"]     # strict < 0.1
+    up = a5.temperature_convergence_gate(runs([0.01, 0.02, 0.015]), 0.0)
+    assert not up["pass"] and not up["monotone_non_increasing"] and up["final_pass"]
+    assert not a5.temperature_convergence_gate(runs([0.5, 0.25, 0.0625], (True, False, True)), 0.0)["pass"]
+    assert not a5.temperature_convergence_gate(runs([0.5, 0.25, math.nan]), 0.0)["pass"]
+    below = a5.temperature_convergence_gate(runs([975.0, 974.0, 973.0]), 975.27)   # T below T_eq
+    assert below["abs_dT_K"]["tau"] == pytest.approx(0.27) and not below["monotone_non_increasing"]
+
+
+def test_composition_is_reported_only():
+    names = ["N2", "CO", "trace"]
+    rep = a5.composition_report([0.7, 0.01, 1e-7], [0.7, 0.0109, 5e-7], names)
+    assert rep["reported_only"] and not rep["criterion_met"] and rep["argmax_species"] == "CO"
+    assert "no full-state equilibrium" in rep["claim"]
+    g11 = {m: {**a5.temperature_convergence_gate(runs([0.5, 0.25, 0.0625]), 0.0),
+               "composition_reported_only": {"100tau": rep}} for m in ("TAKE-OFF", "APPROACH", "IDLE")}
+    allowance = {"pass": True}
+    g12 = {m: {"pass": True} for m in g11}
+    verdict, checks = a5.a5_verdict(allowance, g11, g12, {"pass": True}, {m: {"pass": True} for m in g11})
+    assert verdict == "PASS" and checks["G1.1_temperature_convergence_toward_HP"]
+    verdict, _ = a5.a5_verdict(allowance, g11, g12, {"pass": False}, {m: {"pass": True} for m in g11})
+    assert verdict == "FAIL"
+    verdict, _ = a5.a5_verdict({"pass": False}, g11, g12, {"pass": True}, {m: {"pass": True} for m in g11})
+    assert verdict == "FAIL"
+
+
+# --- run guards and registration ---------------------------------------------
+
+PS = """\
+  101 /Users/x/.venv/bin/python scripts/phase8/benchmark.py --arm 1
+  102 /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 -m scripts.phase8.pinn_diagnostics.run_diagnostics --registration r.json
+  103 bash /Users/x/scripts/phase8/run_benchmark_queue.sh out "1 a b 4"
+  104 zsh -c nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5
+  105 /usr/bin/python3 -m http.server
+  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5
+"""
+
+
+def test_main_workflow_owners():
+    hits = a5.main_workflow_owners(PS, own_pid=200)
+    assert [h.split()[0] for h in hits] == ["101", "102", "103"]
+    assert a5.main_workflow_owners("  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5\n", 200) == []
+
+
+def test_run_blockers():
+    ac = "Now drawing from 'AC Power'\n -InternalBattery-0 100%; charged\n"
+    battery = "Now drawing from 'Battery Power'\n -InternalBattery-0 100%; discharging\n"
+    quiet = "  200 .venv/bin/python scripts/phase8/reactor_validation.py --a5\n"
+    assert a5.run_blockers(ac, quiet, 200) == []
+    assert any("AC" in b for b in a5.run_blockers(battery, quiet, 200))
+    assert any("AC" in b for b in a5.run_blockers(None, quiet, 200))
+    assert any("unreadable" in b for b in a5.run_blockers(ac, None, 200))
+    assert any("owner" in b for b in a5.run_blockers(ac, PS, 200))
+
+
+def test_commit_and_audit_match_blockers():
+    paths = ["docs/phase8_p85_a5_registration.json", "outputs/phase8/p85_a5_audit.json"]
+    assert a5.commit_blockers(paths, "\n".join(paths) + "\n", "") == []
+    assert a5.commit_blockers(paths, paths[0] + "\n", "") == [f"{paths[1]} is not committed"]
+    assert a5.commit_blockers(paths, "\n".join(paths), " M docs/phase8_p85_a5_registration.json\n")
+    assert a5.commit_blockers(paths, None, "")
+    ident = {"registration_sha256": "r", "audit_source_sha256": "s", "a2nox_sha256": "a", "creck_sha256": "c"}
+    doc = {"identity": dict(ident), "a2nox": {"B_exact": "1/3"}}
+    assert a5.audit_match_blockers(doc, ident) == []
+    assert a5.audit_match_blockers(doc, {**ident, "a2nox_sha256": "changed"})
+    assert a5.audit_match_blockers({"identity": dict(ident), "a2nox": {}}, ident)
+
+
+def test_registration_matches_module_and_new_paths():
+    reg = json.loads(a5.REGISTRATION.read_text())
+    assert reg["registered_date"] == "2026-10-03" and reg["user_decisions_date"] == "2026-10-02"
+    assert reg["audit"]["closure_tolerance_multiplier"] == a5.CLOSURE_MULTIPLIER
+    assert Fraction(reg["audit"]["control_rule"]["max_pair_defect_at_most_float"]) == a5.CONTROL_BOUND
+    assert reg["g1"]["G1.2_closure"]["creck_control"]["strictly_below"] == a5.CONTROL_CLOSURE
+    assert tuple(reg["g1"]["G1.2_closure"]["metrics"]) == a5.CLOSURE_METRICS
+    assert reg["g1"]["G1.1_temperature_convergence"]["volume_scales"] == [1e4, 1e5, 1e6]
+    old = reg["known_when_registered"]["historical_records_unchanged"]
+    assert reg["outputs"]["g1"] not in old and reg["outputs"]["audit"] not in old
+    assert reg["outputs"] == {"audit": "outputs/phase8/p85_a5_audit.json",
+                              "g1": "outputs/phase8/p85_g1_rerun4.json"}
+    assert reg["known_when_registered"]["a5_audit"].startswith("not computed")
+
+
+def test_validator_keeps_historical_default_and_explicit_a5():
+    tree = ast.parse(a5.VALIDATOR.read_text())
+    strings = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+    assert "outputs/phase8/p85_g1_rev2.json" in strings          # historical default unchanged
+    assert "--a5" in strings and "outputs/phase8/p85_g1_rerun4.json" not in strings   # A5 path from registration
+    funcs = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
+    assert {"main", "main_a5", "a5_blockers"} <= funcs
