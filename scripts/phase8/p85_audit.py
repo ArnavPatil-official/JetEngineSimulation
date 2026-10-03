@@ -27,7 +27,6 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import platform
 import subprocess
 import sys
@@ -39,6 +38,7 @@ REGISTRATION = ROOT / "docs" / "phase8_p85_a5_registration.json"
 AMENDMENT = ROOT / "docs" / "phase8_p85_amendment_a5.md"
 SOURCE = ROOT / "scripts" / "phase8" / "p85_audit.py"
 VALIDATOR = ROOT / "scripts" / "phase8" / "reactor_validation.py"
+WORKFLOW_VALIDATOR = ROOT / "scripts" / "phase8" / "ac_workflow.py"
 if str(ROOT / "scripts" / "phase8") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts" / "phase8"))
 from pinn_diagnostics.run_diagnostics import on_mains  # noqa: E402
@@ -290,7 +290,9 @@ def a5_verdict(allowance: dict, g11: dict, g12_a2: dict, g12_control: dict, g13:
 
 def workflow_blockers(queue_reg: dict | None, queue_reg_sha256: str | None, lease_exists: bool,
                       chain_records: list) -> list:
-    """Main workflow state from its registered records, never from process names:
+    """Summary predicate for diagnostic fixtures; never runtime authorization.
+
+    Main workflow state from its registered records, never from process names:
     no owner lease on disk (live or stale) and a terminal chain record of the same
     registration (id and sha256) with a status in TERMINAL_CHAIN."""
     if queue_reg is None:
@@ -330,7 +332,7 @@ def audit_match_blockers(audit_doc: dict, current: dict) -> list:
     and must itself have succeeded: empty identity_drift and passing allowance/control gates
     (missing metadata fails closed)."""
     out = []
-    for key in ("registration_sha256", "audit_source_sha256", "a2nox_sha256", "creck_sha256"):
+    for key in current:
         if audit_doc.get("identity", {}).get(key) != current.get(key):
             out.append(f"audit {key} does not match the current file")
     if "B_exact" not in audit_doc.get("a2nox", {}):
@@ -368,18 +370,37 @@ def _read_json(path: Path):
         return None
 
 
+def strict_workflow_context() -> dict:
+    """Validate completion contents, sources and ownership through the shared API."""
+    from ac_workflow import validate_terminal_context
+
+    context = validate_terminal_context(ROOT, require_idle=True)
+    if not isinstance(context, dict) or context.get("registration_id") != QUEUE_ID:
+        raise AuditError("strict main workflow context missing or foreign")
+    return context
+
+
 def live_run_blockers() -> list:
-    """AC (``pmset -g ps``, as the main workflow reads it) and the main workflow records."""
-    power = cmd(["pmset", "-g", "ps"])
+    """Runtime authority is strict validated evidence, never the summary predicates."""
+    out = [] if on_mains(cmd(["pmset", "-g", "ps"])) else [
+        "not on mains (AC) power, or power source unknown"]
     try:
-        qbytes = QUEUE_REGISTRATION.read_bytes()
-        q = json.loads(qbytes)
-        lease = ROOT / q["lease_path"]
-        pattern = Path(q["records"]["chain_record"])
-    except (OSError, ValueError, KeyError, TypeError):
-        return run_blockers(power, None, None, False, [])
-    records = [_read_json(p) for p in sorted((ROOT / pattern.parent).glob(pattern.name.replace("<session>", "*")))]
-    return run_blockers(power, q, hashlib.sha256(qbytes).hexdigest(), os.path.lexists(lease), records)
+        strict_workflow_context()
+    except (ImportError, OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+        out.append(f"main workflow evidence invalid or unavailable: {exc}")
+    return out
+
+
+def capture_identity(read_identity) -> dict:
+    """Retain an unreadable end identity as evidence, never substitute the start."""
+    try:
+        return read_identity()
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+        return {"identity_error": f"{type(exc).__name__}: {exc}"}
+
+
+def identity_differences(start: dict, end: dict) -> list:
+    return sorted(k for k in set(start) | set(end) if start.get(k) != end.get(k))
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +449,9 @@ def current_identity(reg_bytes: bytes, reg: dict) -> dict:
     return {"registration_sha256": hashlib.sha256(reg_bytes).hexdigest(),
             "amendment_sha256": sha256(AMENDMENT), "audit_source_sha256": sha256(SOURCE),
             "a2nox_sha256": sha256(ROOT / reg["mechanisms"]["a2nox"]["path"]),
-            "creck_sha256": sha256(ROOT / reg["mechanisms"]["creck"]["path"])}
+            "creck_sha256": sha256(ROOT / reg["mechanisms"]["creck"]["path"]),
+            "workflow_registration_sha256": sha256(QUEUE_REGISTRATION),
+            "workflow_validator_sha256": sha256(WORKFLOW_VALIDATOR)}
 
 
 def main(argv=None) -> int:
@@ -436,7 +459,8 @@ def main(argv=None) -> int:
     ap.parse_args(argv)
     reg_bytes = REGISTRATION.read_bytes()
     reg = json.loads(reg_bytes)
-    blockers = git_commit_blockers([REGISTRATION, AMENDMENT, SOURCE]) + live_run_blockers()
+    blockers = git_commit_blockers([REGISTRATION, AMENDMENT, SOURCE,
+                                    QUEUE_REGISTRATION, WORKFLOW_VALIDATOR]) + live_run_blockers()
     head = git_head()
     if head is None:
         blockers.append("git HEAD unreadable")
@@ -463,9 +487,10 @@ def main(argv=None) -> int:
            "closure_tolerance_10B_float": None if tol is None else float(tol),
            "creck_closure_tolerance": CONTROL_CLOSURE, "scope_note": SCOPE_NOTE,
            "identity": ident,
-           "end_identity": {"git_head": git_head(), **current_identity(REGISTRATION.read_bytes(), reg)},
+           "end_identity": capture_identity(lambda: {
+               "git_head": git_head(), **current_identity(REGISTRATION.read_bytes(), reg)}),
            "machine": platform.platform(), "protected": protected}
-    doc["identity_drift"] = [k for k in ident if doc["end_identity"].get(k) != ident[k]]
+    doc["identity_drift"] = identity_differences(ident, doc["end_identity"])
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("x") as f:
         f.write(json.dumps(doc, indent=2) + "\n")

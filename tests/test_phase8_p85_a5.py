@@ -4,6 +4,7 @@ import ast
 import json
 import math
 import sys
+import types
 from fractions import Fraction
 from pathlib import Path
 
@@ -307,3 +308,108 @@ def test_validator_keeps_historical_default_and_explicit_a5():
     assert "--a5" in strings and "outputs/phase8/p85_g1_rerun4.json" not in strings   # A5 path from registration
     funcs = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
     assert {"main", "main_a5", "a5_blockers"} <= funcs
+
+
+def test_runtime_uses_strict_shared_validator_and_refuses_missing_evidence(monkeypatch):
+    calls = []
+    helper = types.ModuleType("ac_workflow")
+
+    def validate(root, **kw):
+        calls.append((root, kw))
+        raise RuntimeError("completion manifest is missing")
+
+    helper.validate_terminal_context = validate
+    monkeypatch.setitem(sys.modules, "ac_workflow", helper)
+    monkeypatch.setattr(a5, "cmd", lambda argv: AC)
+    assert a5.live_run_blockers() == [
+        "main workflow evidence invalid or unavailable: completion manifest is missing"]
+    assert calls == [(ROOT, {"require_idle": True})]
+    helper.validate_terminal_context = lambda root, **kw: {"registration_id": a5.QUEUE_ID}
+    assert a5.live_run_blockers() == []
+    monkeypatch.setattr(a5, "cmd", lambda argv: BATTERY)
+    assert any("AC" in b for b in a5.live_run_blockers())
+    helper.validate_terminal_context = lambda root, **kw: {"registration_id": "foreign"}
+    assert any("foreign" in b for b in a5.live_run_blockers())
+
+
+def test_unreadable_end_identity_and_extra_fields_are_drift():
+    def unreadable():
+        raise OSError("core disappeared")
+
+    end = a5.capture_identity(unreadable)
+    assert "identity_error" in end
+    assert a5.identity_differences({"binary": "old"}, end) == ["binary", "identity_error"]
+    assert a5.identity_differences({"binary": "same"}, {"binary": "same"}) == []
+
+
+def test_audit_match_includes_workflow_source_identity():
+    current = {"workflow_validator_sha256": "new", "workflow_registration_sha256": "registered"}
+    audit = {"identity": dict(current), "a2nox": {"B_exact": "1/3"}, "identity_drift": [],
+             "allowance_gate": {"pass": True}, "creck_control_gate": {"pass": True}}
+    assert a5.audit_match_blockers(audit, current) == []
+    assert a5.audit_match_blockers(audit, {**current, "workflow_validator_sha256": "changed"})
+
+
+def test_rerun_requires_proven_separate_build_binary(tmp_path, monkeypatch):
+    import reactor_validation as rv
+
+    monkeypatch.setattr(rv, "ROOT", tmp_path)
+    binary = tmp_path / "cpp/build_next/catjet_core.fixture.so"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"synthetic binary")
+    rel = str(binary.relative_to(tmp_path))
+    context = {"stages": {"validation_build": {"state": "PASS", "outputs": {rel: a5.sha256(binary)}}}}
+    assert rv.validation_binary_blockers(context, binary) == []
+    assert rv.validation_binary_blockers(context, None)
+    assert rv.validation_binary_blockers(context, tmp_path / "cpp/build/catjet_core.fixture.so")
+    assert rv.validation_binary_blockers({"stages": {}}, binary)
+    context["stages"]["validation_build"]["outputs"][rel] = None
+    assert rv.validation_binary_blockers(context, binary)
+    context["stages"]["validation_build"]["outputs"][rel] = "0" * 64
+    assert rv.validation_binary_blockers(context, binary)
+
+
+def test_rerun_identity_detects_source_input_binary_and_power_drift(tmp_path, monkeypatch):
+    import reactor_validation as rv
+
+    monkeypatch.setattr(rv, "ROOT", tmp_path)
+    monkeypatch.setattr(a5, "git_head", lambda: "a" * 40)
+    monkeypatch.setattr(a5, "current_identity", lambda rb, reg: {"registration_sha256": "fixture"})
+    paths = ["cpp/core.cpp", "outputs/phase7/calibration_v6_rows.csv",
+             "outputs/phase7/p72_registration.json", "outputs/phase8/protected_sha256_phase8.json",
+             "outputs/audit.json", "validator.py", "cpp/build_next/core.so"]
+    for path in paths:
+        p = tmp_path / path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"fixture")
+    monkeypatch.setattr(a5, "VALIDATOR", tmp_path / "validator.py")
+    monkeypatch.setattr(rv, "core", types.SimpleNamespace(__file__=str(tmp_path / paths[-1])))
+    monkeypatch.setattr(a5, "cmd", lambda argv: "cpp/core.cpp\n" if argv[0] == "git" else AC)
+    reg = {"outputs": {"audit": "outputs/audit.json"}}
+    start = rv.a5_identity(b"fixture", reg)
+    for path, key in [(paths[0], "cpp_sources_sha256"), (paths[1], "inputs_sha256"),
+                      (paths[-1], "module_sha256")]:
+        p = tmp_path / path
+        p.write_bytes(b"changed")
+        assert key in a5.identity_differences(start, rv.a5_identity(b"fixture", reg))
+        p.write_bytes(b"fixture")
+    monkeypatch.setattr(a5, "cmd", lambda argv: "cpp/core.cpp\n" if argv[0] == "git" else BATTERY)
+    assert "on_ac" in a5.identity_differences(start, rv.a5_identity(b"fixture", reg))
+
+
+def test_rerun_refuses_malformed_audit_before_any_network(tmp_path, monkeypatch):
+    import reactor_validation as rv
+
+    audit = tmp_path / "audit.json"
+    audit.write_text("[]")
+    monkeypatch.setattr(rv, "ROOT", tmp_path)
+    monkeypatch.setattr(rv, "core", types.SimpleNamespace(ReactorNetwork=object, __file__="fixture.so"))
+    monkeypatch.setattr(a5, "git_commit_blockers", lambda paths: [])
+    monkeypatch.setattr(a5, "cmd", lambda argv: "")
+    monkeypatch.setattr(a5, "git_head", lambda: "a" * 40)
+    monkeypatch.setattr(a5, "live_run_blockers", lambda: [])
+    monkeypatch.setattr(a5, "strict_workflow_context", lambda: {})
+    monkeypatch.setattr(rv, "validation_binary_blockers", lambda context, path: [])
+    monkeypatch.setattr(rv, "protected_check", lambda: {"mismatches": []})
+    blockers, _, _ = rv.a5_blockers({"outputs": {"audit": "audit.json"}}, b"fixture")
+    assert "audit output is unreadable or malformed" in blockers

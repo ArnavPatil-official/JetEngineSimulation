@@ -302,11 +302,41 @@ def psr_errors(r: dict) -> list:
 
 def a5_identity(reg_bytes: bytes, reg: dict) -> dict:
     audit = ROOT / reg["outputs"]["audit"]
+    cpp_files = a5.cmd(["git", "ls-files", "--", "cpp"])
+    if not cpp_files:
+        raise a5.AuditError("tracked C++ sources unreadable or absent")
+    inputs = ("outputs/phase7/calibration_v6_rows.csv", "outputs/phase7/p72_registration.json",
+              "outputs/phase8/protected_sha256_phase8.json")
     return {"git_head": a5.git_head(), **a5.current_identity(reg_bytes, reg),
             "validator_sha256": sha256(a5.VALIDATOR),
             "audit_output_sha256": sha256(audit) if audit.exists() else None,
+            "cpp_sources_sha256": {p: sha256(ROOT / p) for p in cpp_files.splitlines()},
+            "inputs_sha256": {p: sha256(ROOT / p) for p in inputs},
+            "module_path": str(Path(core.__file__).resolve()) if core is not None else None,
             "module_sha256": sha256(Path(core.__file__)) if core is not None else None,
+            "on_ac": a5.on_mains(a5.cmd(["pmset", "-g", "ps"])),
             "protected_manifest_sha256": sha256(ROOT / "outputs/phase8/protected_sha256_phase8.json")}
+
+
+def validation_binary_blockers(context: dict, module_path: Path | None) -> list:
+    """The loaded separate-build core must be the one proven by the main build stage."""
+    if module_path is None:
+        return ["validation core module is absent"]
+    module_path = Path(module_path).resolve()
+    if module_path.parent != (ROOT / "cpp" / "build_next").resolve():
+        return [f"loaded core is outside cpp/build_next: {module_path}"]
+    stage = context.get("stages", {}).get("validation_build", {})
+    if stage.get("state") != "PASS":
+        return ["validated validation_build stage did not pass"]
+    digest = stage.get("outputs", {}).get(str(module_path.relative_to(ROOT)))
+    if not isinstance(digest, str) or len(digest) != 64:
+        return ["validation build has no binary hash for the loaded module"]
+    try:
+        if sha256(module_path) != digest:
+            return ["loaded validation core differs from the proven build"]
+    except OSError as exc:
+        return [f"loaded validation core unreadable: {exc}"]
+    return []
 
 
 def a5_blockers(reg: dict, reg_bytes: bytes) -> tuple:
@@ -322,10 +352,18 @@ def a5_blockers(reg: dict, reg_bytes: bytes) -> tuple:
     if a5.git_head() is None:
         out.append("git HEAD unreadable")
     out += a5.live_run_blockers()
+    try:
+        context = a5.strict_workflow_context()
+        out += validation_binary_blockers(context, Path(core.__file__) if core is not None else None)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+        out.append(f"validation build evidence unavailable: {exc}")
     audit_doc = None
     if audit_path.exists():
-        audit_doc = json.loads(audit_path.read_text())
-        out += a5.audit_match_blockers(audit_doc, a5.current_identity(reg_bytes, reg))
+        audit_doc = a5._read_json(audit_path)
+        if not isinstance(audit_doc, dict):
+            out.append("audit output is unreadable or malformed")
+        else:
+            out += a5.audit_match_blockers(audit_doc, a5.current_identity(reg_bytes, reg))
     else:
         out.append(f"audit output {reg['outputs']['audit']} missing")
     protected = protected_check()
@@ -355,6 +393,13 @@ def main_a5() -> int:
             or not (allowance["pass"] and control["pass"]):
         print("BLOCKED (nothing written): re-derived audit differs from the committed audit or fails "
               f"(allowance {allowance}, control {control})", file=sys.stderr)
+        return 3
+    blockers = a5.live_run_blockers()
+    now = a5.capture_identity(lambda: a5_identity(a5.REGISTRATION.read_bytes(), reg))
+    drift = a5.identity_differences(start, now)
+    if blockers or drift:
+        print(f"BLOCKED (nothing written): pre-network resource/identity change: {blockers}; {drift}",
+              file=sys.stderr)
         return 3
     tol = a5.closure_tolerance(a5.audit_B(audit_doc["a2nox"])) if allowance["pass"] else None
     c11 = reg["g1"]["G1.1_temperature_convergence"]
@@ -444,8 +489,8 @@ def main_a5() -> int:
                                           reg["g1"]["G1.2_closure"]["creck_control"]["strictly_below"])
 
     verdict, checks = a5.a5_verdict(allowance, g11, g12, g12_control, g13)
-    end = a5_identity(a5.REGISTRATION.read_bytes(), reg)
-    drift = [k for k in start if end.get(k) != start[k]]
+    end = a5.capture_identity(lambda: a5_identity(a5.REGISTRATION.read_bytes(), reg))
+    drift = a5.identity_differences(start, end)
     if drift:
         verdict = "ERROR"
     doc = {"gate": "P8.5 G1 (P8.5-A5 rerun 4)", "registration": reg["id"], "verdict": verdict, "checks": checks,
