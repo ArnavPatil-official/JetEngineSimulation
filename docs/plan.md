@@ -1,5 +1,10 @@
 # Phase 8 — physics-first revision
 
+**Active dispatch (2026-10-02):** execute only the Track 4 addendum at the end
+of this file. Earlier Phase 8 sections are preserved baseline context, not
+instructions to rerun prior work. The user instructed this diagnostic work
+to run now and to flag blockers while continuing independent work.
+
 Date: 2026-09-29. Branch `phase8`, from the Phase 7 freeze `7524a7a`.
 Completed Phase 7 plan: `docs/plan_phase7_completed.md`; closure in
 `outputs/phase7_execution_status.md`. Full design document (the source of this
@@ -248,3 +253,257 @@ are. No overwrite of protected files or old models.
 Stop and report: G0 cannot be met without loosening tolerance; the Cantera C++
 build cannot be imported from `.venv`; a planned source is unavailable or has
 no usable tables; any step needs a dependency not yet approved; a gate fails.
+
+
+# Track 4 addendum — PINN diagnosis (2026-10-02)
+
+The user's attached CAT-JET PINN Repair Guide and instruction to do this now
+approve the scope below. Register before computing. This addendum is the
+only active task for the current dispatcher; previous registrations, gates,
+results and production implementations remain unchanged.
+
+## Objective
+
+Run the isolated turbine 0-D analytic reformulation diagnostic and build the
+nozzle verification ladder with known exact answers. Correct unsupported
+statements in the guide using source evidence. Report completed work,
+failures and blockers honestly. This is diagnostic work, not engine or PINN
+validation, and does not reopen G2/G3 or the retired production turbine PINN.
+
+## Constraints
+
+- The committed `docs/phase8_track4_registration.json` is the complete
+  prospective protocol: inputs, envelope, coefficients, budgets, seed,
+  precision, tolerance and score grid. Do not tune after scoring or change
+  thresholds. A failed turbine score ends that attempt; independent nozzle
+  verification may continue. Flag a blocked rung and move to independent work.
+- The user authorizes a narrow pre-G2 exception for this analytic diagnostic
+  only. No empirical residual fitting, production ML, new empirical holdout
+  scoring or Sajben training. Do not open WIND/experimental targets.
+- Preserve all existing `simulation/**`, `integrated_engine.py`, historical
+  sources/results/registrations, chemical YAML, requirements and model weights.
+  New checkpoint goes under the new Track 4 output directory, not models/.
+- CPU float64, one thread, fixed seed, explicit configs and hashes. Do not
+  import the legacy turbine module (it forces a global float32 default).
+  Use 4 requested features; eta is fixed and cp/R is derived from gamma.
+  State that this envelope has only two varying independent dimensions.
+- Track 1 has priority. Before any numerical run inspect actual Python
+  benchmark/calibration processes and AC power; if either heavy job is
+  actively running or mains is absent, record BLOCKED and continue static
+  work. Parked shells are not active computations. Do not change or terminate
+  the existing benchmark queue or calibration jobs. Numerical commands use
+  nice 15. Do not launch durable training queues or new supervisors.
+- Write-once output creation, start/exit logs, final config/weight/source/input
+  hashes, library/platform versions and exact reproduction commands. A
+  simple synchronous runner is sufficient. Refuse overwriting a prior result.
+- Retain the historical 6.390% failure beside the new analytic score. Do not
+  attribute that attempt to a global 4.2MPa pressure scale: its actual source
+  has analytic path supervision and per-point relative errors. Missing pressure
+  equations apply to the legacy physics-only loss; describe that distinction.
+- Use Slice 1, ablation ladder, outputs/freeze/ and freeze-2026-10-18 naming.
+  No push, merge, tag, manuscript changes, system changes or new dependencies.
+
+## Repo Context
+
+The v5 synthetic envelope is already available and may define this analytic
+box. Production stays analytic. Ma's numbered equations differ from the
+Boussinesq closure variant parked on phase7-p74-wip; use isolated new code,
+not that branch's runner. The local primary Ma PDF was inspected on printed
+pages 4–5; its SHA256 is recorded in the protocol. Phase 8 G1/G2 blockers and
+all prior negative results remain authoritative. The benchmark queue currently
+waits because its broad process predicate also matches parked shells; report
+this pre-existing blocker without expanding this task into queue changes.
+
+## Relevant Files
+
+| Action | Exact path | Purpose |
+|---|---|---|
+| READ | `AGENTS.md`, `CLAUDE.md`, `docs/phase8_r2_plan.md` | workflow and preserved gates |
+| READ | `scripts/validation/train_turbine_surrogate.py`, `simulation/turbine/turbine.py`, `integrated_engine.py`, `simulation/combustor/combustor.py` | diagnose historical code; no imports or edits |
+| READ | `outputs/turbine_envelope_v5.csv`, `outputs/turbine_surrogate_v5_a2.md`, `outputs/physics_residual_defect.md` | existing synthetic envelope and published negative results |
+| READ | `outputs/phase8/protected_sha256_phase8.json`, `docs/phase7_review_followup.md` if present | protected inputs and deferred review |
+| MODIFY | `docs/plan.md` | this prospective addendum only, already prepared |
+| CREATE | `docs/phase8_track4_registration.json` | protocol, already prepared |
+| CREATE | `scripts/phase8/pinn_diagnostics/__init__.py` | isolated package |
+| CREATE | `scripts/phase8/pinn_diagnostics/turbine_map.py` | four-input CPU float64 MLP diagnostic |
+| CREATE | `scripts/phase8/pinn_diagnostics/nozzle_verification.py` | literal Ma residual, independent forcing, exact nozzle helpers |
+| CREATE | `scripts/phase8/pinn_diagnostics/run_diagnostics.py` | minimal write-once runner, resource checks and reports |
+| CREATE | `tests/test_phase8_pinn_diagnostics.py` | synthetic numerical contracts only |
+| MODIFY | `docs/le_pinn_vs_ma2025.md` | correct actual asymmetric weights and note thermal-unit ambiguity |
+| CREATE | `docs/phase8_pinn_repair_notes.md` | E1–E7 worked explanations, proposed write-up paragraph, source corrections, verified reading list and blockers |
+| MODIFY | `outputs/phase8_execution_status.md` | append accurate Track 4 status; retain old results |
+| MODIFY | `scripts/build_manifest.py` | register diagnostic freeze note as a record, not a claim |
+| MODIFY | `outputs/ARTIFACT_MANIFEST.md`, `docs/model_map.md` | generated through build_manifest only |
+| CREATE | `outputs/phase8/track4/20261002_attempt1/**` | config, checkpoint, scores, report, environment, start/exit log and hashes |
+| CREATE | `outputs/freeze/NUMBERS.md` | only completed diagnostic entries before Oct16, final freeze pending |
+
+No references that are optional/missing block independent tasks. Add no other
+files; use temporary logs outside the repository. Do not stage the user's
+.DS_Store or the pre-existing evolving benchmark queue log.
+
+## Implementation Phases
+
+### Phase 1 — registered isolation and meaningful tests
+
+The planner commits this plan/protocol before dispatch. Read them completely.
+Implement the isolated diagnostic package and tests. The exact Ma equations,
+verified from the primary PDF, are:
+
+- Eq22: dx(rho*u)+dy(rho*v).
+- Eq23: rho*(u*ux+v*uy)+px-dx(mu*ux)-dy(mu*uy)
+  +dx(rho*UU)+dy(rho*UV).
+- Eq24: rho*(u*vx+v*vy)+py-dx(mu*vx)-dy(mu*vy)
+  +dx(rho*UV)+dy(rho*VV).
+- Eq25: rho*cp*(u*Tx+v*Ty)-dx(kappa*Tx)-dy(kappa*Ty)-Phi,
+  kappa=conductivity+mu_t/Pr, exactly as printed.
+- Eq26: p-rho*R*T.
+- Phi=mu*(4*(ux**2+vy**2-ux*vy)/3+(uy+vx)**2), from Eqs7–10.
+
+Keep molecular mu and independent Reynolds-stress covariances distinct.
+The printed thermal coefficient adds conductivity and turbulent viscosity;
+its dimensional interpretation is unresolved. Implement and label a literal
+**dimensionless algebra verifier**, not a physically dimensional replication.
+Do not silently multiply the mu_t term by cp.
+
+For each activation tanh/SiLU, the protocol defines smooth fixed fields,
+positive coefficients and EOS pressure. Implement independent expanded
+analytic forcing from closed-form activation derivatives, without calling
+residual/autograd helpers. For SiLU with s=sigmoid(z), h'=s+z*s*(1-s),
+h''=2*s*(1-s)+z*s*(1-s)*(1-2*s); for tanh, h'=1-h*h,
+h''=-2*h*(1-h*h). Verify forced residual~=0, not the unforced arbitrary field.
+Negative controls omit viscosity gradients, stress divergence, conductivity
+ gradients or dissipation and must produce detectable error. The manufactured
+checks use both activations; exact quasi-1D references involve no network.
+
+Implement actual Ma loss weights, detached from gradients:
+  data=.1+.9*sigmoid((Lphys+Lbc-Ldata)/(Ldata+eps));
+  phys=.1+.9*sigmoid((Ldata-Lphys)/(Lphys+eps));
+  bc=.1+.9*sigmoid((Ldata-Lbc)/(Lbc+eps)).
+Correct the audit's all-three-symmetric wording using these equations.
+
+### Phase 2 — run independent diagnostics, fixed budgets
+
+Check AC and actual heavy Python processes. If clear, run the fixed turbine
+MLP training and score the 65x65 analytic grid exactly once. Use training-only
+stopping; no intermediate score-grid checks or extra optimizer runs. Log max
+relative pressure error, worst coordinates, train loss and the fixed historical
+6.390% result. Failure ends this attempt without changing its configuration.
+
+Run the Ma manufactured verifier for tanh and SiLU. Advance the sequential
+nozzle ladder only when its preceding rung passes; if a rung fails report it
+and keep independent Track 4a/report work going.
+
+Exact nozzle rungs: smooth subsonic isentropic, choked isentropic sub/supersonic
+branches, then normal shock determined from back pressure. Use the fixed
+geometry/constants/grids in the registration. Include back pressure in each
+complete shock-case input. Derive two reference back pressures from the fixed
+manufactured shock locations before inversion; score recovered location,
+exit pressure, mass, momentum and total-enthalpy jumps independently. Check
+increasing back pressure moves the shock upstream. Use the independent gamma
+1.4, M1=2 rational shock oracle in the protocol. Reject out-of-range internal
+shock pressures, invalid gamma/tau and inconsistent duplicate full input rows.
+Never differentiate through the shock or call these trained-PINN results.
+
+### Phase 3 — evidence, freeze notes and review
+
+Produce a concise JSON and Markdown report with each rung PASS/FAIL/BLOCKED,
+raw errors, tolerances, config/source/input/output hashes and reproduction
+commands. Record known blockers and scope limits. Add completed diagnostics to
+outputs/freeze/NUMBERS.md only by Oct16 in America/New_York, explicitly marked
+diagnostic; do not create the local freeze tag now. Use the manifest registry
+for that file and regenerate both generated documents. Document actual E1–E7
+mathematics and a proposed explanatory paragraph without claiming the user
+completed their handwritten exercises or independently validated the engine.
+Retain R7-1..R7-3 and post-freeze Sajben study as deferred, not silently fixed.
+
+## File-Level Edits
+
+New implementation remains in the four listed package files and one test
+file. The protocol is authoritative, numeric constants are read from it,
+and no new dependency is required. Keep report writes localized to the new
+attempt directory. Modify the audit only for verified equation corrections,
+append the Track 4 execution status, and update the registry for the new freeze
+record. Preserve all old numerical results and registered content. Include
+verified DOI links in the repair notes, supplied below; no broad literature
+review or external research job is needed.
+
+## Commands to Run
+
+- `nice -n 15 .venv/bin/python -m pytest tests/test_phase8_pinn_diagnostics.py -v`
+- `nice -n 15 .venv/bin/python -m scripts.phase8.pinn_diagnostics.run_diagnostics --registration docs/phase8_track4_registration.json`
+- `.venv/bin/python scripts/build_manifest.py`
+- `.venv/bin/python scripts/build_manifest.py --check`
+- `nice -n 15 .venv/bin/python -m pytest tests/ -v`
+- `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase7 --phase8`
+- `git diff --check`; a word-boundary scan must find no retired event label or sponsor name.
+
+Check resources before numerical tests as well. Static implementation may
+proceed while timing is active; flag numerical execution as pending instead
+of slowing Track 1. Do not rerun the entire suite repeatedly after it passes.
+Commit scoped implementation before producing its first diagnostic result,
+then commit reviewed results/logs/status; no unplanned files or partial job
+can be described as complete. Check no Git process and no index lock before
+index writes/commits; never rewrite history.
+
+## Tests
+
+Known-value polytropic pressure; invalid domain rejection; strict max rather
+than mean gate; exact relative-log scoring and pressure-scale invariance;
+constant eta feature normalization; explicit float64 gradients/checkpoint
+roundtrip; disjoint training/grid inputs; repeatability of generated fixtures;
+independent activation first/second derivatives; MMS forcing and all four
+negative controls; uniform-flow/EOS limits; coordinate chain rule; actual
+asymmetric Ma weights. Exact nozzle branch inversion, choking limit, mass and
+enthalpy conservation, rational normal-shock jump oracle, back-pressure
+inversion, monotonic shock movement, invalid backpressure and complete-input
+identity. Resource refusal/write-once behavior needs meaningful focused tests.
+No production simulation, empirical target training or long optimization in
+pytest; only synthetic small fixtures. Existing full regression suite is the
+final integrity check, with protected hashes and before/after config/model
+checksums.
+
+## Acceptance Criteria
+
+1. Plan/protocol and implementation are committed before first diagnostic run;
+   all outputs have source/config/input identities, fixed seed and budgets.
+2. Turbine gate is max relative pressure error strictly below 0.001 on the
+   once-scored 4225-point analytic grid, or a recorded FAIL ends the attempt.
+3. MMS for both activations: max absolute forced residual <=1e-10 and relative
+   forcing disagreement <=1e-9; each omission control discrepancy >1e-7.
+4. Smooth/shock invariants and jump errors <=1e-10; manufactured shock location
+   error <=1e-9; exit matches supplied back pressure; all raw errors reported.
+5. No nozzle/Sajben training, new empirical holdout use, G2/G3 bypass or old model
+   changes. Explicitly flag literal Ma thermal-unit ambiguity and guide's
+   inaccurate attempt2 root-cause attribution.
+6. Independent tasks completed even if another rung is blocked. Full tests,
+   manifest check and protected hashes pass; no unexpected files change.
+7. Freeze notes contain only completed diagnostics, historical failures stay
+   visible, and final report lists remaining user/data/post-freeze work.
+
+## Rollback Notes
+
+All production and protected sources remain unchanged. Revert only the named
+Track 4 commits if needed; preserve any diagnostic negative evidence and the
+unrelated user changes. Never reset branches, overwrite weights or remove old
+registrations. New write-once outputs may be retained as superseded evidence.
+
+## Escalation Guidance
+
+Scientific verification plus independent derivative tests spans turbine,
+nozzle and PINN code: high complexity (about 8/10); dispatcher-selected Opus
+is appropriate. Do not grow supervisors or training infrastructure. On an
+unknown equation or missing datum, flag that specific rung and proceed with
+independent exact cases. On fixed-budget turbine failure, stop that attempt,
+report its measured error and do not retune. Repair implementation bugs only
+before scored computation; after scoring any rerun needs a prospective new
+attempt. Production empirical residuals, balancing cross-validation and the
+Sajben low-label study are explicitly deferred.
+
+Verified primary reference links for the repair notes:
+- Ma: https://doi.org/10.1016/j.ast.2025.111002
+- Krishnapriyan: https://arxiv.org/abs/2109.01050 (NeurIPS 2021)
+- Mao/Jagtap/Karniadakis: https://doi.org/10.1016/j.cma.2019.112789 (CMAME360,2020)
+- Jagtap/Kharazmi/Karniadakis: https://doi.org/10.1016/j.cma.2020.113028
+- Wang/Yu/Perdikaris: https://doi.org/10.1016/j.jcp.2021.110768 (JCP449,2022)
+- Kennedy/O'Hagan: https://doi.org/10.1111/1467-9868.00294
+- Wang/Teng/Perdikaris gradient balancing: https://doi.org/10.1137/20M1318043

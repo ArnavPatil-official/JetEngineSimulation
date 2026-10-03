@@ -1,0 +1,192 @@
+{
+  "id": "P8-TRACK4-20261002-attempt1",
+  "registered_date": "2026-10-02",
+  "authorization": "User instructed execution now; diagnostic exception only to pre-G2 target-training prohibition. No production integration or empirical claim.",
+  "seed": 20261002,
+  "device": "cpu",
+  "dtype": "float64",
+  "threads": 1,
+  "nice": 15,
+  "output_dir": "outputs/phase8/track4/20261002_attempt1",
+  "inputs": {
+    "synthetic_envelope": "outputs/turbine_envelope_v5.csv",
+    "synthetic_envelope_sha256": "c2c98bd60528616f099bffd1eb6c9e6003cefc550ad02c74a33f513ca7207819",
+    "ma_pdf_sha256": "d53426635f6273b6c5f73de2096b7d08dbd382faea393fa053a2c58a82708007",
+    "ma_doi": "10.1016/j.ast.2025.111002"
+  },
+  "turbine": {
+    "tau": [
+      0.25927592228994617,
+      0.3984781266481953
+    ],
+    "gamma": [
+      1.2795137346940475,
+      1.3151896868649136
+    ],
+    "eta_p": 0.9,
+    "cp_over_R": "gamma/(gamma-1)",
+    "features": [
+      "tau",
+      "gamma",
+      "eta_p",
+      "cp_over_R"
+    ],
+    "hidden": [
+      64,
+      64,
+      64
+    ],
+    "activation": "tanh",
+    "training_samples": 4096,
+    "sampling": "scrambled 2D Sobol",
+    "target": "gamma/(eta_p*(gamma-1))*log1p(-tau)",
+    "feature_scaling": "tau,gamma,cp/R to [-1,1] by envelope bounds; eta/reference-1 (reference0.9)",
+    "adam_steps": 2000,
+    "adam_lr": 0.001,
+    "lbfgs_max_iter": 1000,
+    "lbfgs_lr": 1.0,
+    "lbfgs_history_size": 100,
+    "lbfgs_line_search": "strong_wolfe",
+    "lbfgs_tolerance_grad": 1e-12,
+    "lbfgs_tolerance_change": 1e-15,
+    "score_grid_points_per_axis": 65,
+    "score_once": true,
+    "metric": "max(abs(expm1(pred_log-exact_log)))",
+    "pass_strictly_below": 0.001,
+    "historic_retired_max_relative_pct": 6.39,
+    "adam_betas": [
+      0.9,
+      0.999
+    ],
+    "adam_eps": 1e-08,
+    "adam_weight_decay": 0.0,
+    "lbfgs_max_eval": 1250
+  },
+  "manufactured": {
+    "coordinates": [
+      -1.0,
+      1.0
+    ],
+    "grid_x": 13,
+    "grid_y": 11,
+    "activations": [
+      "tanh",
+      "silu"
+    ],
+    "R": 1.0,
+    "cp": 3.5,
+    "Pr": 0.72,
+    "fields": "base+amplitude*activation(ax*x+ay*y), p=rho*R*T",
+    "coefficients": {
+      "rho": [
+        1.0,
+        0.1,
+        1.0,
+        0.2
+      ],
+      "u": [
+        0.3,
+        0.1,
+        0.7,
+        -0.3
+      ],
+      "v": [
+        0.15,
+        0.05,
+        0.2,
+        0.8
+      ],
+      "T": [
+        1.0,
+        0.08,
+        -0.3,
+        0.6
+      ],
+      "mu": [
+        0.02,
+        0.003,
+        0.4,
+        0.5
+      ],
+      "conductivity": [
+        0.04,
+        0.004,
+        -0.6,
+        0.2
+      ],
+      "mu_t": [
+        0.01,
+        0.001,
+        0.3,
+        -0.4
+      ],
+      "UU": [
+        0.03,
+        0.004,
+        0.5,
+        0.1
+      ],
+      "VV": [
+        0.025,
+        0.003,
+        -0.2,
+        0.6
+      ],
+      "UV": [
+        0.005,
+        0.001,
+        0.4,
+        -0.5
+      ]
+    },
+    "literal_thermal_coefficient": "conductivity+mu_t/Pr",
+    "interpretation": "dimensionless algebra verification; published dimensional thermal coefficient is ambiguous",
+    "absolute_residual_max": 1e-10,
+    "relative_forcing_disagreement_max": 1e-09,
+    "negative_control_min_discrepancy": 1e-07
+  },
+  "nozzle": {
+    "gamma": 1.33,
+    "R": 1.0,
+    "p0": 1.0,
+    "T0": 1.0,
+    "x_domain": [
+      -1.0,
+      1.0
+    ],
+    "area": "1+0.5*x*x",
+    "grid_points": 161,
+    "smooth_inlet_mach": 0.2,
+    "manufactured_shock_positions": [
+      0.35,
+      0.75
+    ],
+    "invariant_relative_max": 1e-10,
+    "shock_position_absolute_max": 1e-09,
+    "root_xtol": 1e-13,
+    "oracle": {
+      "gamma": 1.4,
+      "M1": 2.0,
+      "M2": "1/sqrt(3)",
+      "pressure_ratio": 4.5,
+      "density_ratio": "8/3",
+      "temperature_ratio": "27/16"
+    }
+  },
+  "freeze": {
+    "path": "outputs/freeze/NUMBERS.md",
+    "deadline_local": "2026-10-16",
+    "timezone": "America/New_York",
+    "local_tag": "freeze-2026-10-18",
+    "label": "diagnostic",
+    "create_tag_now": false
+  },
+  "blocked_or_deferred": [
+    "No Sajben/WIND or experimental data opened by diagnostics.",
+    "M1 empirical residual fitting remains data/G2 gated.",
+    "Sajben low-label training and runner repairs remain deferred until after October18 freeze.",
+    "Do not silently repair Ma thermal units or choose loss balancing by held-out scores.",
+    "Benchmark queue predicate matches parked calibration shell; flag separately, do not alter running queue."
+  ],
+  "ma_loss_weights_epsilon": 1e-12
+}
