@@ -11,6 +11,15 @@ prediction, calibration or held-out row. Writes outputs/phase8/p85_g1.json once.
 Non-gating diagnostic (P8.5-A2): the element imbalance of the protected
 A2NOx mechanism's lumped fuel reactions, integrated over every PSR at its
 outlet state, compared with the observed network element error.
+
+P8.5-A5 (docs/phase8_p85_amendment_a5.md), selected only with --a5: closure
+strictly below 10*B from the committed stoichiometry audit (CRECK control
+below 1e-10), sigma0 with the mixed trace rule, and G1.1 replaced by
+temperature convergence toward HP at s = 1e4, 1e5, 1e6 (composition reported
+only). Writes the registered outputs/phase8/p85_g1_rerun4.json once; refuses
+(exit 3, nothing written) unless the registration, audit and sources are
+committed and match, the Mac is on AC and no main workflow owner is active.
+Without --a5 the historical behaviour (rev2 default path) is unchanged.
 """
 
 from __future__ import annotations
@@ -33,10 +42,14 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 BUILD = Path(os.environ.get("CATJET_BUILD", ROOT / "cpp" / "build"))
 sys.path.insert(0, str(BUILD))
 sys.path.insert(0, str(ROOT / "scripts" / "phase8"))
-import catjet_core as core  # noqa: E402
+try:
+    import catjet_core as core  # noqa: E402
+except ImportError:
+    core = None  # reported as a blocker; pure helpers do not need the build
 import cantera as ct  # noqa: E402
 
 from benchmark import protected_check  # noqa: E402
+import p85_audit as a5  # noqa: E402
 
 A2 = ROOT / "data" / "A2NOx.yaml"
 CRECK = ROOT / "data" / "creck_c1c16_full.yaml"
@@ -133,8 +146,18 @@ def thermo_consistency() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=ROOT / "outputs/phase8/p85_g1_rev2.json")
+    ap.add_argument("--output", type=Path, default=None,
+                    help="historical mode only (default outputs/phase8/p85_g1_rev2.json)")
+    ap.add_argument("--a5", action="store_true",
+                    help="P8.5-A5 rerun 4; output fixed by docs/phase8_p85_a5_registration.json")
     a = ap.parse_args()
+    if a.a5:
+        if a.output is not None:
+            ap.error("--output is fixed by the A5 registration")
+        return main_a5()
+    a.output = a.output or ROOT / "outputs/phase8/p85_g1_rev2.json"
+    if core is None:
+        ap.error(f"catjet_core not importable from {BUILD}")
     if a.output.exists():
         ap.error(f"{a.output} exists; output is write-once")
     protected = protected_check()
@@ -257,6 +280,189 @@ def main() -> int:
     with a.output.open("x") as f:
         f.write(json.dumps(doc, indent=2, default=float) + "\n")
     print(f"P8.5 G1: {verdict} {checks}")
+    return 0 if verdict == "PASS" else 1
+
+
+def psr_report(z: dict) -> dict:
+    return {"residence_time_s": z["residence_time"], "T": z["outlet"]["T"], "P": z["outlet"]["P"],
+            "Y": z["outlet"]["Y"], "converged": z["converged"], "extinguished": z["extinguished"],
+            "steady_iterations": z["steady_iterations"], "final_residual": z["final_residual"],
+            "error": z["error"][:300]}
+
+
+def closures(r: dict) -> dict:
+    return {k: r[k] for k in a5.CLOSURE_METRICS}
+
+
+def a5_identity(reg_bytes: bytes, reg: dict) -> dict:
+    audit = ROOT / reg["outputs"]["audit"]
+    return {"git_head": a5.git_head(), **a5.current_identity(reg_bytes, reg),
+            "validator_sha256": sha256(a5.VALIDATOR),
+            "audit_output_sha256": sha256(audit) if audit.exists() else None,
+            "module_sha256": sha256(Path(core.__file__)) if core is not None else None,
+            "protected_manifest_sha256": sha256(ROOT / "outputs/phase8/protected_sha256_phase8.json")}
+
+
+def a5_blockers(reg: dict, reg_bytes: bytes) -> tuple:
+    """Everything that must hold before rerun 4 computes anything (fail closed)."""
+    out = []
+    if core is None or not hasattr(core, "ReactorNetwork"):
+        out.append(f"catjet_core with ReactorNetwork not importable from {BUILD} (build cpp/ first)")
+    audit_path = ROOT / reg["outputs"]["audit"]
+    out += a5.git_commit_blockers([a5.REGISTRATION, a5.AMENDMENT, a5.SOURCE, a5.VALIDATOR, audit_path])
+    dirty = a5.cmd(["git", "status", "--porcelain", "--", "cpp", "scripts"])
+    if dirty is None or dirty.strip():
+        out.append("cpp/ or scripts/ has uncommitted changes (or git status unreadable)")
+    if a5.git_head() is None:
+        out.append("git HEAD unreadable")
+    out += a5.run_blockers(a5.cmd(["pmset", "-g", "batt"]), a5.cmd(["ps", "-Ao", "pid=,args="]), os.getpid())
+    audit_doc = None
+    if audit_path.exists():
+        audit_doc = json.loads(audit_path.read_text())
+        out += a5.audit_match_blockers(audit_doc, a5.current_identity(reg_bytes, reg))
+    else:
+        out.append(f"audit output {reg['outputs']['audit']} missing")
+    protected = protected_check()
+    if protected["mismatches"]:
+        out.append(f"protected hashes changed: {protected['mismatches'][:5]}")
+    return out, audit_doc, protected
+
+
+def main_a5() -> int:
+    reg_bytes = a5.REGISTRATION.read_bytes()
+    reg = json.loads(reg_bytes)
+    output = ROOT / reg["outputs"]["g1"]
+    blockers, audit_doc, protected = a5_blockers(reg, reg_bytes)
+    if blockers:
+        print("BLOCKED (nothing written):\n- " + "\n- ".join(blockers), file=sys.stderr)
+        return 3
+    if output.exists():
+        print(f"REFUSED: {output} exists; output is write-once", file=sys.stderr)
+        return 2
+    start = a5_identity(reg_bytes, reg)
+    # B is frozen by the committed audit; recompute it from the unchanged files before any network solve
+    audits = a5.audit_mechanisms(reg)
+    if any(audits[m]["B_exact"] != audit_doc[m]["B_exact"] for m in ("a2nox", "creck")):
+        print("BLOCKED (nothing written): recomputed audit differs from the committed audit", file=sys.stderr)
+        return 3
+    allowance = a5.allowance_gate(audit_doc["a2nox"])
+    control = a5.control_gate(audit_doc["creck"])
+    tol = a5.closure_tolerance(a5.audit_B(audit_doc["a2nox"])) if allowance["pass"] else None
+    c11 = reg["g1"]["G1.1_temperature_convergence"]
+    comp = c11["composition_reported_only"]
+    c13 = reg["g1"]["G1.3_sigma0"]
+    scales = list(zip(c11["labels"], c11["volume_scales"]))
+    p72 = json.loads((ROOT / "outputs/phase7/p72_registration.json").read_text())
+    creck_fuel = ", ".join(f"{k}:{v}" for k, v in p72["fuel"]["mole_fractions"].items())
+    t0 = time.time()
+    net = core.ReactorNetwork(str(A2), "POSF10325", 9)
+    names = list(net.species_names())
+    pts = inlets()
+    out: dict = {"inputs": {m: dict(zip(("T3", "P3", "m_air", "m_fuel"), v)) for m, v in pts.items()}}
+    g11, g11_runs, g12, g13, g4, diag = {}, {}, {}, {}, {}, {}
+    d = net.design(*pts["TAKE-OFF"], params())   # take-off design for every mode (P8.5-A4)
+    for mode, (T3, P3, ma, mf) in pts.items():
+        P = P3 * (1 - DP)
+        # G1.1: temperature convergence toward one HP reference, no dilution, tau / 10tau / 100tau
+        eq = net.equilibrium(T3, P, ma, mf)
+        runs = {lab: net.run(T3, P3, ma, mf, params(no_dilution=True, volume_scale=s), d) for lab, s in scales}
+        g11[mode] = a5.temperature_convergence_gate(
+            [{"label": lab, "scale": s, "converged": runs[lab]["all_converged"], "T": runs[lab]["lean_exit"]["T"]}
+             for lab, s in scales], eq.T, c11["final_abs_dT_strictly_below_K"])
+        g11[mode]["composition_reported_only"] = {
+            lab: a5.composition_report(runs[lab]["lean_exit"]["Y"], list(eq.Y), names,
+                                       comp["Y_floor"], comp["max_dY"]) for lab in runs}
+        g11[mode]["physics_note"] = ("a shortfall is the network's kinetic/extinction behaviour at these "
+                                     "residence times, reported as physics; no slack is applied")
+        g11_runs[mode] = {lab: {"volume_scale": s, "all_converged": runs[lab]["all_converged"],
+                                "any_extinguished": runs[lab]["any_extinguished"],
+                                "lean_exit_T": runs[lab]["lean_exit"]["T"],
+                                "primary": [psr_report(z) for z in runs[lab]["primary"]],
+                                "quench": psr_report(runs[lab]["quench"]),
+                                "lean": [psr_report(z) for z in runs[lab]["lean"]]} for lab, s in scales}
+        # G1.2: A2NOx closure strictly below 10*B, test values and every G1.1 run
+        res = net.run(T3, P3, ma, mf, params(), d)
+        g12[mode] = a5.closure_gate({"test_values": closures(res), **{lab: closures(r) for lab, r in runs.items()}},
+                                    tol)
+        # G1.3: sigma = 0, mixed trace rule
+        s0 = net.run(T3, P3, ma, mf, params(sigma_rel=0.0), d)
+        g13[mode] = a5.sigma0_gate([z["outlet"]["T"] for z in s0["primary"]],
+                                   [z["outlet"]["Y"] for z in s0["primary"]],
+                                   [z["converged"] for z in s0["primary"]], names,
+                                   c13["T_relative_spread_at_most"], c13["relative_rule_if_reference_strictly_above"],
+                                   c13["relative_spread_at_most"], c13["absolute_spread_at_most"])
+        g13[mode]["run_all_converged"] = s0["all_converged"]
+        # (4) K = 7 vs 9 (reported)
+        k9 = net.run(T3, P3, ma, mf, params(K=9), d)
+        g4[mode] = {f: {"K7": res[f], "K9": k9[f], "delta": k9[f] - res[f]}
+                    for f in ("eta_b", "EI_NOx_g_kg", "EI_CO_g_kg")}
+        g4[mode]["exit_T"] = {"K7": res["exit"]["T"], "K9": k9["exit"]["T"],
+                              "delta": k9["exit"]["T"] - res["exit"]["T"]}
+        out.setdefault("test_value_outputs", {})[mode] = {
+            "eta_b": res["eta_b"], "EI_NOx_g_kg": res["EI_NOx_g_kg"], "EI_CO_g_kg": res["EI_CO_g_kg"],
+            "EI_UHC_g_kg": res["EI_UHC_g_kg"], "exit_T": res["exit"]["T"], "phi_pz": res["phi_pz"],
+            "alpha_pz": res["alpha_pz"], "alpha_dil": res["alpha_dil"], "all_converged": res["all_converged"],
+            "any_extinguished": res["any_extinguished"],
+            "primary_T": [z["outlet"]["T"] for z in res["primary"]],
+            "primary_tau_ms": [1e3 * z["residence_time"] for z in res["primary"]],
+            "note": "registered G1 test values; not a prediction"}
+        diag[mode] = {"observed": observed_element_error(res, T3, P, ma, mf, "POSF10325:1"),
+                      "predicted_from_mechanism_imbalance": imbalance_diagnostic(res)}
+        print(mode, "G1.1", g11[mode]["pass"], g11[mode]["abs_dT_K"], "G1.2", g12[mode]["pass"],
+              "G1.3", g13[mode]["pass"], "%.1e" % g13[mode]["T_relative_spread"], flush=True)
+
+    # (5) thermo consistency and HP-equilibrium T with each mechanism at AE3 take-off FAR
+    T3, P3, ma, mf = pts["TAKE-OFF"]
+    t5 = thermo_consistency()
+    eq_a2 = net.equilibrium(T3, P3 * (1 - DP), ma, mf).T
+    creck = core.ReactorNetwork(str(CRECK), creck_fuel, 9)
+    eq_cr = creck.equilibrium(T3, P3 * (1 - DP), ma, mf).T
+    t5["HP_equilibrium_T_AE3_takeoff"] = {"A2NOx_POSF10325": eq_a2, "CRECK_Dooley2012": eq_cr,
+                                          "delta_K": eq_cr - eq_a2,
+                                          "basis": "same fuel/air mass ratio, liquid basis 360 kJ/kg"}
+    # CRECK base-value runs: G1.2 balanced control and (6) mechanism spread
+    dcr = creck.design(*pts["TAKE-OFF"], params())
+    control_runs, spread = {}, {}
+    for mode, (T3, P3, ma, mf) in pts.items():
+        rc = creck.run(T3, P3, ma, mf, params(), dcr)
+        control_runs[mode] = {**closures(rc), "all_converged": rc["all_converged"]}
+        ra = out["test_value_outputs"][mode]
+        spread[mode] = {"eta_b": {"A2NOx": ra["eta_b"], "CRECK": rc["eta_b"]},
+                        "EI_CO_g_kg": {"A2NOx": ra["EI_CO_g_kg"], "CRECK": rc["EI_CO_g_kg"]},
+                        "exit_T": {"A2NOx": ra["exit_T"], "CRECK": rc["exit"]["T"]},
+                        "CRECK_converged": rc["all_converged"]}
+        print(mode, "CRECK control/spread done", flush=True)
+    g12_control = a5.control_closure_gate(control_runs, control["pass"],
+                                          reg["g1"]["G1.2_closure"]["creck_control"]["strictly_below"])
+
+    verdict, checks = a5.a5_verdict(allowance, g11, g12, g12_control, g13)
+    end = a5_identity(a5.REGISTRATION.read_bytes(), reg)
+    drift = [k for k in start if end.get(k) != start[k]]
+    if drift:
+        verdict = "ERROR"
+    doc = {"gate": "P8.5 G1 (P8.5-A5 rerun 4)", "registration": reg["id"], "verdict": verdict, "checks": checks,
+           "audit": {"path": reg["outputs"]["audit"], "B_exact": audit_doc["a2nox"]["B_exact"],
+                     "B_float": audit_doc["a2nox"]["B_float"], "allowance_gate": allowance,
+                     "creck_control_gate": control, "recomputed_B_equal": True, "scope_note": a5.SCOPE_NOTE},
+           "closure_tolerance_10B_exact": None if tol is None else str(tol),
+           "closure_tolerance_10B_float": None if tol is None else float(tol),
+           "G1.1_temperature_convergence": g11, "G1.1_runs": g11_runs, "G1.2_A2NOx": g12,
+           "G1.2_CRECK_control": g12_control, "G1.3_sigma0": g13, "G1.4_quadrature_reported": g4,
+           "G1.5_thermo_consistency_reported": t5, "G1.6_mechanism_spread_reported": spread,
+           "diagnostic_mechanism_element_imbalance": diag, "species_names": names, **out,
+           "previous_attempts": [
+               "outputs/phase8/p85_g1.json, p85_g1_rev1.json, p85_g1_rev2.json: FAIL under the registered "
+               "rules (unchanged). rerun4 follows P8.5-A5: closure < 10*B (user's mechanism-conditioned "
+               "allowance), sigma0 mixed trace rule, G1.1 temperature convergence toward HP."],
+           "wall_s": time.time() - t0,
+           "identity": start, "end_identity": end, "identity_drift": drift,
+           "provenance": {"module": str(BUILD), "cantera_python": ct.__version__,
+                          "machine": platform.platform()},
+           "protected": protected}
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x") as f:
+        f.write(json.dumps(doc, indent=2, default=float) + "\n")
+    print(f"P8.5 G1 (A5 rerun 4): {verdict} {checks}")
     return 0 if verdict == "PASS" else 1
 
 
