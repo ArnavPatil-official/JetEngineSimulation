@@ -916,3 +916,29 @@ then reviewed implementation/tests/status in a separate corrective commit.
 Check no other Git process/index lock before each commit. Leave the old paused
 queue owners in place for root's verified retirement after review, and keep
 the two original dirty files unstaged. Report the named commits and checks.
+
+The A4c worktree is adding a nondefault input-only solver-box override and a
+backwards-compatible `cpp/build.sh --build-dir cpp/build_next` option. Its old
+defaults and benchmark binary stay intact. Root will integrate those commits
+before arming. Prospectively register a validation-build prerequisite AFTER
+A2 and BEFORE the Track4 focused tests, then run the unchanged Track4 commands
+in order. Build in `cpp/build_next` only, under nice15; never overwrite the
+benchmark `cpp/build` library. Full pytest uses
+`CATJET_BUILD=cpp/build_next` so its new all20-family assertion actually tests
+the new committed API. A build failure blocks dependent numerical tests
+truthfully. This is test setup, not a new benchmark, fit or held-out score.
+Do not launch the build now, and do not run another worktree's implementation.
+
+### Separate-build collection and executor availability (2026-10-03)
+
+Full pytest must preload `cpp/build_next/catjet_core` and assert its module path
+before collection. The protected `simulation/catjet_backend.py` prepends
+`cpp/build` unless it is already in sys.path; `CATJET_BUILD` alone cannot prove
+that the all-family assertion used the new API. The recovery registration's
+full-test command supplies this preload without editing protected source.
+
+Claude's queue-review and A4c sessions ended at their session limit (reset
+10:10 pm America/New_York). Code execution remains incomplete. Planner review
+and prospective registration continue. The old paused queue owners were
+verified to have no numerical descendants and retired without resuming their
+parsed old loop. Replacement remains unarmed pending verified implementation.

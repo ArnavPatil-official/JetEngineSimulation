@@ -215,8 +215,8 @@
   "commands": {
     "audit": "nice -n 15 .venv/bin/python scripts/phase8/p85_audit.py",
     "commit_audit": "git add outputs/phase8/p85_a5_audit.json && git commit",
-    "build": "bash cpp/build.sh",
-    "rerun4": "nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5"
+    "build": "nice -n 15 bash cpp/build.sh --build-dir cpp/build_next",
+    "rerun4": "CATJET_BUILD=cpp/build_next nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5"
   },
   "prospective_corrections": [
     {
@@ -236,6 +236,13 @@
       "changes": [
         "rerun 4 rejects a committed audit whose identity_drift is not an empty list or whose recorded allowance_gate/creck_control_gate failed or is missing; checked before any network call",
         "rerun 4 then independently re-derives B and both audit gates from the unchanged files; any difference or failure blocks (nothing written)"
+      ]
+    },
+    {
+      "date": "2026-10-03",
+      "before_any_a5_calculation": true,
+      "changes": [
+        "Build/use cpp/build_next after the main sequence; preserve cpp/build benchmark binary. Audit and all A5 scientific rules unchanged. The build option is pending implementation and review before any run."
       ]
     }
   ]

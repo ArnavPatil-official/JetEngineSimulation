@@ -170,3 +170,12 @@ corrected rules; `prospective_corrections` in the JSON lists them.
 Second correction, same date and status: rerun 4 rejects a committed audit
 that drifted or failed, or lacks that metadata, and re-derives B and both
 audit gates itself before any network call (section 3).
+
+## Pre-computation build-path clarification (2026-10-03)
+
+Use the separate validation build in `cpp/build_next` after the main ordered
+sequence, preserving `cpp/build` and its benchmark hash. The pending commands
+are `nice -n 15 bash cpp/build.sh --build-dir cpp/build_next` and
+`CATJET_BUILD=cpp/build_next nice -n 15 .venv/bin/python scripts/phase8/reactor_validation.py --a5`.
+The build option requires implementation and review before use. The independent
+audit and every A5 scientific rule are unchanged; no A5 calculation has run.
