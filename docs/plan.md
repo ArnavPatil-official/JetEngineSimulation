@@ -674,3 +674,11 @@ battery power. Finish only these trivial review corrections before reporting:
   do not run numerical tests while on battery. Check for active Git processes
   and an index lock before committing only these review corrections and this
   plan update. Leave the two pre-existing dirty files unstaged.
+
+Final mathematical wording correction: in the repair notes E2 and its draft
+write-up paragraph, qualify the pressure/density invariance as applying to
+fields that satisfy the equation of state exactly. The residual scales by
+g(x), so a nonzero gas-law squared loss does change. The arbitrary pressure
+family among gas-law-satisfying fields remains the identifiability defect.
+Make only this prose correction and commit it with this plan clarification;
+the implementation and numerical procedures are already reviewed.

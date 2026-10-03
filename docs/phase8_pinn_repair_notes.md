@@ -108,9 +108,13 @@ p − ρRT (gas law), relu(dT/dx) (temperature falls) and
 read by array position). Velocity is u = ṁ/(ρA) by construction and enters
 no loss. Take any smooth g(x) > 0 with g(0) = 1 and map
 (ρ, p, T) → (ρg, pg, T). Then pg − (ρg)RT = g(p − ρRT), which is zero whenever
-the original is. The temperature terms do not change, and the inlet state does
-not change. So every loss value is unchanged, and p(x) is undetermined
-up to an arbitrary positive profile. The missing equation is the polytropic
+the original is. The residual scales by g(x), so for a field with a nonzero
+gas-law residual the squared gas-law loss does change. The invariance holds
+for fields that satisfy the equation of state exactly. For those, the
+temperature terms do not change, the inlet state does not change, and every
+loss value is unchanged. So among gas-law-satisfying fields p(x) is
+undetermined up to an arbitrary positive profile; that pressure family is the
+identifiability defect. The missing equation is the polytropic
 path as a residual:
 
   r(x) = d ln p/dx − k · d ln T/dx = 0.
@@ -287,10 +291,13 @@ the Track 4a result, which has not been run.*
 
 > The retired turbine PINN treated a zero-dimensional component as a field
 > along an invented coordinate. Its original physics loss could not determine
-> pressure: the gas law, a falling-temperature penalty and an endpoint work
-> balance are all unchanged when density and pressure are multiplied by any
-> positive profile g(x) with g(0) = 1, because no equation tied the pressure
-> path to the temperature path. That loss also divided pressure errors by a
+> pressure: for any field that satisfies the gas law exactly, the gas law, a
+> falling-temperature penalty and an endpoint work balance are all unchanged
+> when density and pressure are multiplied by any positive profile g(x) with
+> g(0) = 1, because no equation tied the pressure path to the temperature
+> path. (A nonzero gas-law residual scales by g(x), so its squared loss does
+> change; the defect is the arbitrary pressure family among gas-law-satisfying
+> fields.) That loss also divided pressure errors by a
 > single 4.2 MPa scale, so low-pressure operating points were down-weighted
 > about twentyfold. The registered second attempt removed both defects by
 > supervising the analytic path with per-point relative errors in
