@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""P8-A2 STS ablation ladder (docs/phase8_registration.md, amendment P8-A2).
+"""P8-A2 ablation ladder (docs/phase8_registration.md, amendment P8-A2).
 
 Each step refits exactly the four v6 knobs with the frozen P7.2/v6
 procedure (`lto_v6.run_calibration`, called unchanged: same starts, bounds,

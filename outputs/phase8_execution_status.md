@@ -2,10 +2,11 @@
 
 Plan: `docs/plan.md` (Phase 8). Registration: `docs/phase8_registration.md`.
 Branch `phase8`, from the Phase 7 freeze `7524a7a`.
-Scope authorized now: the STS slice first, plus independent Tracks B, C and D
+Scope authorized now: Slice 1 first, plus independent Tracks B, C and D
 under the user's autonomous-execution directive (2026-09-29). P8.4–P8.15
 are covered by `docs/phase8_r2_plan.md` in their scientific gate order;
 each run-specific registration remains required before computation.
+Freeze-package outputs: `outputs/freeze/`. Local freeze tag: `freeze-2026-10-18`.
 
 **Phase 8 is NOT complete.** The table says what is done, running or not started.
 
@@ -17,7 +18,7 @@ Test floor at the freeze `7524a7a`: 231 passed, 1 skipped (the orphan-output fai
 | P8.0 protected list (184 files) + registration | `53e58b0` | registered |
 | P8.0 cProfile of Python v6 `run_at_thrust` | `2a863b3` | done (diagnostic); see below |
 | P8-A1 amendment (G2: B2 + paired cluster bootstrap; benchmark variants b, c) | `4c6df84` | registered before any cross-family data or benchmark |
-| P8-A2 STS ablation ladder | `421022e` | registered before P8.2 results; each step recalibrates on calibration groups and scores the Trent held-out group once |
+| P8-A2 ablation ladder | `421022e` | registered before P8.2 results; each step recalibrates on calibration groups and scores the Trent held-out group once |
 | P8-R2 plan revision, P8.4–P8.15 | `1974420` | registered before P8.4+ numerical work. Adds design/off-design, combustor, four-stage calibration, family-level bootstrap, synthetic/MLX/G3 and robust-optimization order. The external Claude design artifact was inaccessible, so missing numerical/model details require prospective pre-run registrations. |
 | P8.3 numerical G1 procedure | `2dfd6bb` | prospective registration for the choking-nozzle implementation; no G1 result yet |
 | D2 pyCycle HBTF reference | `42a3003` | 26/26 published upstream reference values reproduced; 126-call envelope sweep had 6 nonconverged points, retained in the record |

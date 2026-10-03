@@ -8,7 +8,7 @@ Physics-First Revision Plan",
 https://claude.ai/code/artifact/53b56f20-5553-4edb-96d3-8c36b12513a5.
 Where the two differ, this file and `docs/phase8_registration.md` govern.
 
-This plan authorizes repo work and Mac-local computation for the **STS slice
+This plan authorizes repo work and Mac-local computation for **Slice 1
 (D1)** only: P8.0, P8.1, P8.2, P8.3 and the first P8.6 database sources.
 P8.4 onward are listed for order and gates; they need a plan revision before
 execution. No manuscript edits, outreach, remote publishing, merge or tag.
@@ -16,7 +16,7 @@ execution. No manuscript edits, outreach, remote publishing, merge or tag.
 **Revision P8-R2 (2026-09-29):** `docs/phase8_r2_plan.md` extends local work
 authorization to P8.4–P8.15 in their registered gate order. Its prospective
 run registrations and the existing Phase 8 gate rules remain required. This
-paragraph supersedes only the original STS-slice scope limit above; the
+paragraph supersedes only the original Slice 1 scope limit above; the
 original phase descriptions remain as the Phase 8 baseline.
 
 ## Objective
@@ -34,7 +34,7 @@ a_thrust, k_pi, k_mdot) are penalty-dependent. P8.4 exists to retire them.
 
 ## Decisions (answered by Arnav, 2026-09-29)
 
-- **D1** STS slice before the deadline (check the 2027 Regeneron STS date):
+- **D1** Slice 1:
   C++ parity port, benchmark, composition-carrying state, enthalpy turbine,
   choking nozzle, first database sources. Everything else is reported as work
   in progress.
@@ -75,6 +75,9 @@ a_thrust, k_pi, k_mdot) are penalty-dependent. P8.4 exists to retire them.
 - Keep all Phase 7 negative results visible (A1/A2/A3 FAIL, P7.3 gate
   closed, P7.4 not run, Dooley 2012 H/aromatics failures).
 - `.DS_Store` belongs to the user. Ask before any push to origin.
+- Use "Slice 1" for the original scope and "ablation ladder" for P8-A2 in
+  future files, executor prompts and commit messages. Freeze-package outputs
+  go under `outputs/freeze/`; the local freeze tag is `freeze-2026-10-18`.
 - Phase 7 detached jobs are finished; there is nothing to leave running. Check
   `ps` for other executors in this tree before editing.
 
@@ -220,7 +223,7 @@ contracts: C++ vs Python component parity, G0 comparator, G1 limit and closure
 checks, nozzle continuity at choking, database QA. No long benchmark or study
 inside pytest.
 
-## Acceptance Criteria (STS slice)
+## Acceptance Criteria (Slice 1)
 
 1. Registration and protected list committed before any benchmark/parity run.
 2. G0 passes at rtol 1e-9 on all 180 rows and the AE3 point, or its failure is

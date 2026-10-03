@@ -228,7 +228,7 @@ coolant and leakage streams), and tip clearance. v2 adds `speed_param`,
 `tip_clearance` and their unit conversions. No v1 entry changed; no data had
 been entered. `vocabulary.yaml` v2 sha256 `ba9a9258ebffbd821b11729bc7438369d8ed5588b7f65ce5622cc81e45d79a12`.
 
-## Amendment P8-A2: STS ablation ladder (before the first P8.2 result)
+## Amendment P8-A2: ablation ladder (before the first P8.2 result)
 
 Known at registration: G0 passed on all frozen v6 rows (`74f53c8`); the
 Python v6 profile shows that equilibrium dominates solve time. No P8.2/P8.3
@@ -287,3 +287,8 @@ The v3 file SHA-256 is
 The SQLite file is derived from source-entry modules: rebuild it after this
 amendment, recheck the source-1 row count and QA, and record the new database
 hash in the source-entry commit. No locked split or calibration has been run.
+
+## P8-A2 label correction (2026-10-02)
+
+Only the label of amendment P8-A2 changed to "ablation ladder". Its registered
+content, procedures, scoring rules, gates and acceptance criteria are unchanged.

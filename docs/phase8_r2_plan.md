@@ -275,6 +275,9 @@ out-of-domain results. This is a screening study, not certification.
 
 ### P8.15 — freeze
 
+Freeze-package outputs go under `outputs/freeze/`; the local freeze tag is
+`freeze-2026-10-18`.
+
 Freeze registrations, source/config/input and output hashes, gate verdicts,
 negative results, model weights and run manifests. Regenerate the artifact
 manifest and model map through `scripts/build_manifest.py`; never hand-edit
@@ -284,7 +287,7 @@ gate after seeing data. No push, merge or release tag is part of this step.
 
 ## File-Level Edits
 
-- `docs/plan.md`: link this revision; retain the original STS plan and its
+- `docs/plan.md`: link this revision; retain the original Slice 1 plan and its
   registration priority. `docs/phase8_r2_plan.md`: this committed plan.
 - `cpp/catjet_core/{maps,offdesign,reactor_network}.*` and `cpp/CMakeLists.txt`:
   implement only their registered C++ contracts; preserve the hidden-symbol
