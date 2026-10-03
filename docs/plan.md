@@ -1,9 +1,10 @@
 # Phase 8 — physics-first revision
 
-**Active dispatch (2026-10-02):** execute only the Track 4 addendum at the end
-of this file. Earlier Phase 8 sections are preserved baseline context, not
-instructions to rerun prior work. The user instructed this diagnostic work
-to run now and to flag blockers while continuing independent work.
+**Active dispatch (2026-10-03):** execute only the queue recovery and decision
+integration addendum at the end of this file. Preserve earlier sections as
+historical context. The user authorized this work now, including stopping
+the parked A2 chain. Scientific tracks run in separate worktrees under their
+own active plans; do not execute another worktree's plan from this checkout.
 
 Date: 2026-09-29. Branch `phase8`, from the Phase 7 freeze `7524a7a`.
 Completed Phase 7 plan: `docs/plan_phase7_completed.md`; closure in
@@ -682,3 +683,193 @@ g(x), so a nonzero gas-law squared loss does change. The arbitrary pressure
 family among gas-law-satisfying fields remains the identifiability defect.
 Make only this prose correction and commit it with this plan clarification;
 the implementation and numerical procedures are already reviewed.
+
+# Queue recovery and decision integration — 2026-10-03
+
+## Objective
+
+Repair the benchmark/A2 deadlock, apply the user's 2026-10-02 scientific
+decisions prospectively, and arm a truthful AC-only local sequence. The user
+explicitly authorized execution now. Preserve all earlier scores and failures.
+No new permission is needed for this plan or its reversible local work.
+
+## Constraints
+
+- Never push, rewrite history, change protected files, overwrite results or
+  trained weights, or compute before the applicable registration is committed.
+- Preserve the two pre-existing dirty files (`.DS_Store` and the old benchmark
+  queue log). New session logs must not overwrite old logs.
+- Numerical order: resume benchmark run 2, then its TWO specified rerun jobs
+  (not two full benchmark suites), then ladder A2 calibration, then Track 4
+  focused pytest, the single registered diagnostic, full pytest and hashes.
+  A2 held-out scoring is not authorized as an automatic chain action.
+- Immediately before every heavy launch require AC power; unknown power
+  blocks. Static edits and small mocked queue tests may run on battery.
+- Use registered records/completion files and one atomic owner lease. No
+  process-name matching, `pgrep` predicate or log-text completion inference.
+  PID plus process birth time may establish the recorded owner's liveness.
+- Non-blocking defects go in `docs/FIXES.md`. Registration before scoring,
+  one-shot held-out scores, protected-file preservation and no push are
+  mandatory. All numerical/scoring results remain unrun until their gates.
+- P8.5-A5, P8.3-A2 and A4c registrations are executed in separate worktrees,
+  then integrated without cherry-picking any other worktree's plan file.
+- Use Slice 1, ablation ladder, `outputs/freeze/`, `freeze-2026-10-18` naming.
+
+## Repo Context
+
+Old queue `45938` loaded a broad process-name predicate. It matched the parked
+A2 shell `48047`/caffeinate `48049`, which waited for the queue's log text.
+The old queue also passed its AC gate before that wait and could launch on
+battery after release. Root verified no numerical descendant, stopped the
+A2 chain plus its sleep child, and paused old queue Bash owners `45935` and
+`45938` with SIGSTOP. Snapshots are outside the repository under
+`phase8-decisions-20261003-lzvzcpzh` in the task's temporary directory.
+
+There are 56 run-2 specs, seven existing terminal numerical results and 49
+missing jobs. Preserve the seven records. Progress evidence shows battery
+timed repeats in `arm1a_W2_1w` (one of five) and `arm1a_W4_11w` (five of five).
+Record those timings as invalid in NEW reconciliation evidence; do not edit
+their PASS result records. The specified rerun plan contains only W2/11 workers
+and W4/11 workers. Do not invent a W2/1-worker rerun or claim a clean full
+benchmark. Numerical reference validity and timing validity are separate.
+
+## Relevant Files
+
+| Action | Path | Purpose |
+|---|---|---|
+| READ | `scripts/phase8/benchmark.py` | unchanged registered timing implementation |
+| READ | `scripts/phase8/benchmark_plan_run2.txt` | preserve exact 56 specs |
+| READ | `scripts/phase8/benchmark_plan_run2_rerun.txt` | preserve exact two rerun specs |
+| READ | `scripts/phase8/ablation_ladder.py` | unchanged A2 calibration command and outputs |
+| READ | `scripts/phase8/pinn_diagnostics/run_diagnostics.py` | one-shot Track 4 invocation |
+| CREATE | `docs/phase8_queue_recovery_registration.json` | prospective operational recovery registration |
+| MODIFY | `scripts/phase8/run_benchmark_queue.sh` | delegate to record-based queue implementation |
+| CREATE | `scripts/phase8/ac_workflow.py` | sequential queue/record/lease/completion and AC driver |
+| CREATE | `tests/test_phase8_ac_workflow.py` | mocked lifecycle and evidence checks |
+| MODIFY | `scripts/phase8/g0_parity.py` | optional new output directory for unchanged G0 rerun |
+| CREATE | `tests/test_phase8_g0_output_paths.py` | lightweight parsing/write-once path tests only |
+| MODIFY | `outputs/phase8_execution_status.md` | current decisions, reason, operational commit and actual queue state |
+| CREATE | `docs/FIXES.md` | named non-blocking defects and truthful remaining validation |
+| CREATE | `outputs/phase8/operations/20261003_recovery/**` | new registration-linked session/evidence/owner records |
+
+## Implementation Phases
+
+### Phase 1 — prospective operational registration
+
+Commit the recovery JSON FIRST, including unchanged plan hashes, historical
+record identities, flags, stage order, allowed commands and output paths.
+Use actual current registration date; decisions were made 2026-10-02.
+No numerical computation or mechanism audit occurs in this phase.
+
+### Phase 2 — queue and completion repair
+
+Implement a small standard-library driver and shell wrapper. Atomic lease
+creation permits one owner, with PID, birth time, Git/source/registration
+identity and stage. Refuse duplicate or stale ownership; stale recovery must
+be explicit and recorded. Never infer successful completion from a dead PID.
+Wait on registered record states/completion files. Recheck AC after every
+wait and immediately before launching each heavy subprocess. Validate and
+skip existing terminal results without invoking benchmark.py or overwriting
+logs; occupied incomplete directories are blockers, never implicit reruns.
+Validate manifest/result spec, five repeats/one warmup, five timing samples,
+comparison verdict and available progress power evidence. Missing/malformed
+evidence cannot be called valid timing. Write per-spec terminal records and
+hashed queue-completion records with plan/source identity. Distinguish
+terminal completion with flags from a scientifically valid benchmark.
+
+The top-level chain waits for BOTH matching queue completion records and a
+released benchmark owner before A2. Retain old incomplete A2 provenance;
+write-once A2 needs exit evidence and the expected new fit/rows/evaluations/
+provenance. No held-out command. A2 failure is recorded and permits independent
+Track 4 work after numerical activity ends. Focused pytest failure blocks
+the single diagnostic. A diagnostic failure ends its registered attempt;
+never retry it automatically. Full pytest and protected hashes still report
+truthful independent results. No false COMPLETE marker after a partial stage.
+Preserve the conditional completed-diagnostic freeze note and Oct16 deadline.
+
+Add G0 `--out-dir` using a new write-once directory with `g0_parity.json`
+inside it. Default historical paths/behavior remain unchanged. All comparison
+rules, frozen inputs and backends remain unchanged. No G0 run now; supply a
+one-line Terminal command for after the AC chain, isolated from benchmark.
+
+### Phase 3 — review, commit, safely re-chain
+
+Run small mocked tests and static/integrity checks. Commit code and status.
+Then verify the paused old owners still have their original identities and
+only parked/sleep descendants; terminate that obsolete queue chain, including
+its caffeinate/sleep, without SIGCONT of old Bash code. If any real numerical
+child appeared, stop and report rather than kill an experiment. Never kill
+other jobs. Confirm 48047/48049 are absent. Start exactly one new local
+`caffeinate` recovery driver, parked on AC, with durable launch/owner record.
+On battery, record WAITING_FOR_AC and return without any numerical child.
+Use the final committed source identity. Do not leave an unowned background
+process or rely on a misleading shell PID as proof of success.
+
+### Phase 4 — integrate independently registered decisions
+
+Scientific worktrees have separate plans. Root reviews and integrates their
+named registration/implementation commits, preserving their prospective order.
+Update status so the obsolete 2026-10-02 needs-user list is explicitly
+superseded, and describe approved decisions as registered/in progress rather
+than requesting them again. Keep old failed results unchanged. Include dates:
+A4c registration by Oct8, one Trent score by Oct15 or in progress, combustor
+rerun4 by Oct16, freeze package `outputs/freeze/` Oct18. No tag or freeze
+package placeholder now. New code gets the main worktree's normal validation
+after the benchmark/A2/Track4 sequence; no heavy parallel work during timings.
+
+## File-Level Edits
+
+The queue script becomes a compatibility wrapper. `ac_workflow.py` owns all
+record-based waiting and serial heavy launches. The recovery registration
+freezes operational intent only and changes no scientific protocol. G0 adds
+output isolation only. Queue tests use fake subprocesses, synthetic record
+fixtures and mocked power/time; no real simulations. Status/FIXES distinguish
+registered decisions, implementation, pending checks and scientific flags.
+
+## Commands to Run
+
+- `bash scripts/run_claude_from_plan.sh` (this plan; already authorized).
+- `bash -n scripts/phase8/run_benchmark_queue.sh`.
+- `nice -n 15 .venv/bin/python -m pytest tests/test_phase8_ac_workflow.py tests/test_phase8_g0_output_paths.py -v`.
+- AST parse, `git diff --check`, `scripts/build_manifest.py --check`.
+- `.venv/bin/python scripts/validation/verify_protected_hashes.py --phase7 --phase8`.
+- Start the committed `ac_workflow.py` recovery registration under caffeinate;
+  do not use a detached shell string containing the old completion predicate.
+- Full `python -m pytest tests/ -v` is queued after Track 4 in the registered
+  AC order; report it pending until it actually passes.
+
+## Tests
+
+Mock completed-result skips, invalid old power, occupied partial directories,
+malformed/mismatched completions, duplicate/stale/reused-PID lease, nonzero
+exit propagation, AC recheck after record wait, unreadable power, no old-log
+overwrite, A2 requiring both queues, focused failure blocking diagnostic,
+and independent downstream truthfulness. G0 output tests must not import
+the empirical-row loader or invoke G0 computations. Verify all old numerical
+result/progress/manifest hashes and all protected files remain unchanged.
+
+## Acceptance Criteria
+
+Parked A2 owners retired; loaded old queue safely replaced; no process-name
+wait predicate; one record-owned AC-only chain in the requested order. New
+operational registration precedes numerical launches. Seven old benchmark
+records and both input plans unchanged; two battery-timing flags explicit.
+No repeat or held-out score runs on battery. Queue tests/static/manifest/
+protected checks pass. Stale user-decision list superseded. Scientific
+registrations and truthful deadlines/status integrated without changing A4.
+Final report includes deadlock commit, A5/P8.3-A2/A4c registration commits,
+what is queued for AC, and the verified G0 one-line command.
+
+## Rollback Notes
+
+Additive revert only; no reset or history rewrite. Preserve every historical
+result and original user edit. Stop only this new workflow's recorded parked
+owner if a static defect needs repair; never interrupt a running experiment.
+Do not revive the loaded old Bash queue or the old A2 chain.
+
+## Escalation Guidance
+
+High complexity/Opus for lifecycle and scientific provenance. Finish the
+record/test/queue repair autonomously. Put non-blocking issues in FIXES.
+Power, missing scientific inputs and mandatory gates may block computation,
+but do not block independent registrations or static implementation.
