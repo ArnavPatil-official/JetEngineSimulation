@@ -28,3 +28,9 @@ caffeinate -i nice -n15 .venv/bin/python scripts/operations/screening_bootstrap.
 ```
 
 Blocking evidence remains in the fresh bootstrap output directory. Recovery requires a separate reviewed decision; there is no implicit retry, broad staging, lock removal or history rewrite.
+
+## Prospective completion and fixture clarification — 2026-10-04
+
+The aggregate bootstrap preserves actual scientific failure: a fully computed failed study/freeze produces outer `FAIL`, `execution_complete=true`, `scientific_verdict=FAIL` and exit1, even when the authenticated diagnostic tag was created. A partial or blocked execution has `execution_complete=false`.
+
+Final seven-file verification runs after the studies and before freeze. Its receipt uses the TOOL scientific identity while the exact recorded pytest child runs under OPS parent ownership. The four raw hashes are spec, log, exit and the registered JUnit file; declared test totals, actual cases and raw passed count must agree with zero failures/errors/skips/deselections. The archived export helper and integrated gate share the exact reviewed commit/blob/mode/SHA. Both bootstrap control paths must be declared in OPS before export and bind through `other_declared_files`; pure controls remain independent of the live production config's armed state.
