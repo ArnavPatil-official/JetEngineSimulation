@@ -6,10 +6,19 @@ The product is a physics-informed neural SAF blend pre-screening tool with
 measured computational advantage. This direction supersedes the prior
 post-chain scientific sequence. No prose results draft.
 
-The main AC chain is running and is left unchanged. At this check its live
-owner is PID 22543, running `run2_ac/arm2a_W4_11w` on AC. New code remains in
-isolated worktrees so its frozen main source identity is unchanged. Its
-already registered all-family test remains part of full pytest.
+**Working deadline: October 28, 2026 (America/New_York).** Prioritize the
+working product. Preserve the local tag name `freeze-2026-10-18`.
+
+The main AC chain is left unchanged. At the 17:28 local check on 2026-10-04,
+its live owner PID 22543 held the lease in `WAITING_FOR_AC` before
+`run2_ac/arm2b_W4_1w`, with no child or pending child. The Mac was back on AC;
+the owner polls every 300 seconds. Run 2 had 17/56 complete records: 16 PASS
+and one `INVALID_POWER` (`arm2b_W3_1w`, numerical comparisons passed, timing
+invalid), with 39 specs remaining. Frozen source and benchmark module hashes
+still matched. New code remains in isolated worktrees; the registered
+all-family assertion remains part of the chain's full pytest.
+The driver then confirmed AC at 17:29:58 and started `arm2b_W4_1w` at
+17:29:59 local; the pending G0 remains outside this running chain.
 
 **Deferred, not failed:** A4c; P8.5 rerun 4; G2 cross-family; stages 1–3
 calibration and digitising; P8.9–P8.15 beyond the new screening/nozzle/product
@@ -22,7 +31,9 @@ conditional v6 C++ screening; P8-S generation, MLX training and frozen one-shot
 scoring; blend-conditioned nozzle ODE PINN; tested screening CLI/API; quantitative
 freeze and figures with a local tag. Every new procedure is registered before
 computation. Fresh `outputs/phase8/g0_rerun_20261003` is currently absent;
-its location or pending-run status has been requested. No new study result exists.
+the user directed its run after chain completion on 2026-10-04. It is pending
+until the validated idle gate succeeds and AC is confirmed. The exact preflight
+and command are in the active plan. No new study result exists.
 
 P7.3-A1 preserves the claim rule, 64 fixed-parameter draws, fuels, modes,
 Brem domain and lifecycle basis, while explicitly permitting the historical
@@ -34,6 +45,28 @@ Locked Sobol and named-blend test sets are opened once after all models freeze.
 The older entries below retain historical implementation and registration
 context; their A4c/A5 deadlines and manual commands are superseded by this
 explicit deferral. See `docs/plan.md` for the current execution scope.
+
+### Standalone validation and timing overlap — 2026-10-04
+
+During the naming-cleanup verification, Codex launched standalone
+`.venv/bin/python -m pytest tests/ -v` while benchmark ownership was active.
+That was an execution mistake; no further standalone tests or heavy work are
+launched during the benchmark. The run reported **500 passed, 3 skipped,
+1 failed**, plus four passed subtests. `test_all20_eligible_families` failed
+because this standalone process was not the registered live `full_pytest`
+child of the active workflow. It does not replace the chain's required test.
+Post-test Phase 7 and Phase 8 protected hash checks passed.
+
+The estimated test interval was 17:19:21–17:24:20 local, derived from the
+pytest cache write time and reported 299.16-second runtime, rather than an
+authoritative launch log. Comparing that estimated interval with driver
+timestamps indicates overlap with
+`run2_ac/arm2a_W4_11w`, `arm2b_W1_1w`, `arm2b_W2_1w` and `arm2b_W3_1w`.
+Preserve their raw results and existing records; these timings are not clean
+speed evidence. The last row also independently has `INVALID_POWER`.
+Any clean follow-up measurement requires a prospective registration after
+benchmark ownership ends; the current queue and its two registered reruns
+remain unchanged.
 
 
 Plan: `docs/plan.md` (Phase 8). Registration: `docs/phase8_registration.md`.

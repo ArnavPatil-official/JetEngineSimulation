@@ -9,6 +9,10 @@ lease; do not change the chain's frozen main source identity.
 
 ## SAF pre-screening product direction — 2026-10-04
 
+**Working deadline: October 28, 2026 (America/New_York).** Prioritize the
+working screening product and measured benchmarks. The local tag name remains
+`freeze-2026-10-18`; its name does not replace the updated working deadline.
+
 ### Objective
 
 Deliver a CLI and Python `screen_blends` API that predicts simulator-conditional
@@ -57,10 +61,10 @@ write-once artifacts under new `outputs/phase8/` directories. Update this plan,
 
 ### Implementation Phases
 
-1. Inspect terminal chain records and released lease, then validate and commit
-   the user's fresh G0 rerun. The expected fresh directory is currently absent;
-   obtain its path or confirmation that the run is still pending. Old G0 is
-   not represented as a fresh rerun.
+1. After the chain finishes, require validated terminal records and released
+   ownership, confirm AC power and a fresh output directory, then run and
+   commit the fresh G0 evidence. The user directed this run on 2026-10-04;
+   it is pending, not missing user-supplied evidence. Preserve historical G0.
 2. Execute additive P7.3-A1 matched-thrust screening on frozen v6 C++ despite
    A1 FAIL. Disclose penalty-guard-only failure; retain claim rule, 64 draws,
    fuels/modes, Brem domain and lifecycle basis. Label every output
@@ -99,6 +103,26 @@ train, frozen one-shot score, nozzle study, product checks, freeze. Exact new
 CLI commands are fixed in their procedure registrations before launch. Run
 meaningful pure tests and protected/hash checks after benchmark ownership ends;
 keep compilation, training and speed measurements off the active benchmark.
+
+For the authorized fresh G0 run, from the repository root, first require:
+
+```sh
+.venv/bin/python scripts/phase8/ac_workflow.py status --registration docs/phase8_queue_recovery_registration.json --require-idle
+```
+
+Only after that command succeeds, confirm AC power with `pmset -g batt` and
+that `outputs/phase8/g0_rerun_20261003` remains absent, then run:
+
+```sh
+caffeinate -i nice -n 15 .venv/bin/python scripts/phase8/g0_parity.py --workers 6 --out-dir outputs/phase8/g0_rerun_20261003
+```
+
+G0 is a separate post-chain action; do not add it to or reorder the running
+chain. It retains the registered comparison rules and write-once outputs.
+The standalone pytest timing overlap recorded in execution status must be
+disclosed before using the affected benchmark rows for a speed claim. Preserve
+those records; register any needed clean measurement before running it after
+benchmark ownership ends.
 
 ### Tests
 
