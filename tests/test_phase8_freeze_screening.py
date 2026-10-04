@@ -361,3 +361,21 @@ def test_diagnostic_packaging_never_admits_invalid_or_incomplete_bands(published
     elif mutation == "rank_gap": records[0]["conditional_lifecycle_rank"] = "2"
     with pytest.raises(freeze.Incomplete):
         freeze.bands(data, plt, [])
+
+
+def test_published_conditional_error_coverage_retains_invalid_rows_and_fail():
+    rows = []
+    complete, requested = freeze.coverage(rows, "learning_curve", "member/test",
+        {"complete": False, "requested_rows": 2048, "conditional_valid_rows": 2047, "invalid_rows": 1}, "FAIL")
+    assert complete is False and requested == 2048
+    values = {row["metric"]: row["value"] for row in rows}
+    assert values == {"requested_rows": 2048, "conditional_valid_rows": 2047, "invalid_rows": 1, "complete": False}
+    assert all(row["producer_status"] == "FAIL" for row in rows)
+
+
+@pytest.mark.parametrize("change", [{"complete": True}, {"conditional_valid_rows": 2048}, {"invalid_rows": -1},
+                                   {"invalid_rows": None}, {"requested_rows": 2048.5}])
+def test_masked_or_missing_row_coverage_is_not_complete(change):
+    record = {"complete": False, "requested_rows": 2048, "conditional_valid_rows": 2047, "invalid_rows": 1}
+    with pytest.raises((freeze.Incomplete, KeyError)):
+        freeze.coverage([], "parity", "ensemble/test", {**record, **change}, "FAIL")

@@ -187,6 +187,21 @@ def metric(rows, figure, group, name, value, unit, status):
                  "value": value if isinstance(value, bool) else number(value), "unit": unit, "producer_status": status})
 
 
+def coverage(rows, figure, group, record, status):
+    """Publish the sole-score row mask counts, never derive another score."""
+    counts = {name: number(record[name]) for name in ("requested_rows", "conditional_valid_rows", "invalid_rows")}
+    if any(value < 0 or value % 1 for value in counts.values()) or counts["requested_rows"] <= 0 \
+            or counts["conditional_valid_rows"] + counts["invalid_rows"] != counts["requested_rows"]:
+        raise Incomplete("Published scored row coverage is missing or inconsistent")
+    complete = truth(record["complete"])
+    if complete and counts["invalid_rows"]:
+        raise Incomplete("Published complete metric masks invalid reference rows")
+    for name, value in counts.items():
+        metric(rows, figure, group, name, value, "rows", status)
+    metric(rows, figure, group, "complete", complete, "boolean", status)
+    return complete, int(counts["requested_rows"])
+
+
 def save(figure, prefix, out, plt, guard, verdict):
     guard()
     figure.suptitle(LABEL + "\nPublished producer verdict: " + verdict, fontsize=9)
@@ -249,7 +264,8 @@ def speed(data, plt, rows):
 
 
 def learning(data, plt, rows):
-    columns = ("arm", "N", "seed", "dataset", "ff_MAE_kg_s", "T4_MAE_K", "fidelity_pass")
+    columns = ("arm", "N", "seed", "dataset", "ff_MAE_kg_s", "T4_MAE_K", "fidelity_pass",
+               "complete", "requested_rows", "conditional_valid_rows", "invalid_rows")
     records = list(data.rows("learning_curve", columns))
     test = [row for row in records if row["dataset"] == "test"]
     if not test:
@@ -263,17 +279,19 @@ def learning(data, plt, rows):
         if identity in identities:
             raise Incomplete("Duplicate scored learning-curve member")
         identities.add(identity); grouped[key].append(record)
+        complete, _ = coverage(rows, "learning_curve", "/".join(map(str, identity)), record, data.statuses["learning_curve"])
         for field, unit in (("ff_MAE_kg_s", "kg/s"), ("T4_MAE_K", "K")):
             value = number(record[field])
             if value < 0:
                 raise Incomplete("Negative published error metric")
-            metric(rows, "learning_curve", "/".join(map(str, identity)), field, value, unit, data.statuses["learning_curve"])
+            metric(rows, "learning_curve", "/".join(map(str, identity)), field if complete else "conditional_on_valid_rows/" + field,
+                   value, unit, data.statuses["learning_curve"])
         metric(rows, "learning_curve", "/".join(map(str, identity)), "fidelity_pass", truth(record["fidelity_pass"]), "boolean", data.statuses["learning_curve"])
     for (arm, seed), group in sorted(grouped.items()):
         group.sort(key=lambda record: number(record["N"]))
         for axis, field in zip(axes, ("ff_MAE_kg_s", "T4_MAE_K")):
             axis.plot([number(record["N"]) for record in group], [number(record[field]) for record in group], "o-", label=f"{arm}, seed {seed}")
-    for axis, label in zip(axes, ("Published test FF MAE (kg/s)", "Published test T4 MAE (K)")):
+    for axis, label in zip(axes, ("Published valid-row test FF MAE (kg/s)", "Published valid-row test T4 MAE (K)")):
         axis.set(xlabel="Training queries N", ylabel=label)
         axis.set_xscale("log", base=2)
         axis.legend(fontsize=7)
@@ -284,6 +302,11 @@ def parity(data, plt, rows):
     record = list(data.rows("surrogate_simulator_parity", ("ff_kg_s", "T4_K", "reference_ff_kg_s", "reference_T4_K")))
     if not record:
         raise Incomplete("No published sole-score parity predictions")
+    metrics = data.json("surrogate_metrics")
+    scored = metrics["ensemble"]["test"]
+    complete, requested = coverage(rows, "surrogate_simulator_parity", "selected ensemble/test", scored, data.statuses["surrogate_metrics"])
+    if len(record) != requested:
+        raise Incomplete("Published parity rows differ from sole-score coverage")
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
     for axis, predicted, reference, unit in ((axes[0], "ff_kg_s", "reference_ff_kg_s", "kg/s"),
                                             (axes[1], "T4_K", "reference_T4_K", "K")):
@@ -292,10 +315,9 @@ def parity(data, plt, rows):
         low, high = min(x + y), max(x + y)
         axis.plot([low, high], [low, high], "k:")
         axis.set(xlabel=f"Published full C++ reference ({unit})", ylabel=f"Published selected product ({unit})")
-    metrics = data.json("surrogate_metrics")
-    scored = metrics["ensemble"]["test"]
     for name, unit in (("ff_MAE_kg_s", "kg/s"), ("ff_max_kg_s", "kg/s"), ("T4_MAE_K", "K"), ("T4_max_K", "K")):
-        metric(rows, "surrogate_simulator_parity", "selected ensemble/test", name, scored[name], unit, data.statuses["surrogate_metrics"])
+        metric(rows, "surrogate_simulator_parity", "selected ensemble/test", name if complete else "conditional_on_valid_rows/" + name,
+               scored[name], unit, data.statuses["surrogate_metrics"])
     precision = data.json("surrogate_precision")
     if len(precision["export_ff_T4_max_normalized"]) != 2:
         raise Incomplete("Published export parity requires separate FF and T4 values")
