@@ -175,6 +175,10 @@ def run(main_root):
                 frozen.setdefault(str(path.relative_to(root)),sha256(path))
     try:
         record("RESERVED")
+        # The source-property NPZ reader imports NumPy too; fix library thread
+        # policy before that first scientific import, after ownership is held.
+        for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+            os.environ[name] = "1"
         for directory in ("training_logs", "checkpoints"):
             (out / directory).mkdir()
         technical_readme(out)
@@ -185,8 +189,6 @@ def run(main_root):
         frozen.update(historical_hashes)
         freeze_finished()
         # Scientific imports are confined to the owned, verified execution path.
-        for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
-            os.environ[name] = "1"
         import numpy as np
         import torch
         torch.set_num_threads(1)
