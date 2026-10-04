@@ -877,15 +877,22 @@ SolveResult Hbtf::newton(std::vector<double> x, const std::vector<double>& lo,
 
 SolveResult Hbtf::solve_design(std::vector<double> guess)
 {
+    const double W_max = spec.design_W_max_kg_s;
+    if (!std::isfinite(W_max) || W_max < 0.0)
+        throw std::invalid_argument("design_W_max_kg_s must be finite and positive, or zero for the default");
+    if (W_max > 0.0 && W_max < 10 * LBM)
+        throw std::invalid_argument("design_W_max_kg_s is below the design-flow lower bound");
     if (spec.three_shaft) {
         if (guess.size() != 5) throw std::invalid_argument("design unknowns: W, FAR, PR_hpt, PR_ipt, PR_lpt");
-        const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001, 1.001}, hi{3000 * LBM, 0.06, 8.0, 8.0, 12.0};
+        const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001, 1.001},
+                                  hi{W_max == 0.0 ? 3000 * LBM : W_max, 0.06, 8.0, 8.0, 12.0};
         SolveResult r = newton(guess, lo, hi, {guess[0], 0.01, 1.0, 1.0, 1.0}, true);
         design.valid = r.converged;
         return r;
     }
     if (guess.size() != 4) throw std::invalid_argument("design unknowns: W, FAR, PR_hpt, PR_lpt");
-    const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001}, hi{1000 * LBM, 0.06, 8.0, 8.0};
+    const std::vector<double> lo{10 * LBM, 1e-4, 1.001, 1.001},
+                              hi{W_max == 0.0 ? 1000 * LBM : W_max, 0.06, 8.0, 8.0};
     SolveResult r = newton(guess, lo, hi, {guess[0], 0.01, 1.0, 1.0}, true);
     design.valid = r.converged;
     return r;
