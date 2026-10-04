@@ -25,3 +25,18 @@ training and timings wait for the old benchmark lease to end.
 
 No push, protected edit, old model overwrite or narrative results draft.
 All fixture tests are written before launch and run after the chain.
+
+## Prospective fixture validation clarification — 2026-10-04
+
+Both registered benchmark queue completion records and the benchmark-owner
+release must validate before isolated lightweight fixture checks may run while
+the remaining original chain waits for AC. This supersedes the conservative
+all-fixtures-after-chain sentence above for the gate/product synthetic cases
+and P7.3-A1 fake-backend cases only. These tests use toy files, mocked process
+records and fake backends; they must not import the C++ core, Cantera or MLX,
+run the nozzle exact oracle, read scientific test labels, change original
+sources/binaries or launch the original full suite. Prove the original
+scientific tree and built-module hashes unchanged immediately before and after.
+All source-only numerical checks, package installation, simulator launches,
+training, scoring and speed measurements still wait for the original chain
+to release its lease. No benchmark rerun or original protocol changes.
