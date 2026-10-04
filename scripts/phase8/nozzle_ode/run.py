@@ -125,6 +125,19 @@ shock evidence remains visible; this study does not establish empirical validity
 """)
 
 
+def validate_score_coverage(reg, splits, values, panels):
+    """Require every registered group and row before claiming complete execution."""
+    keys = {(panel, regime, seed, arm) for panel in panels
+            for regime in ("smooth_subcritical", "smooth_choked")
+            for seed in reg["models"]["paired_seeds"] for arm in reg["models"]["arms"]}
+    if set(values) != keys:
+        raise Blocked("incomplete or unexpected scoring groups")
+    for (panel, regime, seed, arm), result in values.items():
+        count = sum(case["regime"] == regime for case in splits[panel])
+        if result["cases"] != count or result["points"] != count*161*4:
+            raise Blocked("incomplete registered score/prediction row coverage")
+
+
 def run(main_root):
     root = Path(main_root).resolve()
     if root != SOURCE_ROOT:
@@ -141,6 +154,7 @@ def run(main_root):
         raise Blocked("registered nice>=15 is required")
     owned = context.acquire_run(reg["outputs"]["root"], expected["registration_sha256"], identity=context.identity)
     out, errors, frozen, status = owned.out, [], {}, "ERROR"
+    scientific_verdict = None
     started = time.perf_counter()
     output_hashes, expected_outputs, complete = {}, [], False
     log = (out / "execution.log").open("x")
@@ -220,6 +234,7 @@ def run(main_root):
         guard()
         record("VALIDATION_FINAL_CHECKPOINTS")
         validation = score.score_panels(reg,{"validation":splits["validation"]},networks,reference,out,guard,final_test=False)
+        validate_score_coverage(reg, splits, validation, ("validation",))
         freeze_finished()
         checkpoint_hashes = {name:digest for name,digest in frozen.items() if name.endswith(".pt")}
         if len(checkpoint_hashes) != 6:
@@ -231,12 +246,10 @@ def run(main_root):
         record("SINGLE_FINAL_TEST_PASS")
         tests = score.score_panels(reg,{name:splits[name] for name in ("synthetic_test","product_test")},
                                    networks,reference,out,guard,final_test=True)
-        for (panel, regime, seed, arm), values in tests.items():
-            expected_count = sum(case["regime"] == regime for case in splits[panel])
-            if values["cases"] != expected_count:
-                raise Blocked("incomplete final test coverage")
+        validate_score_coverage(reg, splits, tests, ("synthetic_test", "product_test"))
         decisions = score.paired_decisions(tests,reg)
         status = "PASS" if decisions["registered_comparison_pass"] else "FAIL"
+        scientific_verdict = status
         write_json(out / "report.json", {"registration_id":reg["registration_id"], "status":status, **decisions,
             "scores":[{"panel":k[0],"regime":k[1],"seed":k[2],"arm":k[3],**v} for k,v in tests.items()],
             "validation_scores":[{"panel":k[0],"regime":k[1],"seed":k[2],"arm":k[3],**v} for k,v in validation.items()],
@@ -267,8 +280,11 @@ def run(main_root):
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
             status, complete = "ERROR", False
+        execution_complete = bool(complete and not errors and status in {"PASS", "FAIL"}
+                                  and set(expected_outputs) <= set(output_hashes))
         terminal = owned.release({"status":status, "exit_code":0 if status == "PASS" else 1, "errors":errors,
-            "outputs_complete":bool(complete and set(expected_outputs) <= set(output_hashes)),
+            "execution_complete":execution_complete, "scientific_verdict":scientific_verdict,
+            "outputs_complete":execution_complete,
             "expected_outputs":expected_outputs, "artifact_hashes":output_hashes,
             "wall_s":time.perf_counter()-started})
     print(terminal["status"])

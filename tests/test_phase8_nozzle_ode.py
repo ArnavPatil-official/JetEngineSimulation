@@ -16,6 +16,22 @@ def registration():
     return json.loads((ROOT / "docs/phase8_nozzle_ode_registration.json").read_text())
 
 
+def test_execution_coverage_denies_missing_groups_and_rows():
+    from scripts.phase8.nozzle_ode.run import validate_score_coverage
+    reg = registration()
+    splits = {"validation": [{"regime":regime} for regime in ("smooth_subcritical", "smooth_choked")]}
+    values = {("validation", regime, seed, arm): {"cases":1, "points":161*4}
+              for regime in ("smooth_subcritical", "smooth_choked")
+              for seed in reg["models"]["paired_seeds"] for arm in reg["models"]["arms"]}
+    validate_score_coverage(reg, splits, values, ("validation",))
+    first = next(iter(values))
+    with pytest.raises(inputs.Blocked, match="scoring groups"):
+        validate_score_coverage(reg, splits, {k:v for k,v in values.items() if k != first}, ("validation",))
+    values[first] = {"cases":1, "points":161*4-1}
+    with pytest.raises(inputs.Blocked, match="row coverage"):
+        validate_score_coverage(reg, splits, values, ("validation",))
+
+
 def test_fixed_source_identity_and_draw_balance_refuse_omission():
     reg = registration()
     train_ids, named_ids = inputs.expected_source_ids(reg)
