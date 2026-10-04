@@ -104,17 +104,20 @@ CLI commands are fixed in their procedure registrations before launch. Run
 meaningful pure tests and protected/hash checks after benchmark ownership ends;
 keep compilation, training and speed measurements off the active benchmark.
 
-For the authorized fresh G0 run, from the repository root, first require:
+For the authorized fresh G0 run, first validate and export the original chain
+context before integrating any new sources. At that point, from the repository
+root, the original idle check is:
 
 ```sh
 .venv/bin/python scripts/phase8/ac_workflow.py status --registration docs/phase8_queue_recovery_registration.json --require-idle
 ```
 
-Only after that command succeeds, confirm AC power with `pmset -g batt` and
-that `outputs/phase8/g0_rerun_20261003` remains absent, then run:
+Only after strict export, reviewed source integration and the committed source
+extension manifest, confirm AC power and a fresh target. The registered wrapper
+records actual core/worker provenance while delegating the original G0 procedure:
 
 ```sh
-caffeinate -i nice -n 15 .venv/bin/python scripts/phase8/g0_parity.py --workers 6 --out-dir outputs/phase8/g0_rerun_20261003
+caffeinate -i nice -n 15 .venv/bin/python scripts/phase8/post_chain_g0.py run --registration docs/phase8_screening_operations_registration.json --out-dir outputs/phase8/g0_rerun_20261003
 ```
 
 G0 is a separate post-chain action; do not add it to or reorder the running

@@ -9,16 +9,15 @@ post-chain scientific sequence. No prose results draft.
 **Working deadline: October 28, 2026 (America/New_York).** Prioritize the
 working product. Preserve the local tag name `freeze-2026-10-18`.
 
-The main AC chain is left unchanged. At the 17:28 local check on 2026-10-04,
-its live owner PID 22543 held the lease in `WAITING_FOR_AC` before
-`run2_ac/arm2b_W4_1w`, with no child or pending child. The Mac was back on AC;
-the owner polls every 300 seconds. Run 2 had 17/56 complete records: 16 PASS
-and one `INVALID_POWER` (`arm2b_W3_1w`, numerical comparisons passed, timing
-invalid), with 39 specs remaining. Frozen source and benchmark module hashes
-still matched. New code remains in isolated worktrees; the registered
-all-family assertion remains part of the chain's full pytest.
-The driver then confirmed AC at 17:29:58 and started `arm2b_W4_1w` at
-17:29:59 local; the pending G0 remains outside this running chain.
+The main AC chain is unchanged. At the 19:30 local check on 2026-10-04,
+run 2 and its two registered reruns had finished. The validated run-2
+completion retains **48 PASS, 1 INVALID_POWER and 7 FAIL** (including the
+seven historical specs); both reruns are **PASS**. Benchmark-owner release
+is recorded at 22:45:30 UTC. Owner PID 22543 still holds the main lease,
+waiting for AC before A2 calibration; no A2 child has started. Remaining
+original order is A2, separate validation build, Track 4 focused tests and
+its single diagnostic, full pytest, then protected hashes. The original
+scientific tree and built-module hashes still match the lease.
 
 **Deferred, not failed:** A4c; P8.5 rerun 4; G2 cross-family; stages 1–3
 calibration and digitising; P8.9–P8.15 beyond the new screening/nozzle/product
@@ -58,11 +57,19 @@ explicit deferral. See `docs/plan.md` for the current execution scope.
 - Shared post-chain source/G0 provenance: `e415531`; CLI/API and producer
   receipt protocol `7cf5c9f`; synchronous verification/envelope note `f54878d`.
 
-Numerical consumers and meaningful synthetic tests are being prepared in
-isolated worktrees. They have not been integrated into the main scientific
-source tree, run, trained or scored. Original source tree and built-module
-hashes still match the live lease. No new G0, P7.3-A1, P8-S or nozzle result
-exists; no new score reservation has been consumed.
+Numerical consumers remain isolated in worktrees and have not been integrated
+into the main scientific tree, trained or scored. After strict benchmark
+queue/owner-release validation, isolated toy checks passed: **68 gate/API
+cases and 39 P7.3 fake-backend cases**. A changed owner-birth fixture now
+expects lease retention; toy lifecycle fixtures include the registered
+pathway constants and label metadata. These checks import no simulator,
+Cantera or MLX and open no scientific test labels. The source/binary proof
+was unchanged afterward. This is not the pending scientific verification
+receipt. The prospective fixture clarification is committed as `7480226`.
+No new G0, P7.3-A1, P8-S or nozzle result exists, and no new score reservation
+has been consumed. A record-gated post-chain driver is being prepared; it
+is **not yet armed**. It must export strict original evidence before new
+source integration and follow the current sequence without manual gaps.
 
 The active chain has reached arm 4. `arm4b_W4_11w` is a terminal **FAIL**:
 its warm-up is internally reproducible but fails the frozen reference check
