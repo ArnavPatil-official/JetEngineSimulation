@@ -56,11 +56,11 @@ RUN_FILES = ("manifest.json", "progress.jsonl", "result.json")
 ABORTED_EXIT = 125                                            # launcher told to abort: nothing executed
 
 
-class Blocked(Exception):
+class Blocked(RuntimeError):
     """A precondition stops this spec/stage without consuming it."""
 
 
-class Refused(Exception):
+class Refused(RuntimeError):
     """Ownership or registration refusal; nothing was launched."""
 
 

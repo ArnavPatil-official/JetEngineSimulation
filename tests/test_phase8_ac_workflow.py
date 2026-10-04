@@ -397,6 +397,11 @@ def test_reused_pid_is_stale_but_never_completion():
     assert ac.liveness(12, None, lambda _: ac.DEAD) == "unknown"
 
 
+def test_scientific_callers_can_catch_runtime_gate_errors():
+    assert issubclass(ac.Blocked, RuntimeError)
+    assert issubclass(ac.Refused, RuntimeError)
+
+
 def test_script_hash_blocks_before_any_queue_work(h):
     (h.root / "bench.py").write_text("changed")
     with pytest.raises(ac.Blocked): h.wf.run_queue("run2_ac", "probe")
