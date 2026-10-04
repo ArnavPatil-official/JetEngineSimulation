@@ -7,8 +7,8 @@ v6 C++ simulator and computational speed; real-world accuracy is inherited
 from v6. The historical A1 failure on the penalty guard remains disclosed.
 
 The registered post-chain workflow creates the saved model bundle shown
-below. Training, scoring and measured speed are pending until the original
-AC chain releases its lease. The default product loader requires passing
+below. Numerical work starts only after the original AC chain releases its lease.
+The default product loader requires passing
 fidelity, ranking and measured-speed gates and verified model hashes.
 A fully computed failed study retains diagnostics and does not enable the tool.
 
