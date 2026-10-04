@@ -937,8 +937,29 @@ before collection. The protected `simulation/catjet_backend.py` prepends
 that the all-family assertion used the new API. The recovery registration's
 full-test command supplies this preload without editing protected source.
 
-Claude's queue-review and A4c sessions ended at their session limit (reset
-10:10 pm America/New_York). Code execution remains incomplete. Planner review
-and prospective registration continue. The old paused queue owners were
-verified to have no numerical descendants and retired without resuming their
-parsed old loop. Replacement remains unarmed pending verified implementation.
+Claude's queue-review and A4c sessions ended at their session limit. The
+user then explicitly instructed "Just do it with CODEX". This supersedes the
+executor-role restriction for this authorized repair. Codex completed the
+queue, A5 evidence checks and A4c/calibration implementation in isolated
+worktrees, with independent review before integration. The old parked queue
+owners were retired without resuming their parsed loop; no repeat ran.
+
+### Integration review and AC launch (2026-10-03)
+
+Deadlock implementation: `8635403`. A5 registration `18df7a4`, strict evidence
+clarification `7d545ed`, implementation `a79312d`. P8.3-A2 registration
+`2f5bbe5`. A4c registration `0e32a29`, C1 `9e4db00`, implementation `ca60227`.
+The initial naming correction remains the separate additive commit `4792e93`.
+
+Integrated pure checks passed: 121 tests and four subtests. Actual all-20
+convergence, separate compilation, Track 4, full pytest, A5 audit/rerun,
+error budget, A4c fit/profile/score and G0 regeneration remain pending in
+their registered order on AC. No family is skipped by the actual all-20 test.
+Static/lint/shell/JSON/diff/manifest and protected/retained checks passed.
+The main chain is authorized to be armed without another approval; on
+battery it must hold a recorded WAITING_FOR_AC lease with no numerical child.
+A4c and A5 use the shared strict terminal-record validator. Only the actual
+recorded full-pytest child has an explicit active-stage exception for the
+input-only all-20 check; idle consumers cannot bypass an existing lease.
+Scientific artifact review/commit and one-shot reservation remain mandatory
+before a held-out score. No push, freeze placeholder or local tag now.

@@ -106,14 +106,15 @@ The user's 2026-10-02 decisions, repeated on 2026-10-03, supersede the former
 "Blocked / needs the user" list. No additional scientific decision is awaited.
 
 - **P8.5-A5:** registration `18df7a4`; implementation `71c6aed`, reviewed
-  corrections `d0dc7d4` and `b9d638f`. No edit to `data/A2NOx.yaml`.
+  corrections `d0dc7d4` and `b9d638f`; strict workflow/build evidence
+  registered in `7d545ed` and implemented in `a79312d`. No edit to `data/A2NOx.yaml`.
   Independently audit every reaction/element in the uncloned mechanism; use
   exactly 10 times its registered dimensionless bound for closure and a
   balanced control at strict 1e-10. Mixed trace-species rule: relative above
   Y = 1e-8, absolute 1e-12 at or below it. Temperature convergence at
   tau/10tau/100tau must shrink monotonically and end below 0.1 K; a converged
   approach/idle kinetics limit is recorded as physics. Failed integration is
-  still numerical failure. Twenty pure gate/audit tests passed; the actual
+  still numerical failure. Twenty-six pure gate/audit tests passed; the actual
   independent audit and rerun 4 remain pending on AC, due 2026-10-16.
 - **P8.3-A2:** registration `2f5bbe5`. Re-cited full-scale TP-2171 and
   modelling evidence; new Cv central 0.985, sensitivity range 0.95–1.00.
@@ -128,14 +129,16 @@ The user's 2026-10-02 decisions, repeated on 2026-10-03, supersede the former
   remain inputs; no per-engine fitted parameter. Score the Trent held-out
   set exactly once by 2026-10-15, or report in progress. Pre-computation C1
   clarification `9e4db00` registers the opt-in public-input flow bound,
-  separate build and complete frozen-evidence checks. Currently in progress;
+  separate build and complete frozen-evidence checks. Implementation `ca60227`
+  passed pure tests and independent review. Numerical work is in progress;
   no fit, profile or held-out target access has occurred.
 - **Calibration-only work:** registered OAT Cv, Cd, T4, FPR, six efficiencies
   and cooling error budget, reporting illustrative shares of the known
   +15.4/+10.3/+8.3 % aggregates; input-only Trent 1000-E convergence repair
-  and an all-20-family design-convergence assertion. Implementation is an
-  unfinished draft in the separate A4c worktree, with review defects in
-  `docs/FIXES.md`. No error-budget or convergence result exists.
+  and an all-20-family design-convergence assertion. Implementation `ca60227`
+  uses public inputs, an opt-in solver domain and the separate validation
+  core; old solver defaults remain unchanged. All-20 actual convergence is
+  required in the queued full pytest. No error-budget or convergence result exists.
 - **G0:** the requested file reads now succeed. Fresh output selection `634ecb1` has
   been implemented by Claude and its path rules statically checked; no G0
   regeneration has run. Use a new write-once directory, preserving old G0.
@@ -158,15 +161,17 @@ A2 starts only after both benchmark completion files and the benchmark-owner
 release record validate. Existing invalid-power and overlap flags remain;
 terminal completion is not a clean benchmark claim.
 
-**Replacement is not armed yet.** Static review found incomplete cached-record
-evidence checks. Claude's queue-review and A4c sessions hit the shared session
-limit, resetting at 10:10 pm America/New_York; their unfinished work is
-preserved for completion/review in `phase8-queue-recovery-20261003` and
-`phase8-p83-a2-a4c-20261003`. The main queue wrapper remains unchanged until
-the replacement passes review; all old queue processes have ended. See
-`docs/FIXES.md`. The Mac is on battery.
+**Reviewed replacement:** corrective commit `8635403` replaces the queue
+predicate with registered result/completion evidence, atomic PID/birth-time
+ownership and AC/source/dependency checks after waits and before execution.
+A2 is chained to both benchmark completion files and owner-release evidence.
+The user's explicit "Just do it with CODEX" instruction superseded the
+executor-role restriction; Codex completed and independently reviewed the
+remaining implementation in worktrees. Launch is the remaining operational
+step; the Mac is on battery. The durable lease/session records below will
+report its actual state. No scientific run or score has occurred.
 
-Registered AC order, after reviewed code is committed:
+Registered AC order:
 
 1. Benchmark run 2 (skip validated existing records; finish missing specs).
 2. The two registered rerun jobs: arm1a_W2_11w and arm1a_W4_11w.
@@ -183,6 +188,23 @@ worktrees (`phase8-p85-a5-20261003`, `phase8-p83-a2-a4c-20261003`,
 defects go to `docs/FIXES.md`. Registration before scoring, one-shot held-out
 scores, protected files and no push are never deferred. Freeze package:
 `outputs/freeze/` on 2026-10-18; local tag `freeze-2026-10-18`, not created yet.
+
+### Scientific commands after the main chain
+
+A4c uses the validated `cpp/build_next` build; it does not rebuild the
+benchmark core. Review and commit the exported build-provenance and actual
+all-20 convergence records first. Run the calibration-only OAT error budget,
+then primary fit and primary A1 profile, committing their complete artifacts
+between phases. Only a registered primary A1 failure permits the single
+fallback and its required profile. Validate the frozen evidence before the
+one-shot Trent score; reserve before target access and preserve any failure.
+No held-out score is an automatic action of the AC chain.
+
+A5 separately runs the independent uncloned-mechanism audit, reviews and
+commits its passing record, then runs rerun 4 using the validated separate
+core. Do not rerun the generic build command or alter the mechanism. Both
+tracks require a terminal main chain and released lease before numerical
+work. Failed gates stay recorded; non-blocking defects remain in `docs/FIXES.md`.
 
 ## Superseded blocked list (2026-10-01 morning)
 
@@ -258,14 +280,18 @@ Blockers and deferred work: Ma Eq. 25 thermal-unit ambiguity (flagged,
 not repaired); loss-balancing cross-validation, M1 empirical residuals,
 R7-1..R7-3 and the post-freeze Sajben low-label study remain deferred. The parked A2 chain was stopped
 and legacy queue retired during the
-authorized recovery above; replacement is awaiting implementation review.
+authorized recovery above; the reviewed replacement owns their registered
+sequence. Numerical results are still pending on AC.
 
 ## Recovery review checks (2026-10-03)
 
-- Twenty pure P8.5-A5 tests passed in the integrated main checkout.
+- Integrated fixtures: 121 tests and four subtests passed (57 queue/G0,
+  26 A5, 38 A4c/input-convergence). The actual all-20 solve assertion was
+  deselected on battery and remains required in full pytest.
 - G0 output-path checks passed for unchanged defaults, fresh relative output
   selection and path-traversal rejection; no regeneration ran.
-- Registration JSON parsing, Python AST, shell syntax and G0 CLI help checks passed.
+- Registration JSON parsing, Python AST, pyflakes, shell syntax, diff and
+  G0 CLI help checks passed; build manifest reports no stale entry.
 - Protected manifests 40/134/184 each have zero mismatches; an independent
   310-file retained/protected/historical snapshot also has zero mismatches.
 - The required case-insensitive naming scan returned no matches.
