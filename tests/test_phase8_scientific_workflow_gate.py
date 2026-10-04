@@ -204,13 +204,13 @@ def test_write_once_and_unsafe_paths(tmp_path):
     assert gate.read(p) == {"x": 1}
 
 
-@pytest.mark.parametrize("fault", ["none", "truncated", "partial_fail", "valid_fail",
+@pytest.mark.parametrize("fault", ["none", "generic", "truncated", "partial_fail", "valid_fail",
                                    "foreign_owner", "foreign_argv", "wrong_phases", "false_exit", "raw_hash"])
 def test_surrogate_terminal_requires_registered_coverage(tmp_path, monkeypatch, fault):
     root = tmp_path
     out = root / "outputs/study"
     reg = "docs/study.json"
-    put(root / reg, {"id": "P8-S-20261004", "artifact_root": "outputs/study",
+    put(root / reg, {"id": "generic-producer" if fault == "generic" else "P8-S-20261004", "artifact_root": "outputs/study",
                     "provenance": {"successful_release": {"expected_outputs": ["rows.csv", "metrics.json"]}}})
     ctx = SimpleNamespace(root=root, registration=reg, identity={"source": "fixture", "registration_sha256": "reg"},
                           binary_sha256="core", binary_path=root / "cpp/core.so")
@@ -253,7 +253,7 @@ def test_surrogate_terminal_requires_registered_coverage(tmp_path, monkeypatch, 
     put(out / "released_lease.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture",
         "state": "RELEASED", "reservation_sha256": terminal["reservation_sha256"],
         "terminal_sha256": gate.digest(out / "terminal.json")})
-    if fault not in {"none", "valid_fail"}:
+    if fault not in {"none", "generic", "valid_fail"}:
         with pytest.raises(gate.GateError):
             gate.validate_consumer_terminal(root, reg, out, allow_scientific_fail=True)
     else:

@@ -416,7 +416,6 @@ def _g0(root, op, context):
         raise GateError("G0 run, source and release identities differ")
     expected = terminal.get("expected_outputs")
     hashes = terminal.get("artifact_hashes", {})
-    command_paths = []
     if terminal.get("exit_code") != 0 or terminal.get("outputs_complete") is not True \
             or terminal.get("errors") or not isinstance(expected, list) or not expected \
             or not set(expected) <= set(hashes) or any(doc["files"].get(p) != h for p,h in hashes.items()):
@@ -790,6 +789,7 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
         raise GateError("Producer terminal/reservation/release proof is incomplete")
     expected = terminal.get("expected_outputs")
     hashes = terminal.get("artifact_hashes", {})
+    command_paths = []
     if not isinstance(expected, list) or not expected or not set(expected) <= set(hashes):
         raise GateError("Producer success lacks expected artifact coverage")
     if reg.get("id") == "P8-S-20261004":
@@ -855,6 +855,9 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
                 or command.get("owner_birth") != reservation.get("owner_birth") \
                 or command.get("argv") != reservation.get("argv"):
             raise GateError("Producer completed-command proof differs from reservation")
+        command_paths = [str((out / "command.exit.json").relative_to(root))]
+        if hashes.get(command_paths[0]) != digest(out / "command.exit.json"):
+            raise GateError("Producer completed-command hash differs from terminal")
     selected_hashes = hashes
     if artifact_paths is not None:
         if not isinstance(artifact_paths, (list, tuple, set)) or not artifact_paths or not set(artifact_paths) <= set(hashes):
