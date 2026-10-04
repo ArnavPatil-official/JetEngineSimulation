@@ -360,6 +360,10 @@ def synthetic_protocol():
     body = [node for node in source.body if isinstance(node, ast.FunctionDef) and node.name in names]
     scope = {"np": np, "math": math, "JETA": "JetA", "JETA_ALT": "JetA_dooley2010",
              "N_DRAWS": 64, "SIGN_AGREEMENT_MIN": 0.95}
+    pathways = next(ast.literal_eval(node.value) for node in source.body
+                    if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name)
+                    and target.id == "PATHWAYS" for target in node.targets))
+    scope["PATHWAYS"] = pathways
     fuel_source = ast.parse((REPO / "simulation/fuels_v7.py").read_text())
     brem_body = [node for node in fuel_source.body if isinstance(node, ast.FunctionDef) and node.name == "nvpm_brem_dEIn_pct"]
     brem_scope = {"math": math, "load_properties": lambda: {"nvpm": {"brem2015_via_teoh2022_S1": {
@@ -375,7 +379,7 @@ def synthetic_protocol():
     protocol = SimpleNamespace(np=np, pd=pd, N_DRAWS=64, JETA="JetA", JETA_ALT="JetA_dooley2010",
         OPERATING_POINTS=modes, QUANTITIES=("ff", "tsfc_mg_Ns", "T4", "phi", "nox_corr_g_s", "lifecycle_g_s"),
         pairs=lambda: [{"a": "HEFA-10", "b": "JetA", "family": "SAF_vs_JetA"}],
-        corsia=lambda: {"base": 89., "tri": {"HEFA": {"min": 20., "mode": 30., "max": 40.}}},
+        corsia=lambda: {"base": 89., "tri": {p: {"min": 20., "mode": 30., "max": 40.} for p in pathways}},
         lifecycle_factor=lambda fuel, draw: sum(weight * draw["fossil" if part.startswith("JetA") else "HEFA"] for part, weight in fuel.items()),
         lhv_liquid=lambda name: 43.,
         fuels_v7=fuel_helpers)
@@ -454,7 +458,8 @@ def test_protected_claim_lifecycle_and_brem_rules_used_with_parent_csv_schema():
     protocol = synthetic_protocol()
     fuels, central, draws = toy_frames(protocol)
     registration = {"unchanged_protocol": {"lifecycle": {"n_corsia_common": 1000, "seed": 42},
-                    "nvpm": {"h_ref_pct": 13.8, "h_saf_pct": 15.3}}}
+                    "nvpm": {"h_ref_pct": 13.8, "h_saf_pct": 15.3},
+                    "labels": {"condition": consumer.LABEL}}}
     tables, summary = consumer.postprocess(protocol, registration, {"frozen": 1.}, central, draws, fuels)
     claims, nvpm = tables[2], tables[3]
     assert len(claims) == 24
@@ -480,7 +485,8 @@ def test_failed_paired_row_rejects_every_quantity_at_that_mode():
     mask = (draws.draw == "draw_63") & (draws.fuel == "HEFA-10") & (draws.op == "TAKE-OFF")
     draws.loc[mask, "status"] = "unreachable"
     registration = {"unchanged_protocol": {"lifecycle": {"n_corsia_common": 1000, "seed": 42},
-                    "nvpm": {"h_ref_pct": 13.8, "h_saf_pct": 15.3}}}
+                    "nvpm": {"h_ref_pct": 13.8, "h_saf_pct": 15.3},
+                    "labels": {"condition": consumer.LABEL}}}
     tables, _ = consumer.postprocess(protocol, registration, {}, central, draws, fuels)
     assert not tables[2][tables[2].op == "TAKE-OFF"].claimed.any()
     assert not tables[2][tables[2].op == "TAKE-OFF"].all_converged.any()
