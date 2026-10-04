@@ -145,7 +145,8 @@
     "claim_implementation_clarifications": "Preserve existing source checks in addition to parent prose: both central rows converged, all 64 paired rows present/converged, central delta finite and nonzero; zero paired differences disagree; all comparisons/rejection reasons published. CLIMB85 never claimed, neat context separated.",
     "target_policy": "Only AE3 OPR/BPR/rated-thrust inputs via with_targets=False. No new held-out score or empirical nozzle target read. Frozen fit/profile/gate metadata is dependency evidence.",
     "source_freeze": "Freeze the final committed additive consumer/test/config source identity before compute; this base snapshot alone does not authorize unimplemented code.",
-    "main_root_contract": "Supply an explicit main root for frozen original inputs/records/binary; distinguish original-main and additive consumer identities. Verify imported protected module origins/hashes. Runtime may execute the registered new consumer from an extended validated main tree or isolated frozen worktree only after the attestation/extension proof; no mixed unverified sources."
+    "main_root_contract": "Supply an explicit main root for frozen original inputs/records/binary; distinguish original-main and additive consumer identities. Verify imported protected module origins/hashes. Runtime may execute the registered new consumer from an extended validated main tree or isolated frozen worktree only after the attestation/extension proof; no mixed unverified sources.",
+    "evidence_validation": "Every required raw solve quantity of a row labeled converged must be finite before scoring; missing/nonfinite converged evidence is ERROR. Registered unreachable rows retain missing values/status/reason. This validates evidence and does not change the protected claim function or scientific thresholds."
   },
   "backend_parity": {
     "purpose": "Numerical equivalence gate for the additive consumer; not empirical blend validation and not exhaustive proof of all 64 draw extremes.",
@@ -216,7 +217,9 @@
     ],
     "publication": "Only quantitative tables/metrics and technical README. Do not produce the original narrative p73_blends_v6.md or a manuscript/results draft.",
     "required_label": "Conditional on the frozen v6 calibration; A1 FAIL (penalty-dependent); original gate closed; P7.3-A1 exception.",
-    "integrity": "All expected artifacts must exist, parse to registered schemas/coverage and match terminal hashes before COMPLETE. Preserve reservation/logs/partial files on failure; occupied output namespace refuses restart. No old result or log overwrite."
+    "integrity": "All expected artifacts must exist, parse to registered schemas/coverage and match terminal hashes before COMPLETE. Preserve reservation/logs/partial files on failure; occupied output namespace refuses restart. No old result or log overwrite.",
+    "raw_checkpoint": "outputs/phase7/p73_a1_cpp_20261004/partial_rows.jsonl",
+    "raw_checkpoint_rule": "Append-only records of each finished parity or full-study solve batch, with stage/case and frozen identity. No extra simulator requests. Retain completed rows on later failure; nonfinite raw values are explicitly encoded as such, never fabricated successful values. Final quantitative CSV schemas remain unchanged."
   },
   "inputs_sha256": {
     "outputs/phase7/p73_registration.json": "5544900ed6c5eb3e55c510f994c5073065a85675e89548dde9c750d2be52da12",
@@ -269,6 +272,11 @@
       "dated": "2026-10-04",
       "before": "Any additive implementation execution, parity or blend computation",
       "scope": "Prospective source-extension/dependency attestation, distinct original-main versus consumer identities, and truthful fresh-G0/binary provenance. All parent scientific definitions and conditional claim rules remain unchanged."
+    },
+    {
+      "dated": "2026-10-04",
+      "before": "Any implementation execution or synthetic test execution",
+      "scope": "Declare exact new source/test paths, approved append-only raw solve checkpoints without extra calls, and rejection of malformed nonfinite converged evidence before unchanged claim scoring."
     }
   ],
   "source_extension_protocol": {
@@ -299,5 +307,9 @@
     },
     "consumer_identity": "Freeze final committed new consumer/helper/test/config paths and hashes separately, plus its chosen actual binary/fresh-G0/parity/registration identities. Both original and new identities must remain readable/unchanged throughout execution.",
     "no_integration_now": "Implementation remains in this isolated worktree. Do not edit or integrate main tracked scientific source while the active benchmark runs."
-  }
+  },
+  "new_source_paths": [
+    "scripts/phase8/p73_a1_cpp.py",
+    "tests/test_phase7_p73_a1_cpp.py"
+  ]
 }
