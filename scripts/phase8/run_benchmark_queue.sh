@@ -1,30 +1,14 @@
 #!/usr/bin/env bash
-# Sequential registered benchmark queue (docs/phase8_registration.md section 4).
-# Usage: run_benchmark_queue.sh OUT_DIR "ARM VARIANT WORKLOAD WORKERS [native]" ...
-# Each run is write-once; a failed or refused run is logged and the queue moves
-# on. Every run starts only on AC power (timings on battery are not comparable).
+# Compatibility wrapper for the registered benchmark queue
+# (docs/phase8_registration.md section 4; recovery registration
+# docs/phase8_queue_recovery_registration.json).
+# Usage unchanged: run_benchmark_queue.sh OUT_DIR "ARM VARIANT WORKLOAD WORKERS [native]" ...
+# OUT_DIR and the specs must match a registered queue exactly. The queue now runs
+# in scripts/phase8/ac_workflow.py, which takes the owner lease, skips validated
+# terminal results, rechecks AC power immediately before each run and writes
+# write-once records. It never matches process names or reads log text.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="$1"; shift
-LOG="$OUT/queue_logs"
-mkdir -p "$LOG"
-for spec in "$@"; do
-  read -r arm variant workload workers extra <<<"$spec"
-  flag=""; tag=""
-  if [ "${extra:-}" = "native" ]; then flag="--native"; tag="-native"; fi
-  name="arm${arm}${variant}${tag}_${workload}_${workers}w"
-  until pmset -g ps | head -1 | grep -q "AC Power"; do
-    echo "$(date -u +%FT%TZ) waiting for AC power before $name" >> "$LOG/queue.log"
-    sleep 300
-  done
-  # registered protocol: no other heavy jobs while timing
-  while pgrep -if "python.*scripts/phase8/" | xargs -I{} ps -o command= -p {} 2>/dev/null | grep -qv "scripts/phase8/benchmark.py"; do
-    echo "$(date -u +%FT%TZ) waiting for other Phase 8 jobs to finish before $name" >> "$LOG/queue.log"
-    sleep 120
-  done
-  echo "$(date -u +%FT%TZ) start $name" >> "$LOG/queue.log"
-  "$ROOT/.venv/bin/python" "$ROOT/scripts/phase8/benchmark.py" --arm "$arm" --variant "$variant" \
-      --workload "$workload" --workers "$workers" --out-dir "$OUT" $flag > "$LOG/$name.log" 2>&1
-  echo "$(date -u +%FT%TZ) end $name exit=$?" >> "$LOG/queue.log"
-done
-echo "$(date -u +%FT%TZ) queue done" >> "$LOG/queue.log"
+exec "$ROOT/.venv/bin/python" "$ROOT/scripts/phase8/ac_workflow.py" queue \
+    --registration docs/phase8_queue_recovery_registration.json --out-dir "$OUT" -- "$@"
