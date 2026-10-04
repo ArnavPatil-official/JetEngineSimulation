@@ -145,15 +145,18 @@
     "claim_implementation_clarifications": "Preserve existing source checks in addition to parent prose: both central rows converged, all 64 paired rows present/converged, central delta finite and nonzero; zero paired differences disagree; all comparisons/rejection reasons published. CLIMB85 never claimed, neat context separated.",
     "target_policy": "Only AE3 OPR/BPR/rated-thrust inputs via with_targets=False. No new held-out score or empirical nozzle target read. Frozen fit/profile/gate metadata is dependency evidence.",
     "source_freeze": "Freeze the final committed additive consumer/test/config source identity before compute; this base snapshot alone does not authorize unimplemented code.",
-    "main_root_contract": "Use an explicit validated main root for protected imports, frozen inputs, main-context records and the selected binary. Freeze isolated additive consumer identity separately if it is executed outside main. Verify each loaded protected module originates from that validated main root; no cross-checkout source mixing."
+    "main_root_contract": "Supply an explicit main root for frozen original inputs/records/binary; distinguish original-main and additive consumer identities. Verify imported protected module origins/hashes. Runtime may execute the registered new consumer from an extended validated main tree or isolated frozen worktree only after the attestation/extension proof; no mixed unverified sources."
   },
   "backend_parity": {
     "purpose": "Numerical equivalence gate for the additive consumer; not empirical blend validation and not exhaustive proof of all 64 draw extremes.",
     "fresh_G0": {
       "required": true,
-      "legacy_not_reused": true,
+      "legacy_not_reused_as_fresh": true,
       "documented_pending_directory": "outputs/phase8/g0_rerun_20261003",
-      "required_evidence": "Fresh G0 PASS at unchanged registered tolerance, every check/expected table present and hash-valid, clean committed source snapshot, terminal command evidence and a matching write-once reservation/environment/binary manifest. Actual full-equilibrium loaded module path/hash must match validation_build and this study."
+      "existing_script_limit": "scripts/phase8/g0_parity.py emits tables and a verdict JSON with commit/source-status metadata, but no reservation or actual loaded binary hash. Do not claim nonexistent artifacts.",
+      "supplied_rerun": "A supplied fresh rerun may be valid but lack provenance verification. Retain it as pending verification, not fabricated PASS provenance or discarded evidence. Accept only when trustworthy evidence establishes its actually used binary/source identity and table hashes; an unproven binary identity blocks the consumer.",
+      "fresh_wrapper": "If an additional fresh run is separately authorized, a new registered wrapper may reserve a new output namespace and capture source/environment/actual module provenance around the existing unchanged G0 script. It may explicitly preload an optional build_next core; preserve the old benchmark module and disclose the selection.",
+      "required_evidence": "Fresh G0 PASS at unchanged comparison rule; every expected check/table present and hash-valid; committed original source provenance; terminal command evidence; verified actual loaded full-equilibrium core path/hash matching the selected consumer core. Reservation/binary manifest requirements apply to a future wrapper that actually emits them, never retroactively to the historical script."
     },
     "study_parity": {
       "central": "Every original central fuel, including alternative JetA spread reference, at TAKE-OFF, APPROACH, IDLE and CLIMB85.",
@@ -176,17 +179,19 @@
   },
   "operational_guards": {
     "active_chain": "Do not interrupt, signal, reorder or integrate scientific source changes into the active main AC workflow. No P7.3 stage is inserted into its registration.",
-    "main_context_api": "validate_terminal_context(root, registration=docs/phase8_queue_recovery_registration.json, expected_identity=frozen scientific identity, require_idle=True)",
-    "required_main_evidence": "Strict registered benchmark queue completions, benchmark owner release, referenced stage dependencies/output/log hashes, matching terminal chain, no lease, validation_build PASS and its actual binary hash. Terminal FAIL/INCOMPLETE remains truthful and never substitutes for required PASS evidence.",
+    "main_context_api": "scripts.phase8.scientific_workflow_gate.prepare_context(root, registration, expected_consumer_identity=separately frozen consumer identity, require_g0=True), then Context.require_idle_ac() and acquire_run(); the helper injects only proven ORIGINAL main identity into read-only Workflow checks.",
+    "required_main_evidence": "Before any new source integration: strict original main terminal context, queue completions, owner-release, referenced stage/command/log/output hashes and no lease. Export a write-once hashed dependency attestation. Later checks revalidate raw evidence and original source blobs/modes/modules, allowing only explicitly registered new paths. Failure statuses remain truthful and cannot supply a required PASS prerequisite.",
     "binary_selection": {
-      "path": "cpp/build_next/catjet_core.cpython-312-darwin.so",
-      "rule": "Explicitly preload and verify the selected module path/hash in the parent and every worker, equal to validated PASS validation_build and fresh G0. Preserve cpp/build benchmark binary. No implicit sys.path preference, CATJET_BUILD-only assumption or fallback."
+      "choice": "Explicitly selected cpp/build/catjet_core.cpython-312-darwin.so or cpp/build_next/catjet_core.cpython-312-darwin.so; the chosen path and actual hash are frozen in the run manifest before numerical execution.",
+      "old_core": "A selected old core must equal the attested original benchmark module and have fresh G0 provenance and registered blend parity matching that same actual module; do not claim it equals a different validation_build binary.",
+      "optional_build_next": "A selected build_next core additionally requires the validated PASS validation_build artifact/hash (or separately prospectively registered build provenance) and explicit preloading/provenance capture around fresh G0. The old core is preserved.",
+      "worker_rule": "Verify the chosen actual loaded module path/hash in the parent and every worker, matching fresh G0 and parity provenance. No implicit sys.path preference, CATJET_BUILD-only assumption or fallback."
     },
     "resources": "Require AC immediately before every heavy stage, caffeinate and nice -n 15; no overlapping owned heavy stage. Revalidate dependencies/resource/ownership/binary after every wait and immediately before launch.",
     "ownership": "Use record-backed exclusive reservation/lease with PID plus birth/argv handshake; never process-name matching or owner death as completion. Hold ownership for parity/full study/postprocessing until terminal record publication.",
     "drift": "Freeze source/input/registration/config/environment/binary identity before launch; verify again after compute and before terminal publication. Unreadable identity or drift yields ERROR/nonzero exit and retained evidence, never accepted PASS/COMPLETE.",
     "failure": "Prerequisite failure is BLOCKED before work; parity mismatch is FAIL; exception/drift/missing expected outputs is ERROR or INCOMPLETE with nonzero exit. Comparison-rule rejections/unconverged rows are preserved quantitative findings, never fabricated successful solves.",
-    "source_integration_caveat": "The main validator compares the entire registered tracked-source set. Adding a consumer/test there after the chain may invalidate current identity against terminal evidence. Before any execution, either run the additive implementation from a separately frozen isolated worktree while preserving and validating the unchanged main root and its actual binary, or register a precise additive identity-extension protocol prospectively. Never waive source checks or silently reuse stale terminal records."
+    "source_integration_caveat": "A source-extension protocol is registered here prospectively. It allows exact declared NEW paths only after attesting terminal main evidence and proving every ORIGINAL blob/mode/module unchanged. Never treat the current extended tree as the original identity, waive checks or silently reuse stale records."
   },
   "outputs": {
     "directory": "outputs/phase7/p73_a1_cpp_20261004",
@@ -244,9 +249,9 @@
   "future_prelaunch_manifest_required": [
     "final committed additive consumer and test/config identity",
     "selected fit/profile/gate and all registered inputs hashes",
-    "current scientific source identity equal to validated main context",
+    "proven original-main workflow identity and source-extension attestation, plus separately frozen additive consumer identity",
     "strict main queue/owner-release/stage/chain evidence references and hashes",
-    "fresh G0 evidence/reservation/environment/actual loaded module hashes",
+    "fresh G0 verdict/table hashes and verified source/environment/actual selected module provenance; wrapper reservation only if one was actually emitted",
     "actual selected full-equilibrium C++ module path/hash in parent and workers",
     "AC/ownership launch handshake and full environment versions/compiler/flags",
     "this registration file SHA256 and parent registration SHA256"
@@ -258,5 +263,41 @@
     "Git-process/index-lock checks before additive commit"
   ],
   "launch_status": "NOT_ARMED; future implementation, fresh G0 and operational prerequisites required",
-  "rollback": "Append or revert additively without history rewrite. After reservation, preserve all evidence; document invalidity with a new dated record, never delete or overwrite protected outputs."
+  "rollback": "Append or revert additively without history rewrite. After reservation, preserve all evidence; document invalidity with a new dated record, never delete or overwrite protected outputs.",
+  "clarifications": [
+    {
+      "dated": "2026-10-04",
+      "before": "Any additive implementation execution, parity or blend computation",
+      "scope": "Prospective source-extension/dependency attestation, distinct original-main versus consumer identities, and truthful fresh-G0/binary provenance. All parent scientific definitions and conditional claim rules remain unchanged."
+    }
+  ],
+  "source_extension_protocol": {
+    "attestation_timing": "After the original main chain terminates and BEFORE integration of any new tracked scientific source path. No attestation export while the benchmark is active.",
+    "attestation_path": "outputs/phase8/screening_operations/main_dependency.json (prospective write-once export; not asserted to exist)",
+    "attestation_contents": [
+      "original Workflow identity and registration ID/SHA",
+      "original launch-tree commit and exact tracked paths/blobs/modes/content SHA256",
+      "original built module relative paths and actual SHA256",
+      "raw current registration/queue completions/owner-release/stage/terminal records and all referenced dependency/output/handshake/command/log hashes",
+      "validated original terminal status and explicit required-PASS prerequisites",
+      "attestation SHA256 recorded separately with exclusive creation and provenance"
+    ],
+    "revalidation": "Before every heavy launch, after waits and before terminal publication: revalidate the attestation/hash, raw original evidence, every original source blob/mode and old module against the frozen launch tree. Permit only new paths declared below or in another committed prospective registration; any changed/deleted original path, undeclared new source, modified raw evidence or old binary drift fails closed.",
+    "identity_injection": "Only after successful source-extension proof, use the proven ORIGINAL identity as the read-only Workflow identity provider and expected_identity for strict terminal validation. Do not mutate the old helper, registrations or terminal evidence; do not inject an unproven or consumer identity.",
+    "allowed_new_paths": [
+      "scripts/phase8/p73_a1_cpp.py",
+      "tests/test_phase7_p73_a1_cpp.py"
+    ],
+    "shared_helper": {
+      "module": "scripts.phase8.scientific_workflow_gate",
+      "export_API": "export_main_context(root) -> dict; writes outputs/phase8/screening_operations/main_dependency.json only after original strict idle validation and before new source integration",
+      "prepare_API": "prepare_context(root, registration, *, allow_new_paths=None, expected_consumer_identity=None, require_g0=True) -> Context",
+      "Context": "identity(dict), binary_path(Path), binary_sha256(str), original_context(dict), require_idle_ac(), acquire_run(output_dir, registration_sha256, identity=None) -> Run",
+      "Run": "assert_current(), release(terminal)",
+      "lease": "outputs/phase8/screening_operations/owner.lease.json; central exclusive post-chain ownership, output reservation write-once",
+      "gate_rule": "The separately registered shared helper proves original blob/mode/module and raw dependency evidence integrity before read-only original-identity injection. Registry lists exact allowed new paths; no broad wildcard, process-name predicate or summary-only trust. prepare_context require_g0=False is for a separately registered G0 wrapper only, never this consumer."
+    },
+    "consumer_identity": "Freeze final committed new consumer/helper/test/config paths and hashes separately, plus its chosen actual binary/fresh-G0/parity/registration identities. Both original and new identities must remain readable/unchanged throughout execution.",
+    "no_integration_now": "Implementation remains in this isolated worktree. Do not edit or integrate main tracked scientific source while the active benchmark runs."
+  }
 }
