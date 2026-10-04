@@ -423,3 +423,90 @@ autodifferentiation, source identity, thermochemistry units, and score sealing)
 and needs a high-capability code executor and independent static review.
 Scientific thresholds change only through a prospective amendment before a
 new experiment, with this attempt retained. No history rewrite or push.
+
+## P8-S-C1 — prospective execution clarification, 2026-10-04
+
+This note was added during independent static source/API review, before any
+P8-S numerical import, simulation, training, or target access. The initial
+registration remains in Git history. The corresponding executable JSON
+fields below supersede its earlier command, path and midpoint descriptions;
+the learning sizes, 49,421 full-cycle request budget, 10% effect-floor bar,
+split/seeds, losses, and scientific selection remain fixed.
+
+Use the single parent-owned command
+`~/miniforge3/envs/catjet-mlx/bin/python -m scripts.phase8.saf_surrogate.run run`.
+It freezes inputs, runs the fixed source checks, generates 11,332 split/named
+rows, trains all 42 fits, freezes predictions and selection, scores once,
+measures the requested CPU64 and GPU32 workloads, screens 640,000 queries,
+and verifies the selected 640 rows. Standalone phase commands refuse to run.
+The existing Python 3.12 MLX environment is the documented runtime; missing
+SciPy/PyYAML/Cantera dependencies must be pinned and checked after the original
+chain releases, before any new scientific work. This amendment authorizes no
+installation, import, or numerical work during the active original chain.
+
+All completion-list and terminal artifact-hash paths are main-repository
+relative. The final receipt includes product/selection/prediction evidence,
+the published scored-only CSVs, raw generation command/spec/handshake/exit/log,
+and timing/study records. Every actual child PID, normalized native birth,
+and actual argv is recorded in the shared owned lease before its GO and heavy
+imports. Pool STARTING and complete receipts plus independent worker
+`sys.orig_argv`/native-process-command handshakes bind each worker. The frozen
+owner snapshot proves immutable reservation identity; live children remain
+mutable and require matching membership. An unresolved spawn preserves an
+`AMBIGUOUS_CHILD` lease. No process-name or ancestry allowance applies.
+
+The generation raw files use `proofs/generation_command_spec.json`,
+`generation_owner_lease.json`, `generation_handshake.json`,
+`generation_exit.json`, and `generation.log`, with `stage="generate"`.
+The final property manifest contains the exact pre-generation case identities.
+It references earlier generation evidence; the final shared release binds the
+property manifest without a reverse hash. An independently verified, fully
+completed producer may retain scientific/deployment `FAIL` and a nonzero exit
+while its earlier complete simulator properties remain usable. A consumer must
+explicitly request the shared `allow_scientific_fail` projection and still
+validate generation, source, binary, reservation, release and complete artifact
+coverage. Partial, source-invalid, or `ERROR` producers never qualify.
+
+The NASA midpoint tie follows the primary
+[Cantera NasaPoly2 implementation](https://raw.githubusercontent.com/Cantera/cantera/v3.1.0/include/cantera/thermo/NasaPoly2.h):
+LOW applies at `T<=Tmid`, HIGH at `T>Tmid`. The original HIGH-at-equality
+description was a source transcription error. Both NumPy and MLX use the same
+corrected convention. The unchanged chemical reference 298.15 K and ambient
+288.15 K explicitly evaluate the unchanged NASA reference polynomials as
+Cantera does, including source reference extrapolation below some species'
+300 K minima. This exception does not widen valid model-mixture temperatures.
+The compressor root validates the actual O2/N2 support; individual species
+diagnostics validate the probed species. No clipping or fitted correction is
+introduced.
+
+Per-fit records retain elapsed time, observed MLX/process peak memory, actual
+data/physics/monotonic forward counts, epochs and steps, including fits that
+miss validation. Physics diagnostics retain valid rows alongside failures,
+all selected individual seeds and ensembles, signed teacher discrepancies,
+the LHV substitution, and existing named anchor slopes. A physics-benefit
+claim also requires the matching data-only ensemble and seed fidelity/auxiliary
+gates and a finite positive comparison floor.
+
+Published `test_predictions.csv`, `ranking_predictions.csv`, and
+`named_predictions.csv` contain frozen selected predictions and references
+decoded during the sole score pass. `study_predictions.csv` and
+`study_bands.csv` contain the screen and its fixed-draw summaries. Quantitative
+freeze consumers use these published scored records and never reopen sealed
+test labels. The launcher refuses an existing attempt; exact recovery remains
+reserved for a future reviewed operational clarification, with all current
+reservations and partial evidence retained and no fresh attempt or reselection.
+
+Full exact workflow/source checks occur at each fit start, before export, at
+fit end, and before zero-based epochs 0, 100, …, 1900. Other epochs check the
+owned reservation/PID/birth, AC power and exact current registration and
+source-extension byte fingerprints. All check time remains charged to fit and
+setup cost. This fixed schedule avoids 84,000 reconstructions of the original
+workflow records; periodic checks and the final proof still compare exact
+bytes, never only cached timestamps. Generation worker core proofs record
+actual post-import module origin/hash and mechanism/fuel/LCA identity, with
+actual successfully waited worker exits joined to the parent command proof.
+Every pool close retains its actual waited exits and rejects a nonzero or
+unreadable exit before timing/study completion. Numerical fixtures use the
+shared read-only `authorize_fixture_context` gate: an idle AC process or the
+exact recorded pytest child of the registered operations owner may perform
+the small registered fixtures. It grants no run ownership or simulator work.
