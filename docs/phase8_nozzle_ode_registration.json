@@ -159,6 +159,14 @@
     "pre_label_identity": "The reviewed registration and implementation define the automatic manifest review: write the complete new input/case/source identity once and revalidate its hashes and all gates before generating any training exact fields. Test exact fields remain uncomputed until all six checkpoint hashes and the single score reservation are fixed.",
     "unchanged_scientific_contract": "No change to models, seeds, sample counts, numerical budgets, equations, scope, thresholds, old registered evidence or the requirement to retain every source-row identity."
   },
+  "implementation_proof_clarification_20261004": {
+    "date": "2026-10-04",
+    "prospective_before_execution": true,
+    "producer_release": "After P8-S has released ownership and committed its metadata/artifacts, call validate_consumer_terminal(main_root, source_registration, source_output_dir, expected_binary_sha256=Context.binary_sha256, artifact_paths=explicit_allowed_paths). Verify actual reservation/released-lease/terminal identity and committed bytes. Only permitted TRAIN/property/input/raw-generation metadata artifact paths are hashed; all sealed/validation/test/ranking artifact hash values remain opaque and their files are never opened.",
+    "raw_generation": "Independently join generation_terminal.raw_command spec/handshake/exit/log paths and SHA256 values, actual child PID/birth/argv/waited exit0, current registration/source/input/core identities and archived owner lease/reservation. Require exact proof paths under proofs/generation_{command_spec,handshake,exit,owner_lease}.json and proofs/generation.log. The inline launch must equal these raw records.",
+    "hash_order": "Propertymanifest binds earlier input/generation proofs. Later overall producer terminal may bind propertymanifest; producer release is validated separately, with no reverse manifest hash and no cycle.",
+    "unchanged_science": "This tightens only execution/provenance validation; all scientific models, cases, coefficients, regimes, thresholds, seeds and budgets remain as registered."
+  },
   "references": [
     {"title": "NASA Glenn: Compressible Area Ratio", "url": "https://www.grc.nasa.gov/www/k-12/BGP/astar.html", "use": "Area-Mach branches, choked mass flow and isentropic invariants."},
     {"title": "NASA Glenn: Nozzle Design", "url": "https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/nozzle-design/", "use": "Quasi-1D continuity, momentum, ideal-gas relation and supersonic exit dependence on area ratio."}

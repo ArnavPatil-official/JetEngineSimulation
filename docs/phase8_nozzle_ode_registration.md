@@ -255,3 +255,16 @@ The reviewed code automatically reviews the new input manifest by writing its
 complete input/case/source identity once and revalidating all hashes and gates
 before any training exact field is generated. Test fields remain uncomputed until
 all six final checkpoint hashes and the single score reservation are fixed.
+
+### Dated prospective proof clarification — 2026-10-04
+
+The consumer additionally requires the completed, released and committed P8-S
+run metadata, validated by `validate_consumer_terminal(..., artifact_paths=...)`.
+Its explicit allowlist contains permitted TRAIN/property/input and raw generation
+proof files. It never opens or hashes excluded validation/test/ranking or sealed
+targets; their hash values remain opaque. Independently join the actual generation
+command spec, child handshake, waited exit, log and archived owner lease to the
+same producer registration/source/input/core identity and reservation. The inline
+launch summary must match these raw records. Later producer terminal evidence can
+hash the earlier property manifest; the manifest has no reverse terminal hash.
+This tightens provenance only, with no scientific protocol change.
