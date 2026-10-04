@@ -167,9 +167,18 @@ ownership and AC/source/dependency checks after waits and before execution.
 A2 is chained to both benchmark completion files and owner-release evidence.
 The user's explicit "Just do it with CODEX" instruction superseded the
 executor-role restriction; Codex completed and independently reviewed the
-remaining implementation in worktrees. Launch is the remaining operational
-step; the Mac is on battery. The durable lease/session records below will
-report its actual state. No scientific run or score has occurred.
+remaining implementation in worktrees.
+
+**Armed and WAITING_FOR_AC:** owner PID `22543`, verified birth time
+`Sat Oct 3 22:23:31 2026`; session `20261004T022331Z-22543`, launch source
+`8afb0e0`. Durable lease:
+`outputs/phase8/operations/20261003_recovery/owner.lease.json`.
+Its seven historical spec records are validated/skipped; the next spec is
+`run2_ac/arm2a_W1_1w`. There are 49 remaining run-2 specs, then exactly two
+registered rerun jobs. The lease records no child or pending child; only the
+owner and its caffeinate helper are live. No benchmark repeat, scientific
+run or score occurred during repair. AC is polled every 300 seconds and
+rechecked immediately before execution. The old owners remain absent.
 
 Registered AC order:
 
