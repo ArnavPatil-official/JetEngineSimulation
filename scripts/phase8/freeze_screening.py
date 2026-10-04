@@ -328,14 +328,20 @@ def ranking(data, plt, rows):
 
 def bands(data, plt, rows):
     names = ("ff_kg_s", "T4_K", "lifecycle_g_s")
-    fields = ("candidate_id", "ranking_q95_lifecycle_g_s", "status", "diagnostic_unsafe") \
+    fields = ("candidate_id", "ranking_q95_lifecycle_g_s", "conditional_lifecycle_rank", "status", "diagnostic_unsafe") \
         + tuple(name + "_" + stat for name in names for stat in ("mean", "q025", "q975", "available_draws"))
     records = list(data.rows("blend_screening_bands", fields))
     if len(records) != 10000 or len({row["candidate_id"] for row in records}) != 10000:
         raise Incomplete("Published blend screening requires the registered 10000 candidates")
+    diagnostic_count = 0
+    ranks = []
     for record in records:
-        if record["status"] != "complete" or truth(record["diagnostic_unsafe"]) \
-                or any(number(record[name + "_available_draws"]) != 64 for name in names):
+        diagnostic_count += int(truth(record["diagnostic_unsafe"]))
+        rank = number(record["conditional_lifecycle_rank"], positive=True)
+        if rank % 1:
+            raise Incomplete("Published conditional rank is not an integer")
+        ranks.append(int(rank))
+        if record["status"] != "complete" or any(number(record[name + "_available_draws"]) != 64 for name in names):
             raise Incomplete("Published blend bands include invalid or incomplete candidate predictions")
         number(record["ranking_q95_lifecycle_g_s"], positive=True)
         for name in names:
@@ -343,7 +349,9 @@ def bands(data, plt, rows):
                 number(record[name + "_" + stat], positive=True)
             if number(record[name + "_q025"]) > number(record[name + "_q975"]):
                 raise Incomplete("Published sensitivity quantiles are reversed")
-    records.sort(key=lambda row: (number(row["ranking_q95_lifecycle_g_s"], positive=True), row["candidate_id"]))
+    if set(ranks) != set(range(1, 10001)):
+        raise Incomplete("Published conditional rank coverage differs")
+    records.sort(key=lambda row: number(row["conditional_lifecycle_rank"]))
     shown = records[:20]
     fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
     for axis, name, unit in zip(axes, names, ("kg/s", "K", "g/s")):
@@ -356,9 +364,12 @@ def bands(data, plt, rows):
                 metric(rows, "blend_screening_bands", record["candidate_id"], field, record[field], unit, data.statuses["blend_screening_bands"])
         axis.set(ylabel=name + " (" + unit + ")\n64 fixed-draw sensitivity band")
     axes[-1].set(xticks=range(len(shown)), xticklabels=[row["candidate_id"] for row in shown],
-                 xlabel="First 20 of published q95 ordering (display selection)")
+                 xlabel=f"First 20 of published conditional rank; diagnostic flags retained: {diagnostic_count}/10000")
     axes[-1].tick_params(axis="x", rotation=75, labelsize=7)
     metric(rows, "blend_screening_bands", "all", "published_candidates", len(records), "candidates", data.statuses["blend_screening_bands"])
+    metric(rows, "blend_screening_bands", "all", "diagnostic_flagged_candidates", diagnostic_count, "candidates", data.statuses["blend_screening_bands"])
+    for record in shown:
+        metric(rows, "blend_screening_bands", record["candidate_id"], "diagnostic_unsafe", truth(record["diagnostic_unsafe"]), "boolean", data.statuses["blend_screening_bands"])
     return fig
 
 

@@ -319,3 +319,45 @@ def test_actual_junit_required_even_when_all_summary_hashes_are_updated(packaged
     with pytest.raises(freeze.Incomplete, match="JUnit"):
         freeze.tag_guard(packaged.root, "outputs/freeze/freeze_receipt.json",
                          verification_receipt=packaged.descriptor["path"])
+
+
+@pytest.fixture
+def published_bands():
+    records = []
+    for index in range(10000):
+        row = {"candidate_id": f"candidate_{index:05d}", "conditional_lifecycle_rank": str(index + 1),
+               "ranking_q95_lifecycle_g_s": "100", "status": "complete", "diagnostic_unsafe": "true"}
+        for name in ("ff_kg_s", "T4_K", "lifecycle_g_s"):
+            row.update({name + "_mean": "100", name + "_q025": "90", name + "_q975": "110", name + "_available_draws": "64"})
+        records.append(row)
+    data = SimpleNamespace(rows=lambda role, columns: ({key: row[key] for key in columns} for row in records),
+                           statuses={"blend_screening_bands": "FAIL"})
+    axes = [SimpleNamespace(plot=lambda *args, **kwargs: None, scatter=lambda *args, **kwargs: None,
+                            set=lambda **kwargs: None, tick_params=lambda **kwargs: None) for _ in range(3)]
+    plt = SimpleNamespace(subplots=lambda *args, **kwargs: (object(), axes))
+    return records, data, plt
+
+
+def test_scored_complete_diagnostic_bands_remain_counted_and_fail_labelled(published_bands):
+    records, data, plt = published_bands
+    # Input order differs from the published rank: display follows the stored
+    # rank and never invents a new ranking from the numerical prediction.
+    records.reverse()
+    numeric_rows = []
+    freeze.bands(data, plt, numeric_rows)
+    count = next(row for row in numeric_rows if row["metric"] == "diagnostic_flagged_candidates")
+    assert count["value"] == 10000 and count["producer_status"] == "FAIL"
+    shown = [row for row in numeric_rows if row["metric"] == "diagnostic_unsafe"]
+    assert len(shown) == 20 and all(row["value"] is True for row in shown)
+    assert [row["group"] for row in shown] == [f"candidate_{index:05d}" for index in range(20)]
+
+
+@pytest.mark.parametrize("mutation", ["invalid_thermo", "invalid_prediction", "nonfinite", "incomplete_draws", "rank_gap"])
+def test_diagnostic_packaging_never_admits_invalid_or_incomplete_bands(published_bands, mutation):
+    records, data, plt = published_bands
+    if mutation in ("invalid_thermo", "invalid_prediction"): records[0]["status"] = mutation
+    elif mutation == "nonfinite": records[0]["ff_kg_s_mean"] = "nan"
+    elif mutation == "incomplete_draws": records[0]["lifecycle_g_s_available_draws"] = "63"
+    elif mutation == "rank_gap": records[0]["conditional_lifecycle_rank"] = "2"
+    with pytest.raises(freeze.Incomplete):
+        freeze.bands(data, plt, [])
