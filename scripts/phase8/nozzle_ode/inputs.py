@@ -346,7 +346,8 @@ def source_artifacts(main_root, reg, context, out):
     for name in ("terminal.json","reservation.json","released_lease.json"):
         safe_path(main_root,str((root/name).relative_to(main_root)))
     release = gate.validate_consumer_terminal(main_root,dep["source_registration"],root,
-        expected_binary_sha256=context.binary_sha256,artifact_paths=sorted(producer_artifacts))
+        expected_binary_sha256=context.binary_sha256,artifact_paths=sorted(producer_artifacts),
+        allow_scientific_fail=True)
     if release.get("identity") != producer_identity or set(release.get("verified_artifact_paths",[])) != producer_artifacts:
         raise Blocked("producer release artifact projection differs")
     original_attestation = read_object(safe_path(main_root,expected_dependencies["main_dependency"]))
@@ -410,6 +411,8 @@ def source_artifacts(main_root, reg, context, out):
         raise Blocked("source row commit/prerequisite mismatch")
     cases, failures = property_cases(train, named, reg, context, producer_sha, pre_sha)
     coverage = {"expected": 4164, "valid": len(cases), "failed": len(failures), "failures": failures,
+                "producer_status":release["status"], "producer_scientific_verdict":release.get("scientific_verdict"),
+                "producer_terminal_sha256":release["terminal_sha256"],
                 "all_requested_ids_retained":len(cases)+len(failures)==4164,
                 "out_of_envelope":sum(row["status"]=="OUT_OF_ENVELOPE" for row in failures),
                 "unconverged":sum(row["status"]=="SOURCE_UNCONVERGED" for row in failures)}
