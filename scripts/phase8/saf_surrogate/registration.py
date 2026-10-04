@@ -91,12 +91,18 @@ def verify_named_prerequisite(root, reg, binary_sha256):
     prerequisite = read_json(Path(root) / path)
     output = Path(root) / "outputs/phase7/p73_a1_cpp_20261004"
     expected_registration = sha256_file(Path(root) / path)
+    projection = reg["sole_score"]["named_metadata_projection"]
+    expected_projection = [str((output/name).relative_to(root)) for name in
+        ("environment.json", "artifact_hashes.json", "command.exit.json", "parity/parity.json")]
+    if projection != expected_projection:
+        raise ValueError("Named prerequisite metadata projection differs from registered exact paths")
     # The shared validator must verify raw record semantics, source identity and
-    # output hashes without granting this function numeric-target access.
+    # opaque full coverage without opening or hashing the sealed target bytes.
     validator = getattr(gate, "validate_consumer_terminal", None)
     if validator is None:
         raise RuntimeError("Shared consumer-terminal validator is unavailable")
-    metadata = validator(root, path, output, expected_binary_sha256=binary_sha256)
+    metadata = validator(root, path, output, expected_binary_sha256=binary_sha256,
+                         artifact_paths=projection)
     if metadata["core_sha256"] != binary_sha256:
         raise ValueError("Named prerequisite used a different core")
     return {"registration": path, "registration_sha256": expected_registration,

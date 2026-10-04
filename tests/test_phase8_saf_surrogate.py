@@ -155,3 +155,32 @@ def test_worker_shutdown_retains_failed_exit_and_blocks_completion(tmp_path,exit
         teacher.close()
     receipt=json.loads((tmp_path/"proofs/workers/timing_23_exit.json").read_text())
     assert receipt["waited"] is True and receipt["exit_code"]==exit_code
+
+
+def test_named_prerequisite_verifies_only_metadata_before_training(monkeypatch,tmp_path,inputs):
+    import sys
+    from types import SimpleNamespace
+    import scripts.phase8
+    from scripts.phase8.saf_surrogate import registration as subject
+    reg,_,_=inputs
+    prefix="outputs/phase7/p73_a1_cpp_20261004/"
+    expected=[prefix+name for name in ("environment.json","artifact_hashes.json","command.exit.json","parity/parity.json")]
+    calls=[]
+    def validator(root,path,output,*,expected_binary_sha256,artifact_paths):
+        assert artifact_paths==expected
+        assert not set(artifact_paths)&set(reg["sole_score"]["named_paths"])
+        calls.append(artifact_paths)
+        return {"core_sha256":expected_binary_sha256}
+    fake=SimpleNamespace(validate_consumer_terminal=validator)
+    monkeypatch.setitem(sys.modules,"scripts.phase8.scientific_workflow_gate",fake)
+    monkeypatch.setattr(scripts.phase8,"scientific_workflow_gate",fake,raising=False)
+    monkeypatch.setattr(subject,"read_json",lambda path:{"registration_id":"P7.3-A1"})
+    def metadata_hash(path):
+        assert str(path).endswith(("phase7_p73_a1_registration.json","terminal.json","environment.json"))
+        return "a"*64
+    monkeypatch.setattr(subject,"sha256_file",metadata_hash)
+    assert subject.verify_named_prerequisite(tmp_path,reg,"core")["id"]=="P7.3-A1"
+    assert calls==[expected]
+    changed=copy.deepcopy(reg);changed["sole_score"]["named_metadata_projection"].append(reg["sole_score"]["named_paths"][0])
+    with pytest.raises(ValueError,match="metadata projection"):
+        subject.verify_named_prerequisite(tmp_path,changed,"core")
