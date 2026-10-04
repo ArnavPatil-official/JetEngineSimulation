@@ -167,6 +167,14 @@
     "hash_order": "Propertymanifest binds earlier input/generation proofs. Later overall producer terminal may bind propertymanifest; producer release is validated separately, with no reverse manifest hash and no cycle.",
     "unchanged_science": "This tightens only execution/provenance validation; all scientific models, cases, coefficients, regimes, thresholds, seeds and budgets remain as registered."
   },
+  "quantitative_failure_release_clarification_20261004": {
+    "date": "2026-10-04",
+    "prospective_before_execution": true,
+    "execution_complete": "True only after all six registered final checkpoints and training logs, all twelve validation panel/regime/seed/arm groups, all twenty-four final-test groups and every registered score/prediction row and expected artifact have completed, with no source, provenance, identity or coverage errors. Partial, blocked or error execution remains false.",
+    "scientific_verdict": "Preserve the actual registered PASS or FAIL and nonzero exit on FAIL. A fully computed scientific FAIL may be consumed by the quantitative freeze only through explicit metadata-only allow_scientific_fail=True validation; it never grants deployment, acceptance or a scoring bypass.",
+    "producer_properties": "A complete, verified P8-S property-generation phase is independent of the later neural-network scientific verdict. The consumer still requires separately authenticated producer release and exact permitted generation/property proofs.",
+    "unchanged_science": "Completion metadata only; no change to scientific models, cases, sources, thresholds, seeds, budgets or one-shot test scoring."
+  },
   "references": [
     {"title": "NASA Glenn: Compressible Area Ratio", "url": "https://www.grc.nasa.gov/www/k-12/BGP/astar.html", "use": "Area-Mach branches, choked mass flow and isentropic invariants."},
     {"title": "NASA Glenn: Nozzle Design", "url": "https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/nozzle-design/", "use": "Quasi-1D continuity, momentum, ideal-gas relation and supersonic exit dependence on area ratio."}

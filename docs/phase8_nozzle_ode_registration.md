@@ -268,3 +268,18 @@ same producer registration/source/input/core identity and reservation. The inlin
 launch summary must match these raw records. Later producer terminal evidence can
 hash the earlier property manifest; the manifest has no reverse terminal hash.
 This tightens provenance only, with no scientific protocol change.
+
+### Dated prospective completion clarification — 2026-10-04
+
+Terminal `execution_complete` is true only after all six final checkpoints and
+training logs, twelve validation groups, twenty-four final-test groups, every
+registered score/prediction row and expected artifact have completed with no
+source, provenance, identity or coverage errors. Partial or erroneous execution
+keeps it false. `scientific_verdict` retains the actual registered PASS or FAIL;
+FAIL retains a nonzero exit. The quantitative freeze may read a fully computed
+FAIL only through explicit metadata-only `allow_scientific_fail=True` validation.
+This cannot grant deployment, acceptance or another scoring pass.
+
+Verified P8-S source properties remain independent of its later neural-network
+verdict, subject to authenticated release and the exact generation/property
+proofs. This clarification changes completion metadata only.
