@@ -31,7 +31,7 @@ All fixture tests are written before launch and run after the chain.
 Both registered benchmark queue completion records and the benchmark-owner
 release must validate before isolated lightweight fixture checks may run while
 the remaining original chain waits for AC. This supersedes the conservative
-all-fixtures-after-chain sentence above for the gate/product synthetic cases
+all-fixtures-after-chain sentence above for the gate/product synthetic cases,
 P7.3-A1 fake-backend cases, P8-S pure contract cases, and freeze/bootstrap
 metadata fixtures only. These tests use toy files, mocked process
 records and fake backends; they must not import the C++ core, Cantera or MLX,
@@ -41,3 +41,15 @@ scientific tree and built-module hashes unchanged immediately before and after.
 All source-only numerical checks, package installation, simulator launches,
 training, scoring and speed measurements still wait for the original chain
 to release its lease. No benchmark rerun or original protocol changes.
+
+## Prospective automatic handoff clarification — 2026-10-04
+
+The user already directed the fresh G0 run after the original chain. Exact
+bootstrap control and config paths are declared before original export;
+their metadata-only waiter does not modify or signal the active chain. The
+archived export provider and integrated gate are the same reviewed blob.
+After release, tests authenticate actual recorded child membership through
+`authorize_fixture_context`; source and ownership checks remain strict.
+Registered metadata-only artifact allowlists keep sealed numerical targets
+unread until the sole scoring phase. Fully computed scientific FAIL may
+continue to diagnostic figures only, retaining nonzero exits and no deployment.

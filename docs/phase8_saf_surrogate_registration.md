@@ -510,3 +510,20 @@ unreadable exit before timing/study completion. Numerical fixtures use the
 shared read-only `authorize_fixture_context` gate: an idle AC process or the
 exact recorded pytest child of the registered operations owner may perform
 the small registered fixtures. It grants no run ownership or simulator work.
+
+## P8-S-C2 — metadata-only named prerequisite, 2026-10-04
+
+Before any computation, static review identified that omitting an artifact
+allowlist made the shared prerequisite validator hash all named target bytes
+before training. The prerequisite now projects exactly `environment.json`,
+`artifact_hashes.json`, `command.exit.json`, and `parity/parity.json` from the
+fresh P7.3-A1 producer. Full registered expected-output coverage remains an
+opaque path/hash check, alongside the unchanged current source, core,
+registration, reservation, completed-command and released-owner proof.
+
+Named quantitative CSV/JSON targets are neither opened nor hashed by this
+pre-training check. Their bytes are verified and decoded only after all 42
+fits, validation selection and predictions are frozen under the sole score
+reservation. A pure fake-validator regression checks the exact metadata
+allowlist and rejects an added target path. No scientific definition, label
+budget, scoring rule or registered result changes.

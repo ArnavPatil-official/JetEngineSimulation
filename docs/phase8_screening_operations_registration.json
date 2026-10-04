@@ -26,7 +26,7 @@
     "Artifact-only commits may change git_head metadata without changing the scientific file/binary/config identity. Any unreadable or drifting scientific identity is ERROR."
   ],
   "G0": {
-    "order": "First numerical post-chain action. If the user supplies fresh evidence, validate it and commit it before screening. Otherwise the already requested fresh parity procedure uses the registered command below, subject to the user path clarification and fresh output gate.",
+    "order": "First numerical post-chain action. The user directed the fresh run on 2026-10-04. Validate and commit existing supplied fresh evidence if complete; otherwise use the authorized fresh wrapper below after strict original completion, released ownership, idle AC and absent output target. No additional path approval is pending.",
     "procedure": "Preserve scripts/phase8/g0_parity.py comparison rules, frozen inputs, CPP/Python reproductions, workers=6, write-once target directory and every original output table. Never overwrite historical G0.",
     "wrapper": "scripts/phase8/post_chain_g0.py instruments actual module identity in parent and every C++ worker while delegating the original initializer/task/compare functions unchanged; no protected file mutation.",
     "core": "Default unique original cpp/build/catjet_core*.so whose hash matches original main identity. Explicit cpp/build_next selection is allowed only with validated PASS build evidence and preload identity in every worker; no fallback.",
@@ -44,7 +44,12 @@
   "new_paths": [
     "scripts/phase8/scientific_workflow_gate.py",
     "scripts/phase8/post_chain_g0.py",
-    "tests/test_phase8_scientific_workflow_gate.py"
+    "tests/test_phase8_scientific_workflow_gate.py",
+    "scripts/operations/screening_bootstrap.py",
+    "scripts/operations/tests/test_screening_bootstrap.py",
+    "docs/phase8_screening_bootstrap_registration.json",
+    "docs/phase8_screening_bootstrap_registration.md",
+    "docs/phase8_screening_bootstrap_config.json"
   ],
   "sibling_registrations": [
     "docs/phase7_p73_a1_registration.json",
@@ -67,7 +72,8 @@
       "record_children(children)",
       "release(terminal)->dict"
     ],
-    "identity": "Expected consumer identity: committed file path->sha256/mode plus registration_sha256. git_head/root are metadata only; Context additionally freezes original/G0/core/helper identities."
+    "identity": "Expected consumer identity: committed file path->sha256/mode plus registration_sha256. git_head/root are metadata only; Context additionally freezes original/G0/core/helper identities.",
+    "fixture": "authorize_fixture_context(context)->Context: require fresh G0 and full source/core validation; authorize only the actual live recorded pytest child of a matching RUNNING OPS owner lease/reservation, or the ordinary idle-AC standalone context. No ownership bypass."
   },
   "checks_before_compute": [
     "JSON/schema and strict record negative fixtures",
@@ -86,5 +92,12 @@
     "scripts/phase8/g0_parity.py": "44b68f7ec5a658a43751d1f98fdb94bb3f82df7bf8bbe28cbdb051f356e89c08",
     "scripts/phase8/v6_backend.py": "4f7c3513fb2d5732e17915686804733596d14f0ca431a8b6b644c9fdc677a1b0",
     "simulation/catjet_backend.py": "3cbffe8231f73b97d77e8e441d74ae967cfdf5672c1cb1060fb3bc6305055154"
+  },
+  "bootstrap_control_clarification_20261004": {
+    "date": "2026-10-04",
+    "prospective_before_export": true,
+    "paths": "Exact lite bootstrap source/test and committed bootstrap registration/config paths are enumerated in new_paths. They are outside original scientific roots, remain metadata-only while waiting, and freeze through source_extension_manifest.other_declared_files before any new numerical action. No old scientific file changes.",
+    "source_provider": "The archived export provider and later added scientific gate use one identical reviewed commit/path/blob/mode/SHA tuple; no divergent gate versions.",
+    "fixture_exception": "Only prospectively authorized lightweight fake metadata fixtures may run after validated benchmark owner release while the remaining original chain waits for AC. All numerical source checks wait for fresh G0 and an exact registered child authorization."
   }
 }
