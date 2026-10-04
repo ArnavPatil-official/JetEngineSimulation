@@ -46,6 +46,31 @@ The older entries below retain historical implementation and registration
 context; their A4c/A5 deadlines and manual commands are superseded by this
 explicit deferral. See `docs/plan.md` for the current execution scope.
 
+### New study registrations and implementation isolation — 2026-10-04
+
+- P7.3-A1: `71c29c4`, prospective original-proof clarification `2b845a7`,
+  exact additive paths/raw checkpoint note `b8ad0d6`.
+- P8-S: `0c3e586`; the operational fuel-flow bar is fixed at 10% of the
+  smallest eligible central named blend effect. Other fidelity/ranking,
+  physics-benefit and measured-speed gates remain distinct.
+- Blend-conditioned nozzle ODE study: `3d60ef3`, prospective source/duplicate
+  coverage clarification `60c29d4`.
+- Shared post-chain source/G0 provenance: `e415531`; CLI/API and producer
+  receipt protocol `7cf5c9f`; synchronous verification/envelope note `f54878d`.
+
+Numerical consumers and meaningful synthetic tests are being prepared in
+isolated worktrees. They have not been integrated into the main scientific
+source tree, run, trained or scored. Original source tree and built-module
+hashes still match the live lease. No new G0, P7.3-A1, P8-S or nozzle result
+exists; no new score reservation has been consumed.
+
+The active chain has reached arm 4. `arm4b_W4_11w` is a terminal **FAIL**:
+its warm-up is internally reproducible but fails the frozen reference check
+on nine core-thrust cells. No median timing exists for that failed run. Its
+raw record stays unchanged, it is not retried, and the chain continues under
+its registered terminal-with-flags policy. Fresh P8-S speed measurements
+remain after release and use the full v6 C++ teacher.
+
 ### Standalone validation and timing overlap — 2026-10-04
 
 During the naming-cleanup verification, Codex launched standalone

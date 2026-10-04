@@ -37,3 +37,12 @@ results must be reported from actual records, not inferred from fixture tests.
 - Track 4 Ma Eq. 25 thermal-unit ambiguity remains flagged. Diagnostic
   scores, loss balancing and future empirical/Sajben work retain their
   previously registered scope and order.
+
+- Run-2 arm4b_W4_11w reference comparison: warm-up internally matches,
+  nine core-thrust cells fail the frozen comparison. Retain **FAIL**, raw
+  evidence and absent timing; no tolerance change, repeat or active-core edit.
+  This does not promote the cached/approximate arm to a valid speed result.
+- New study dependencies: the existing MLX Python is 3.12, but static package
+  metadata did not show SciPy/PyYAML/Cantera. Verify and prepare that environment
+  only after the main lease releases, before new data generation; no protected
+  requirement/config or original environment changes during benchmarks.
