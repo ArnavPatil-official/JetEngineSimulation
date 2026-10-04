@@ -416,6 +416,7 @@ def _g0(root, op, context):
         raise GateError("G0 run, source and release identities differ")
     expected = terminal.get("expected_outputs")
     hashes = terminal.get("artifact_hashes", {})
+    command_paths = []
     if terminal.get("exit_code") != 0 or terminal.get("outputs_complete") is not True \
             or terminal.get("errors") or not isinstance(expected, list) or not expected \
             or not set(expected) <= set(hashes) or any(doc["files"].get(p) != h for p,h in hashes.items()):
@@ -576,7 +577,8 @@ class Run:
             raise GateError("Owner birth unreadable")
         self.owner_birth = birth
         self.lease_path = context.root / context.op["paths"]["owner_lease"]
-        lease = {"owner_pid": os.getpid(), "owner_birth": birth, "argv": sys.argv,
+        lease = {"owner_pid": os.getpid(), "owner_birth": birth, "argv": list(sys.argv),
+                 "orig_argv": list(sys.orig_argv), "executable": sys.executable,
                  "registration_sha256": registration_sha256, "identity": self.identity,
                  "output_dir": str(self.out.relative_to(context.root)), "state": "STARTING",
                  "children": [], "created_utc": utc()}
@@ -748,6 +750,39 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
         required.discard(str((out / "released_lease.json").relative_to(root)))
         if not required <= set(expected):
             raise GateError("Surrogate coverage differs from registered artifacts")
+        start = read(out / "command.start.json")
+        command = read(out / "command.exit.json")
+        phases = ["freeze", "source_checks", "generate", "train", "seal", "score", "timing", "study"]
+        for record in (start, command):
+            if record.get("identity") != ctx.identity or record.get("pid") != reservation.get("owner_pid") \
+                    or record.get("birth") != reservation.get("owner_birth") \
+                    or not reservation.get("orig_argv") or record.get("argv") != reservation["orig_argv"]:
+                raise GateError("Surrogate command differs from its actual owned reservation")
+        if start.get("registration_sha256") != ctx.identity.get("registration_sha256") \
+                or start.get("binary_path") != str(ctx.binary_path.relative_to(root)) \
+                or start.get("binary_sha256") != ctx.binary_sha256 \
+                or not start.get("native_command") or not start.get("started") \
+                or command.get("started") != start["started"] or not command.get("finished") \
+                or command.get("in_process_completed") is not True \
+                or command.get("completed_phases") != phases \
+                or command.get("exit_code") != terminal.get("exit_code") \
+                or command.get("scientific_verdict") != terminal.get("scientific_verdict") \
+                or command.get("scientific_verdict") != terminal.get("status"):
+            raise GateError("Surrogate completed-command proof is incomplete")
+        command_paths = [str((out / name).relative_to(root)) for name in ("command.start.json", "command.exit.json")]
+        for name in command_paths:
+            if digest(relative(root, name)) != hashes.get(name):
+                raise GateError("Surrogate raw command hash differs from its terminal")
+    if reg.get("registration_id") == "P8-NOZZLE-ODE-A1-20261004":
+        if out != root / reg["outputs"]["root"]:
+            raise GateError("Nozzle output differs from its registered attempt")
+        required = [name for name in reg["outputs"]["required"] if not name.endswith("/")]
+        for seed in reg["models"]["paired_seeds"]:
+            for arm in reg["models"]["arms"]:
+                required.extend((f"checkpoints/{arm}-seed{seed}.pt", f"training_logs/{arm}-seed{seed}.jsonl"))
+        required.extend(("score_reservation.json", "case_selection.json"))
+        if not {str(relative(out, name).relative_to(root)) for name in required} <= set(expected):
+            raise GateError("Nozzle coverage differs from registered artifacts")
     if reg.get("registration_id") == "P7.3-A1":
         required = set(reg["outputs"]["quantitative"] + reg["outputs"]["provenance"])
         required.discard(str((out / "terminal.json").relative_to(root)))
@@ -776,7 +811,7 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
         if digest(relative(root, name)) != sha:
             raise GateError(f"Producer artifact changed: {name}")
     paths = [str((out / n).relative_to(root)) for n in ("terminal.json", "reservation.json", "released_lease.json")]
-    require_committed(root, [*paths, *selected_hashes])
+    require_committed(root, [*paths, *selected_hashes, *command_paths])
     ac = _ac(root)
     for child in released.get("children", []):
         if ac.liveness(child.get("pid"), child.get("birth")) not in {"dead", "reused"}:

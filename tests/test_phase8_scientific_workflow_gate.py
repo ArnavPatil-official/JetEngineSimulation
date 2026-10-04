@@ -204,35 +204,56 @@ def test_write_once_and_unsafe_paths(tmp_path):
     assert gate.read(p) == {"x": 1}
 
 
-@pytest.mark.parametrize("fault", ["none", "truncated", "partial_fail", "valid_fail"])
+@pytest.mark.parametrize("fault", ["none", "truncated", "partial_fail", "valid_fail",
+                                   "foreign_owner", "foreign_argv", "wrong_phases", "false_exit", "raw_hash"])
 def test_surrogate_terminal_requires_registered_coverage(tmp_path, monkeypatch, fault):
     root = tmp_path
     out = root / "outputs/study"
     reg = "docs/study.json"
     put(root / reg, {"id": "P8-S-20261004", "artifact_root": "outputs/study",
                     "provenance": {"successful_release": {"expected_outputs": ["rows.csv", "metrics.json"]}}})
-    ctx = SimpleNamespace(root=root, registration=reg, identity={"source": "fixture"}, binary_sha256="core")
+    ctx = SimpleNamespace(root=root, registration=reg, identity={"source": "fixture", "registration_sha256": "reg"},
+                          binary_sha256="core", binary_path=root / "cpp/core.so")
     monkeypatch.setattr(gate, "prepare_context", lambda *args, **kwargs: ctx)
     monkeypatch.setattr(gate, "require_committed", lambda *args: None)
     monkeypatch.setattr(gate, "_ac", lambda *args: SimpleNamespace(liveness=lambda *args: "dead"))
-    put(out / "reservation.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture"})
+    put(out / "reservation.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture",
+                                   "orig_argv": ["fixture", "run"]})
+    body = {"identity": ctx.identity, "pid": 10, "birth": "fixture", "argv": ["fixture", "run"], "started": "before"}
+    put(out / "command.start.json", {**body, "native_command": "fixture run", "registration_sha256": "reg",
+                                      "binary_path": "cpp/core.so", "binary_sha256": "core"})
+    put(out / "command.exit.json", {**body, "finished": "after", "in_process_completed": True,
+        "completed_phases": ["freeze", "source_checks", "generate", "train", "seal", "score", "timing", "study"],
+        "exit_code": 1 if fault == "valid_fail" else 0, "scientific_verdict": "FAIL" if fault == "valid_fail" else "PASS"})
     (out / "rows.csv").write_text("value\n1\n")
     put(out / "metrics.json", {"verdict": "fixture"})
     paths = ["outputs/study/rows.csv", "outputs/study/metrics.json"]
     terminal = {"identity": ctx.identity, "status": "PASS", "exit_code": 0, "outputs_complete": True,
                 "reservation_sha256": gate.digest(out / "reservation.json"), "expected_outputs": paths,
-                "artifact_hashes": {name: gate.digest(root / name) for name in paths}}
+                "scientific_verdict": "PASS",
+                "artifact_hashes": {name: gate.digest(root / name) for name in [*paths,
+                    "outputs/study/command.start.json", "outputs/study/command.exit.json"]}}
     if fault == "truncated":
         terminal["expected_outputs"] = paths[:1]
         terminal["artifact_hashes"].pop(paths[1])
     if fault in {"partial_fail", "valid_fail"}:
         terminal.update(status="FAIL", exit_code=1, outputs_complete=False, scientific_verdict="FAIL",
                         execution_complete=fault == "valid_fail")
+    if fault in {"foreign_owner", "foreign_argv", "wrong_phases", "false_exit", "raw_hash"}:
+        path = out / "command.exit.json"
+        command = gate.read(path)
+        if fault == "foreign_owner": command["pid"] = 11
+        elif fault == "foreign_argv": command["argv"] = ["foreign"]
+        elif fault == "wrong_phases": command["completed_phases"] = ["score"]
+        elif fault == "false_exit": command["exit_code"] = 1
+        else: command["finished"] = "changed after freezing"
+        put(path, command)
+        if fault != "raw_hash": terminal["artifact_hashes"]["outputs/study/command.exit.json"] = gate.digest(path)
     put(out / "terminal.json", terminal)
     put(out / "released_lease.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture",
         "state": "RELEASED", "reservation_sha256": terminal["reservation_sha256"],
         "terminal_sha256": gate.digest(out / "terminal.json")})
-    if fault in {"truncated", "partial_fail"}:
+    if fault not in {"none", "valid_fail"}:
         with pytest.raises(gate.GateError):
             gate.validate_consumer_terminal(root, reg, out, allow_scientific_fail=True)
     else:
