@@ -674,6 +674,12 @@ class Run:
         if terminal["status"] in {"PASS", "COMPLETE"} and (terminal.get("errors") or not complete):
             terminal["status"] = "ERROR"
             terminal.setdefault("errors", []).append("Success lacks complete artifact hashes")
+        covered = isinstance(coverage, list) and bool(coverage) and set(coverage) <= set(terminal.get("artifact_hashes", {}))
+        if terminal.get("execution_complete") is True and (terminal.get("errors") or not covered):
+            terminal["status"] = "ERROR"
+            terminal.setdefault("errors", []).append("Execution completion lacks valid full coverage")
+        if terminal["status"] in {"ERROR", "INCOMPLETE", "BLOCKED"} or terminal.get("errors"):
+            terminal["execution_complete"] = False
         if terminal["status"] not in {"PASS", "COMPLETE"}:
             terminal["exit_code"] = terminal.get("exit_code") or 1
             terminal["outputs_complete"] = False
@@ -731,6 +737,15 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
     hashes = terminal.get("artifact_hashes", {})
     if not isinstance(expected, list) or not expected or not set(expected) <= set(hashes):
         raise GateError("Producer success lacks expected artifact coverage")
+    if reg.get("id") == "P8-S-20261004":
+        required = reg.get("provenance", {}).get("successful_release", {}).get("expected_outputs")
+        if not isinstance(required, list) or not required:
+            raise GateError("Surrogate registration lacks expected artifact coverage")
+        required = {str((out / name).relative_to(root)) for name in required}
+        required.discard(str((out / "terminal.json").relative_to(root)))
+        required.discard(str((out / "released_lease.json").relative_to(root)))
+        if not required <= set(expected):
+            raise GateError("Surrogate coverage differs from registered artifacts")
     if reg.get("registration_id") == "P7.3-A1":
         required = set(reg["outputs"]["quantitative"] + reg["outputs"]["provenance"])
         required.discard(str((out / "terminal.json").relative_to(root)))

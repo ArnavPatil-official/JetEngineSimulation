@@ -204,6 +204,42 @@ def test_write_once_and_unsafe_paths(tmp_path):
     assert gate.read(p) == {"x": 1}
 
 
+@pytest.mark.parametrize("fault", ["none", "truncated", "partial_fail", "valid_fail"])
+def test_surrogate_terminal_requires_registered_coverage(tmp_path, monkeypatch, fault):
+    root = tmp_path
+    out = root / "outputs/study"
+    reg = "docs/study.json"
+    put(root / reg, {"id": "P8-S-20261004", "artifact_root": "outputs/study",
+                    "provenance": {"successful_release": {"expected_outputs": ["rows.csv", "metrics.json"]}}})
+    ctx = SimpleNamespace(root=root, registration=reg, identity={"source": "fixture"}, binary_sha256="core")
+    monkeypatch.setattr(gate, "prepare_context", lambda *args, **kwargs: ctx)
+    monkeypatch.setattr(gate, "require_committed", lambda *args: None)
+    monkeypatch.setattr(gate, "_ac", lambda *args: SimpleNamespace(liveness=lambda *args: "dead"))
+    put(out / "reservation.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture"})
+    (out / "rows.csv").write_text("value\n1\n")
+    put(out / "metrics.json", {"verdict": "fixture"})
+    paths = ["outputs/study/rows.csv", "outputs/study/metrics.json"]
+    terminal = {"identity": ctx.identity, "status": "PASS", "exit_code": 0, "outputs_complete": True,
+                "reservation_sha256": gate.digest(out / "reservation.json"), "expected_outputs": paths,
+                "artifact_hashes": {name: gate.digest(root / name) for name in paths}}
+    if fault == "truncated":
+        terminal["expected_outputs"] = paths[:1]
+        terminal["artifact_hashes"].pop(paths[1])
+    if fault in {"partial_fail", "valid_fail"}:
+        terminal.update(status="FAIL", exit_code=1, outputs_complete=False, scientific_verdict="FAIL",
+                        execution_complete=fault == "valid_fail")
+    put(out / "terminal.json", terminal)
+    put(out / "released_lease.json", {"identity": ctx.identity, "owner_pid": 10, "owner_birth": "fixture",
+        "state": "RELEASED", "reservation_sha256": terminal["reservation_sha256"],
+        "terminal_sha256": gate.digest(out / "terminal.json")})
+    if fault in {"truncated", "partial_fail"}:
+        with pytest.raises(gate.GateError):
+            gate.validate_consumer_terminal(root, reg, out, allow_scientific_fail=True)
+    else:
+        proof = gate.validate_consumer_terminal(root, reg, out, allow_scientific_fail=True)
+        assert proof["status"] == terminal["status"]
+
+
 def test_consumer_registration_change_refused(tmp_path):
     reg = tmp_path / "docs/reg.json"
     put(reg, {"version": 1})
