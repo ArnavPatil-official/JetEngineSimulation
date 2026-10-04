@@ -741,7 +741,9 @@ def validate_consumer_terminal(root, registration_path, output_dir, *, expected_
         required = reg.get("provenance", {}).get("successful_release", {}).get("expected_outputs")
         if not isinstance(required, list) or not required:
             raise GateError("Surrogate registration lacks expected artifact coverage")
-        required = {str((out / name).relative_to(root)) for name in required}
+        prefix = str(out.relative_to(root)) + "/"
+        required = {name if name.startswith(prefix) else str(relative(out, name).relative_to(root))
+                    for name in required}
         required.discard(str((out / "terminal.json").relative_to(root)))
         required.discard(str((out / "released_lease.json").relative_to(root)))
         if not required <= set(expected):
