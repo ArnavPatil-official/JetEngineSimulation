@@ -1,5 +1,41 @@
 # Phase 8 execution status
 
+## Active product direction — 2026-10-04
+
+The product is a physics-informed neural SAF blend pre-screening tool with
+measured computational advantage. This direction supersedes the prior
+post-chain scientific sequence. No prose results draft.
+
+The main AC chain is running and is left unchanged. At this check its live
+owner is PID 22543, running `run2_ac/arm2a_W4_11w` on AC. New code remains in
+isolated worktrees so its frozen main source identity is unchanged. Its
+already registered all-family test remains part of full pytest.
+
+**Deferred, not failed:** A4c; P8.5 rerun 4; G2 cross-family; stages 1–3
+calibration and digitising; P8.9–P8.15 beyond the new screening/nozzle/product
+studies; Sajben low-label study. All registrations stay intact. A4c's held-out
+allocation is released unused; its reservation directory does not exist and
+no score was taken. Do not execute the older post-chain A4c/A5 instructions.
+
+New post-chain order: commit fresh G0 rerun evidence; registered P7.3-A1
+conditional v6 C++ screening; P8-S generation, MLX training and frozen one-shot
+scoring; blend-conditioned nozzle ODE PINN; tested screening CLI/API; quantitative
+freeze and figures with a local tag. Every new procedure is registered before
+computation. Fresh `outputs/phase8/g0_rerun_20261003` is currently absent;
+its location or pending-run status has been requested. No new study result exists.
+
+P7.3-A1 preserves the claim rule, 64 fixed-parameter draws, fuels, modes,
+Brem domain and lifecycle basis, while explicitly permitting the historical
+penalty-guard-only A1 FAIL. Label its outputs `conditional on v6 calibration`.
+P8-S claims simulator fidelity and measured speed; real-world accuracy is
+inherited from v6. Exact fuel/CO2/lifecycle relations are computed, not learned.
+Locked Sobol and named-blend test sets are opened once after all models freeze.
+
+The older entries below retain historical implementation and registration
+context; their A4c/A5 deadlines and manual commands are superseded by this
+explicit deferral. See `docs/plan.md` for the current execution scope.
+
+
 Plan: `docs/plan.md` (Phase 8). Registration: `docs/phase8_registration.md`.
 Branch `phase8`, from the Phase 7 freeze `7524a7a`.
 Scope authorized now: Slice 1 first, plus independent Tracks B, C and D

@@ -1,10 +1,141 @@
 # Phase 8 — physics-first revision
 
-**Active dispatch (2026-10-03):** execute only the queue recovery and decision
-integration addendum at the end of this file. Preserve earlier sections as
-historical context. The user authorized this work now, including stopping
-the parked A2 chain. Scientific tracks run in separate worktrees under their
-own active plans; do not execute another worktree's plan from this checkout.
+**Active direction (2026-10-04):** the product is a physics-informed neural
+pre-screening tool for SAF blends, with measured computational advantage.
+The addendum below supersedes the earlier execution scope. Preserve the
+running AC chain, all registrations and historical results. No prose results
+draft. New code stays in isolated worktrees until the chain releases its
+lease; do not change the chain's frozen main source identity.
+
+## SAF pre-screening product direction — 2026-10-04
+
+### Objective
+
+Deliver a CLI and Python `screen_blends` API that predicts simulator-conditional
+SAF blend screening outputs with draw bands, checks its training envelope,
+and optionally verifies selected candidates on the v6 C++ simulator. Measure
+fidelity to that simulator and computational advantage on this Mac. Real-world
+accuracy is inherited from v6; simulator agreement is not new empirical validation.
+
+### Constraints
+
+Do not interrupt or reorder the running AC chain. Retain its registered tests,
+including its input-only all-family assertion, without starting additional
+A4c work. Register P7.3-A1, P8-S and the nozzle ODE PINN procedure before any
+new computation. Freeze all models and selection rules before opening either
+locked test set once. Preserve protected files and original registrations;
+additive amendments only. No held-out engine score, push or prose results draft.
+MLX training; float64 CPU scientific scoring; three fixed seeds. Non-blocking
+defects go to `docs/FIXES.md`. Technical API/README instructions are in scope.
+
+### Deferred to future work
+
+A4c, P8.5 rerun 4, G2 cross-family, calibration stages 1–3 and digitising,
+P8.9–P8.15 beyond the product studies listed here, and the Sajben low-label
+study are **deferred, not failed**. Their registrations remain intact.
+A4c's held-out allocation is released unused: no reservation file, fit/profile
+or held-out score exists. No deferred command is added to the AC chain or new
+post-chain sequence. Historical failed gates remain historical results.
+
+### Repo Context
+
+Reuse the frozen v6 calibration, registered V7 fixed draws, P7.3 matched-thrust
+claim rule, fuel/LHV/H:C/CO2/lifecycle definitions and Brem applicability.
+Use the C++ full-equilibrium v6 core as simulator. Extend existing MLX tooling
+and Track 4's quasi-1D exact-solution oracle through new consumer modules.
+Do not modify the protected simulator or equate an emulator with physics validation.
+
+### Relevant Files
+
+Read `outputs/phase7/p73_registration.json`, the v6/P7.2 calibration and draw
+records, `scripts/optimization/lto_v6.py`, `simulation/catjet_backend.py`,
+`simulation/fuels_v7.py`, C++ bindings, `scripts/phase8/ml/`, and
+`scripts/phase8/pinn_diagnostics/nozzle_verification.py`. Create additive
+registrations under `docs/`; new consumer modules/tests in isolated worktrees;
+write-once artifacts under new `outputs/phase8/` directories. Update this plan,
+`outputs/phase8_execution_status.md`, `docs/FIXES.md`, and technical usage docs.
+
+### Implementation Phases
+
+1. Inspect terminal chain records and released lease, then validate and commit
+   the user's fresh G0 rerun. The expected fresh directory is currently absent;
+   obtain its path or confirmation that the run is still pending. Old G0 is
+   not represented as a fresh rerun.
+2. Execute additive P7.3-A1 matched-thrust screening on frozen v6 C++ despite
+   A1 FAIL. Disclose penalty-guard-only failure; retain claim rule, 64 draws,
+   fuels/modes, Brem domain and lifecycle basis. Label every output
+   `conditional on v6 calibration`; preserve the original closed-gate record.
+3. Execute P8-S data generation, training and one-shot scoring in that order.
+   Use disjoint scrambled Sobol splits, nested N=64..4096 train sizes and a
+   separate named-P7.3-blend test. Fit equal MLPs for data-only and physics
+   losses; compute exact fuel properties and CO2/lifecycle relations. Register
+   numerical bars, optimizer budgets, seeds, residual normalization, ranking,
+   sign and draw-claim decisions before any simulator sample or model run.
+4. Run the separately registered blend-conditioned quasi-1D nozzle ODE PINN,
+   physics-on versus data-only, scored against the exact solution over its
+   predeclared admissible blend-property/NPR envelope. Preserve old Track 4.
+5. Deliver tested CLI/API, envelope flags, draw bands, optional top-k simulator
+   verification, technical README examples, saved weights and hash manifests.
+6. Create `outputs/freeze/NUMBERS.md` from verified quantitative artifacts and
+   the speed/break-even, learning, parity, ranking, screening-band, nozzle,
+   pyCycle-match and G0 figures. Mark inherited/code-to-code evidence accurately.
+   Create the local freeze tag after checks; no push or prose draft.
+
+### File-Level Edits
+
+Keep all existing scientific registrations unchanged. New registration records
+fix procedures and source/input hashes. New consumers enforce AC/idle ownership,
+write-once outputs, source drift checks and locked-test reservations. The product
+computes mixture LHV, H/C and EI-CO2 exactly, and lifecycle CO2e from fuel flow;
+it does not train independent heads for these exact quantities. Brem nvPM is
+reported only within its registered domain. Record invalid/unreachable cases
+and envelope violations instead of silently dropping or extrapolating them.
+
+### Commands to Run
+
+Run the existing chain without edits. New registration commits precede new
+computation. Post-chain command order is G0 evidence, P7.3-A1, P8-S generate,
+train, frozen one-shot score, nozzle study, product checks, freeze. Exact new
+CLI commands are fixed in their procedure registrations before launch. Run
+meaningful pure tests and protected/hash checks after benchmark ownership ends;
+keep compilation, training and speed measurements off the active benchmark.
+
+### Tests
+
+Test fuel-simplex and thrust/draw envelopes, exact relations, Brem applicability,
+source/weight hashes, batch/API consistency, refusal of foreign or changed
+artifacts, test-reservation exclusivity, write-once outputs and top-k verification.
+Measure simulator single/all-core throughput, MLX GPU batch and float64 CPU
+throughput, training wall time, break-even count, the 10,000 blends by 64 draws
+screen, and screen-then-verify overlap/cost. Compare every metric with its
+preregistered bar, retaining failed or undefined metrics honestly.
+
+### Acceptance Criteria
+
+All prospective registrations precede computation; the chain is uninterrupted;
+deferred work stays deferred; G0 is fresh and committed; P7.3 outputs retain
+conditional labels and unchanged decisions; both test sets are opened once
+only after freezing all learning-curve models. Report fuel-flow/CO2e mean and
+max errors, Kendall tau/top-10 recall, sign and claim-rule agreement, physics
+residuals, all speed/cost numbers, each metric versus its bar, hashes and an
+actual runnable `screen_blends` usage command. Product claims are limited to
+simulator fidelity and measured speed. Freeze contains verified numbers and
+figures only, with a local tag and no push.
+
+### Rollback Notes
+
+Additive fixes/reverts only; preserve old results, test reservations and weights.
+Do not revive deferred runs, rewrite history or interrupt an experiment. Any
+new consumed test reservation ends that attempt; changes after scoring require
+an independently registered future study rather than rescoring the same test.
+
+### Escalation Guidance
+
+Codex implements and independently reviews under the user's explicit override.
+The active lease and missing fresh G0 evidence block dependent numerical work,
+not registrations or isolated implementation. Resolve routine design choices
+prospectively; ask for genuinely missing evidence or ambiguous scientific bars.
+
 
 Date: 2026-09-29. Branch `phase8`, from the Phase 7 freeze `7524a7a`.
 Completed Phase 7 plan: `docs/plan_phase7_completed.md`; closure in
