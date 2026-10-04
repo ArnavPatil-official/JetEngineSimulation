@@ -283,3 +283,10 @@ This cannot grant deployment, acceptance or another scoring pass.
 Verified P8-S source properties remain independent of its later neural-network
 verdict, subject to authenticated release and the exact generation/property
 proofs. This clarification changes completion metadata only.
+
+The source-property validator explicitly uses `allow_scientific_fail=True` with
+the fixed property artifact allowlist. It retains the actual producer verdict and
+accepts a fully completed authenticated FAIL only with `execution_complete=True`
+and `scientific_verdict=FAIL`. Error, incomplete, partial or provenance-invalid
+producers remain blocked. All 4096 TRAIN and 68 named property rows must still be
+converged, finite, independently identified and within the fixed nozzle envelope.
