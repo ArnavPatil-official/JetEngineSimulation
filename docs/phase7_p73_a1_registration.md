@@ -185,6 +185,16 @@ exception refusal cases, draw/fuel/mode completeness, conditional labels,
 unavailable nvPM values, backend selection, dependency/hash drift,
 reservation/write-once failures and missing-output terminal failure.
 
+Additional prospective clarification dated 2026-10-04, before execution:
+`new_source_paths` names exactly `scripts/phase8/p73_a1_cpp.py` and
+`tests/test_phase7_p73_a1_cpp.py`. Approved `partial_rows.jsonl` in the new
+output namespace records each finished parity/study batch append-only with
+stage, case and frozen identity, retaining raw rows after a later failure.
+It adds no simulator requests and changes no final CSV schema. Nonfinite raw
+values are encoded explicitly. A row labeled converged must have finite
+required solve quantities before scoring; malformed evidence is ERROR.
+The protected claim function and its thresholds remain unchanged.
+
 ## Commands to Run
 
 For this docs-only change: parse the new JSON with the standard library, check
