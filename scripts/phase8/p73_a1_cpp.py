@@ -49,6 +49,10 @@ class ParityFailure(RuntimeError):
     """The registered cross-backend comparison did not pass."""
 
 
+class ChildLifecycleError(RuntimeError):
+    """A pool shutdown could not prove that every owned worker ended."""
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -203,6 +207,21 @@ def import_protocol(root: Path):
     return protocol, backend
 
 
+def worker_record(workers_dir, pool_tag, backend, binary=None, expected_hash=None):
+    birth = subprocess.run(["ps", "-p", str(os.getpid()), "-o", "lstart="],
+                           capture_output=True, text=True, check=True).stdout
+    birth = " ".join(birth.split())
+    command = subprocess.run(["ps", "-ww", "-p", str(os.getpid()), "-o", "command="],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    if not birth or not command:
+        raise Blocked("worker birth or command identity unreadable")
+    path = Path(workers_dir) / f"{pool_tag}-{os.getpid()}.json"
+    write_new(path, json_text({"pid": os.getpid(), "birth": birth, "pool": pool_tag,
+                              "argv": [command], "argv_format": "ps command (single string)",
+                              "binary_path": None if binary is None else str(Path(binary).resolve()),
+                              "binary_sha256": expected_hash, "backend": backend}))
+
+
 def init_cpp_worker(root, binary, expected_hash, excluded, workers_dir, pool_tag):
     root = Path(root).resolve()
     _protocol, backend = import_protocol(root)
@@ -213,28 +232,55 @@ def init_cpp_worker(root, binary, expected_hash, excluded, workers_dir, pool_tag
         raise Blocked("worker imported another checkout's adapter")
     if adapter.load_core() is not core:
         raise Blocked("worker adapter did not use the selected full-equilibrium core")
-    birth = subprocess.run(["ps", "-p", str(os.getpid()), "-o", "lstart="],
-                           capture_output=True, text=True, check=True).stdout.strip()
-    if not birth:
-        raise Blocked("worker birth identity unreadable")
-    path = Path(workers_dir) / f"{pool_tag}-{os.getpid()}.json"
-    write_new(path, json_text({"pid": os.getpid(), "birth": birth, "pool": pool_tag,
-                              "binary_path": str(Path(binary).resolve()),
-                              "binary_sha256": expected_hash, "backend": "cpp-full-equilibrium-v6"}))
+    worker_record(workers_dir, pool_tag, "cpp-full-equilibrium-v6", binary, expected_hash)
+
+
+def init_python_worker(root, excluded, workers_dir, pool_tag):
+    protocol, _backend = import_protocol(Path(root))
+    protocol.v5._init_worker(excluded)
+    worker_record(workers_dir, pool_tag, "python-v6")
 
 
 def make_model(protocol, backend, reg6, split, kind, context, output_dir, tag):
     model = backend.V6Model(reg6["fixed_central"], split["heldout_models"], n_workers=6,
                             fuel=protocol.v6.fuel_composition(reg6), backend=kind)
+    # Keep the registered V6Model and solve_task path; initializers add only
+    # explicit module provenance and worker evidence around protected setup.
+    model.pool.shutdown(wait=True, cancel_futures=True)
     if kind == "cpp":
-        # Keep the registered V6Model and solve_task path; the replacement
-        # initializer only adds explicit module provenance and worker evidence.
-        model.pool.shutdown(wait=True, cancel_futures=True)
         model.pool = ProcessPoolExecutor(
             max_workers=6, initializer=init_cpp_worker,
             initargs=(str(protocol.ROOT), str(context.binary_path), context.binary_sha256,
                       split["heldout_models"], str(output_dir / "workers"), tag))
+    else:
+        model.pool = ProcessPoolExecutor(
+            max_workers=6, initializer=init_python_worker,
+            initargs=(str(protocol.ROOT), split["heldout_models"], str(output_dir / "workers"), "parity_python"))
     return model
+
+
+def sync_worker_children(run, out):
+    children = []
+    for path in sorted((out / "workers").glob("*.json")):
+        proof = read_json(path)
+        if (not isinstance(proof.get("pid"), int) or proof["pid"] <= 0
+                or not isinstance(proof.get("birth"), str) or not proof["birth"]
+                or not isinstance(proof.get("argv"), list) or not proof["argv"]):
+            raise Blocked("worker ownership proof is incomplete")
+        children.append({"pid": proof["pid"], "birth": proof["birth"], "argv": proof["argv"]})
+    run.record_children(children)
+
+
+def close_model(model, run, out):
+    try:
+        model.close()
+    except BaseException as exc:
+        try:
+            sync_worker_children(run, out)
+        except BaseException:
+            pass
+        raise ChildLifecycleError("worker pool shutdown unproven; preserve owner lease") from exc
+    sync_worker_children(run, out)
 
 
 def missing(value) -> bool:
@@ -303,6 +349,7 @@ def parity_stage(protocol, backend, reg6, split, params, ae3, fuels, fixed_draws
         model = make_model(protocol, backend, reg6, split, kind, context, out, "parity_cpp")
         try:
             batches = {"central": protocol.run(model, params, reg6["fixed_central"], ae3, fuels)}
+            sync_worker_children(run, out)
             if checkpoint is not None:
                 checkpoint(f"parity-{kind}", "central", batches["central"])
             for case, row in fixed_draws:
@@ -310,13 +357,14 @@ def parity_stage(protocol, backend, reg6, split, params, ae3, fuels, fixed_draws
                     continue
                 run.assert_current()
                 batches[case] = protocol.run(model, params, protocol.draw_fixed(row, reg6["fixed_central"]), ae3, study)
+                sync_worker_children(run, out)
                 if checkpoint is not None:
                     checkpoint(f"parity-{kind}", case, batches[case])
             for name, frame in batches.items():
                 write_frame(directory / f"{name}_{kind}.csv", frame)
             results[kind] = batches
         finally:
-            model.close()
+            close_model(model, run, out)
     if list(results["python"]) != ["central", "draw_00", "draw_31", "draw_63"]:
         raise RuntimeError("registered parity draw coverage missing or reordered")
     for name in results["python"]:
@@ -415,6 +463,7 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
     model = make_model(protocol, backend, reg6, split, "cpp", context, out, "study_cpp")
     try:
         central = protocol.run(model, fit["params"], reg6["fixed_central"], ae3, fuels)
+        sync_worker_children(run, out)
         if checkpoint is not None:
             checkpoint("study-cpp", "central", central)
         frames = []
@@ -422,6 +471,7 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
         for case, row in fixed_draws:
             run.assert_current()
             frame = protocol.run(model, fit["params"], protocol.draw_fixed(row, reg6["fixed_central"]), ae3, study)
+            sync_worker_children(run, out)
             frame.insert(0, "draw", case)
             if checkpoint is not None:
                 checkpoint("study-cpp", case, frame)
@@ -429,7 +479,7 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
             print(f"{case}: {int((frame['status'] != 'converged').sum())} unconverged", flush=True)
         draws = protocol.pd.concat(frames, ignore_index=True)
     finally:
-        model.close()
+        close_model(model, run, out)
     validate_coverage(protocol, central, draws, fuels)
     run.assert_current()
     tables, summary = postprocess(protocol, registration, fit["params"], central, draws, fuels)
@@ -501,13 +551,17 @@ def require_outputs(out: Path, *, before_exit_record=False, binary_path=None, bi
         if verdict.get("binary_path") != str(binary_path) or verdict.get("binary_sha256") != binary_sha256:
             raise RuntimeError("parity proof does not match selected core")
         workers = [read_json(p) for p in sorted((out / "workers").glob("*.json"))]
-        if not workers or {record.get("pool") for record in workers} != {"parity_cpp", "study_cpp"}:
+        if not workers or {record.get("pool") for record in workers} != {"parity_python", "parity_cpp", "study_cpp"}:
             raise RuntimeError("missing C++ worker provenance for parity or full study")
         for record in workers:
-            if (record.get("binary_path") != str(Path(binary_path).resolve())
-                    or record.get("binary_sha256") != binary_sha256
+            cpp = record.get("pool") != "parity_python"
+            if ((cpp and (record.get("binary_path") != str(Path(binary_path).resolve())
+                          or record.get("binary_sha256") != binary_sha256
+                          or record.get("backend") != "cpp-full-equilibrium-v6"))
+                    or (not cpp and record.get("backend") != "python-v6")
                     or not isinstance(record.get("pid"), int) or record["pid"] <= 0
-                    or not isinstance(record.get("birth"), str) or not record["birth"]):
+                    or not isinstance(record.get("birth"), str) or not record["birth"]
+                    or not isinstance(record.get("argv"), list) or not record["argv"]):
                 raise RuntimeError("invalid selected-core worker provenance")
 
 
@@ -536,7 +590,7 @@ def execute(main_root: Path, registration_path: Path, *, consumer_root: Path = R
         if Path(gate.__file__).resolve() != main_root / "scripts/phase8/scientific_workflow_gate.py":
             raise Blocked("shared gate imported from an unvalidated checkout")
         gate_factory = gate.prepare_context
-    context = gate_factory(main_root, registration_path, expected_consumer_identity=identity, require_g0=True)
+    context = gate_factory(main_root, REGISTRATION, expected_consumer_identity=identity, require_g0=True)
     context.require_idle_ac()
     validate_contract(main_root, registration)
     fit = read_json(main_root / registration["implementation_contract"]["fit_path"])
@@ -546,7 +600,10 @@ def execute(main_root: Path, registration_path: Path, *, consumer_root: Path = R
     validate_exception(profile, fit, hold, historical)
     out = main_root / registration["outputs"]["directory"]
     run = context.acquire_run(out, identity["registration_sha256"], identity=context.identity)
+    reservation = read_json(out / "reservation.json")
+    owner = {key: reservation[key] for key in ("owner_pid", "owner_birth", "argv")}
     status, errors, summary = "ERROR", [], None
+    ambiguous_child = False
     started = dt.datetime.now(dt.timezone.utc).isoformat()
     try:
         run.assert_current()
@@ -574,6 +631,7 @@ def execute(main_root: Path, registration_path: Path, *, consumer_root: Path = R
     except BaseException as exc:
         status = "FAIL" if isinstance(exc, ParityFailure) else "ERROR"
         errors.append(f"{type(exc).__name__}: {exc}")
+        ambiguous_child = isinstance(exc, ChildLifecycleError)
     try:
         if status == "COMPLETE":
             if not isinstance(summary, dict) or "_sealed_outputs" not in summary or "_sealed_schemas" not in summary:
@@ -589,6 +647,7 @@ def execute(main_root: Path, registration_path: Path, *, consumer_root: Path = R
     try:
         write_new(out / "command.exit.json", json_text({"exit_code": 0 if status == "COMPLETE" else 1,
                   "status": status, "started": started, "finished": finished, "errors": errors,
+                  "identity": context.identity, "in_process_completed": True, **owner,
                   "scope": "consumer computation plus required-output validation; terminal release revalidates identity"}))
     except BaseException as exc:
         status = "ERROR"
@@ -607,11 +666,16 @@ def execute(main_root: Path, registration_path: Path, *, consumer_root: Path = R
         status = "ERROR"
         errors.append(f"{type(exc).__name__}: {exc}")
         hashes = {}
+    canonical_hashes = {(out / name).relative_to(main_root).as_posix(): value for name, value in hashes.items()}
+    canonical_coverage = [(out / name).relative_to(main_root).as_posix() for name in (*EXPECTED_OUTPUTS, "artifact_hashes.json")]
     terminal = {"status": status, "registration_id": "P7.3-A1", "registration_sha256": identity["registration_sha256"],
                 "identity": context.identity, "consumer_identity": identity, "binary_path": str(context.binary_path),
                 "binary_sha256": context.binary_sha256, "conditional_label": LABEL, "started": started,
                 "finished": finished, "exit_code": 0 if status == "COMPLETE" else 1, "errors": errors,
-                "artifacts_sha256": hashes, "expected_outputs": list(EXPECTED_OUTPUTS),
+                "output_dir": out.relative_to(main_root).as_posix(), "artifacts_sha256": hashes,
+                "artifact_hashes": canonical_hashes, "expected_outputs": canonical_coverage,
+                "expected_output_names": list(EXPECTED_OUTPUTS), "outputs_complete": status == "COMPLETE",
+                "ambiguous_child": ambiguous_child,
                 "quantitative_tables": {} if summary is None else summary.get("_sealed_schemas", {}),
                 "quantitative_summary": None if summary is None else {key: summary.get(key) for key in ("n_draws", "n_comparisons", "n_claimed")}}
     return run.release(terminal)

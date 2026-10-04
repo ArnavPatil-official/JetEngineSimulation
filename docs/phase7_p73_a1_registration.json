@@ -126,7 +126,7 @@
     ]
   },
   "implementation_contract": {
-    "new_consumer": "scripts/phase8/p73_a1_cpp.py (prospective, not implemented by this docs-only commit)",
+    "new_consumer": "scripts/phase8/p73_a1_cpp.py",
     "protected_algorithm": "Import and reuse the registered fuel_parts, pairs, draw_fixed/load_draws, tasks_for/run, lifecycle, nvpm_brem and claim definitions from scripts/optimization/blend_matched_thrust_v6.py. Do not call or modify its main(), which couples input fit/gate paths to its output directory and enforces the historical gate.",
     "fit_path": "outputs/phase7/calibration_v6.json",
     "profile_path": "outputs/phase7/identifiability_profile_v6.json",
@@ -146,7 +146,8 @@
     "target_policy": "Only AE3 OPR/BPR/rated-thrust inputs via with_targets=False. No new held-out score or empirical nozzle target read. Frozen fit/profile/gate metadata is dependency evidence.",
     "source_freeze": "Freeze the final committed additive consumer/test/config source identity before compute; this base snapshot alone does not authorize unimplemented code.",
     "main_root_contract": "Supply an explicit main root for frozen original inputs/records/binary; distinguish original-main and additive consumer identities. Verify imported protected module origins/hashes. Runtime may execute the registered new consumer from an extended validated main tree or isolated frozen worktree only after the attestation/extension proof; no mixed unverified sources.",
-    "evidence_validation": "Every required raw solve quantity of a row labeled converged must be finite before scoring; missing/nonfinite converged evidence is ERROR. Registered unreachable rows retain missing values/status/reason. This validates evidence and does not change the protected claim function or scientific thresholds."
+    "evidence_validation": "Every required raw solve quantity of a row labeled converged must be finite before scoring; missing/nonfinite converged evidence is ERROR. Registered unreachable rows retain missing values/status/reason. This validates evidence and does not change the protected claim function or scientific thresholds.",
+    "implementation_status": "Committed isolated consumer; synthetic tests written, not executed while the main benchmark is active. Numerical prerequisites remain pending; not armed."
   },
   "backend_parity": {
     "purpose": "Numerical equivalence gate for the additive consumer; not empirical blend validation and not exhaustive proof of all 64 draw extremes.",

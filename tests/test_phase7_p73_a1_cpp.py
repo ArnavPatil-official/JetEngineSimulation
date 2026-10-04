@@ -116,11 +116,11 @@ def test_every_cpp_worker_preloads_before_protected_initializer(tmp_path, monkey
     monkeypatch.setattr(consumer, "load_selected_core", lambda path, sha: events.append(("preload", str(path), sha)) or selected)
     adapter = SimpleNamespace(__file__=str(root / "simulation/catjet_backend.py"), load_core=lambda: selected)
     monkeypatch.setattr(consumer.importlib, "import_module", lambda name: adapter)
-    monkeypatch.setattr(consumer.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="synthetic birth\n"))
+    monkeypatch.setattr(consumer.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="Sun  Oct  4 12:00:00 2026\n"))
     consumer.init_cpp_worker(root, tmp_path / "selected.so", "frozen-sha", ["heldout-family"], workers, "study_cpp")
     assert events[0][0] == "preload" and events[1] == ("protected-init", ["heldout-family"])
     proof = consumer.read_json(next(workers.glob("*.json")))
-    assert proof["binary_sha256"] == "frozen-sha" and proof["birth"] == "synthetic birth"
+    assert proof["binary_sha256"] == "frozen-sha" and proof["birth"] == "Sun Oct 4 12:00:00 2026"
     assert proof["pool"] == "study_cpp"
 
 
@@ -140,6 +140,7 @@ def test_worker_refuses_adapter_using_a_different_core(tmp_path, monkeypatch):
 class FakeRun:
     def __init__(self, context, out):
         self.context, self.out, self.calls = context, out, 0
+        self.children = []
 
     def assert_current(self):
         self.calls += 1
@@ -153,6 +154,9 @@ class FakeRun:
         consumer.write_new(self.out / "terminal.json", consumer.json_text(terminal))
         self.context.released = terminal
         return terminal
+
+    def record_children(self, children):
+        self.children = list(children)
 
 
 class FakeContext:
@@ -170,7 +174,8 @@ class FakeContext:
     def acquire_run(self, out, registration_sha256, identity=None):
         assert identity == self.identity
         out.mkdir(parents=True)
-        consumer.write_new(out / "reservation.json", consumer.json_text({"registration_sha256": registration_sha256}))
+        consumer.write_new(out / "reservation.json", consumer.json_text({"registration_sha256": registration_sha256,
+            "owner_pid": consumer.os.getpid(), "owner_birth": "synthetic owner birth", "argv": ["synthetic consumer"]}))
         self.acquired = FakeRun(self, out)
         return self.acquired
 
@@ -218,10 +223,13 @@ def fake_quantitative_runner(root, registration, fit, context, run, out):
         else:
             value = None
         consumer.write_new(path, consumer.json_text(value) if value else "synthetic quantitative fixture\n")
-    for pool in ("parity_cpp", "study_cpp"):
+    for index, pool in enumerate(("parity_python", "parity_cpp", "study_cpp")):
         consumer.write_new(out / "workers" / f"{pool}-123.json", consumer.json_text({
-            "pid": 123, "birth": "synthetic birth", "pool": pool,
-            "binary_path": str(context.binary_path.resolve()), "binary_sha256": context.binary_sha256}))
+            "pid": 123 + index, "birth": "synthetic birth", "pool": pool, "argv": ["synthetic worker"],
+            "backend": "python-v6" if pool == "parity_python" else "cpp-full-equilibrium-v6",
+            "binary_path": None if pool == "parity_python" else str(context.binary_path.resolve()),
+            "binary_sha256": None if pool == "parity_python" else context.binary_sha256}))
+    consumer.sync_worker_children(run, out)
     result = {"n_draws": 64, "n_comparisons": 720, "n_claimed": 0}
     result["_sealed_outputs"] = {name: consumer.sha256(out / name)
                                   for name in (*consumer.TABLE_NAMES, "p73_blends_v6.json", "README.md")}
@@ -235,12 +243,20 @@ def test_agreed_gate_separates_identities_and_requires_fresh_g0(orchestration):
     terminal = consumer.execute(root, registration, gate_factory=factory, scientific_runner=fake_quantitative_runner)
     assert terminal["status"] == "COMPLETE" and terminal["exit_code"] == 0
     assert prepared[0][2]["require_g0"] is True
+    assert prepared[0][1] == consumer.REGISTRATION
     assert prepared[0][2]["expected_consumer_identity"] != context.original_context["identity"]
     assert context.idle == 1 and context.acquired.calls >= 3
     assert terminal["conditional_label"] == consumer.LABEL
     assert terminal["artifacts_sha256"]["artifact_hashes.json"]
+    assert terminal["outputs_complete"] is True
+    assert set(terminal["expected_outputs"]) <= set(terminal["artifact_hashes"])
+    assert all(name.startswith("outputs/p73/") for name in terminal["artifact_hashes"])
     assert (root / "outputs/p73/reservation.json").exists()
     assert context.released == terminal
+    exit_record = consumer.read_json(root / "outputs/p73/command.exit.json")
+    assert exit_record["identity"] == context.identity and exit_record["in_process_completed"] is True
+    assert exit_record["owner_pid"] == consumer.os.getpid() and exit_record["argv"] == ["synthetic consumer"]
+    assert len(context.acquired.children) == 3
 
 
 def test_ac_or_active_owner_gate_blocks_before_reservation(orchestration, monkeypatch):
@@ -413,6 +429,25 @@ def test_raw_checkpoint_retains_missing_values_without_invalid_json():
     assert record["rows"][0]["status"] == "unreachable"
     assert record["rows"][0]["ff"] == {"nonfinite_raw_value": "nan"}
     assert record["identity"] == {"source": "frozen"}
+
+
+def test_unproven_shutdown_is_explicit_ambiguous_child_error(tmp_path):
+    (tmp_path / "workers").mkdir()
+    children = []
+    run = SimpleNamespace(record_children=lambda value: children.extend(value))
+    def interrupted_close():
+        raise KeyboardInterrupt("synthetic interrupted join")
+    with pytest.raises(consumer.ChildLifecycleError, match="preserve owner lease"):
+        consumer.close_model(SimpleNamespace(close=interrupted_close), run, tmp_path)
+
+
+def test_python_parity_worker_reuses_protected_initializer_only(monkeypatch):
+    events = []
+    protocol = SimpleNamespace(v5=SimpleNamespace(_init_worker=lambda excluded: events.append(("protected-python", excluded))))
+    monkeypatch.setattr(consumer, "import_protocol", lambda root: (protocol, None))
+    monkeypatch.setattr(consumer, "worker_record", lambda *args: events.append(("proof", args[2])))
+    consumer.init_python_worker(Path("synthetic-main"), ["heldout"], Path("workers"), "parity_python")
+    assert events == [("protected-python", ["heldout"]), ("proof", "python-v6")]
 
 
 def test_protected_claim_lifecycle_and_brem_rules_used_with_parent_csv_schema():
