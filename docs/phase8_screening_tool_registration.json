@@ -20,5 +20,11 @@
   "protected": "All original registrations, YAML, existing model weights, frozen reference files and active chain untouched. Saved new model hashes are inherited from P8-S, no push.",
   "checks": "Meaningful synthetic tests for64draw coverage, deterministic grid/ranking, draw-band semantics, invalid/outside envelope flags, receipt/hash refusal and top-k-before-label locking. No tests or simulator/MLX imports while original benchmark owns lease.",
   "usage": ".venv/bin/python scripts/phase8/screen_blends.py --model outputs/phase8/saf_surrogate/attempt_001/product.json --grid-step 0.1 --thrust-fraction 1.0 --out outputs/phase8/screening_tool/grid.json",
-  "no_prose_results_draft": true
+  "no_prose_results_draft": true,
+  "prospective_clarification_2026_10_04": {
+    "registered_before": "Any product or post-chain computation; existing scientific registrations and protocol untouched.",
+    "verification_lifecycle": "The optional product Verifier executes synchronously in the actual lease owner and launches no children. It records command_spec.json from reservation PID/birth/argv, query/model/source/core/input identity; core_proof.json from actual loaded module origin/hash; command.exit.json with in_process_completed and explicit waited_child_exit not_applicable_synchronous_owner. Raw selected predictions precede reference calls; raw_verification.json precedes validation; quantitative differences and final owned terminal bind every proof. Do not invent child/worker or waited-child evidence.",
+    "invalid_output": "Rows with invalid_thermo/invalid_prediction/diagnostic_unsafe or nonfinite required metrics remain MODEL_INVALID, unranked with missing prediction bands.",
+    "envelope": "Flags both full TRAIN4096 and the actually selected-N prefix envelope; no implication that a smaller model trained on4096."
+  }
 }
