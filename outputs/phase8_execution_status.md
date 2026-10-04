@@ -9,7 +9,7 @@ post-chain scientific sequence. No prose results draft.
 **Working deadline: October 28, 2026 (America/New_York).** Prioritize the
 working product. Preserve the local tag name `freeze-2026-10-18`.
 
-The main AC chain is unchanged. At the 19:30 local check on 2026-10-04,
+The main AC chain is unchanged. At the 19:14 local check on 2026-10-04,
 run 2 and its two registered reruns had finished. The validated run-2
 completion retains **48 PASS, 1 INVALID_POWER and 7 FAIL** (including the
 seven historical specs); both reruns are **PASS**. Benchmark-owner release

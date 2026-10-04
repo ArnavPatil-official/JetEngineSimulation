@@ -255,3 +255,38 @@ The reviewed code automatically reviews the new input manifest by writing its
 complete input/case/source identity once and revalidating all hashes and gates
 before any training exact field is generated. Test fields remain uncomputed until
 all six final checkpoint hashes and the single score reservation are fixed.
+
+### Dated prospective proof clarification — 2026-10-04
+
+The consumer additionally requires the completed, released and committed P8-S
+run metadata, validated by `validate_consumer_terminal(..., artifact_paths=...)`.
+Its explicit allowlist contains permitted TRAIN/property/input and raw generation
+proof files. It never opens or hashes excluded validation/test/ranking or sealed
+targets; their hash values remain opaque. Independently join the actual generation
+command spec, child handshake, waited exit, log and archived owner lease to the
+same producer registration/source/input/core identity and reservation. The inline
+launch summary must match these raw records. Later producer terminal evidence can
+hash the earlier property manifest; the manifest has no reverse terminal hash.
+This tightens provenance only, with no scientific protocol change.
+
+### Dated prospective completion clarification — 2026-10-04
+
+Terminal `execution_complete` is true only after all six final checkpoints and
+training logs, twelve validation groups, twenty-four final-test groups, every
+registered score/prediction row and expected artifact have completed with no
+source, provenance, identity or coverage errors. Partial or erroneous execution
+keeps it false. `scientific_verdict` retains the actual registered PASS or FAIL;
+FAIL retains a nonzero exit. The quantitative freeze may read a fully computed
+FAIL only through explicit metadata-only `allow_scientific_fail=True` validation.
+This cannot grant deployment, acceptance or another scoring pass.
+
+Verified P8-S source properties remain independent of its later neural-network
+verdict, subject to authenticated release and the exact generation/property
+proofs. This clarification changes completion metadata only.
+
+The source-property validator explicitly uses `allow_scientific_fail=True` with
+the fixed property artifact allowlist. It retains the actual producer verdict and
+accepts a fully completed authenticated FAIL only with `execution_complete=True`
+and `scientific_verdict=FAIL`. Error, incomplete, partial or provenance-invalid
+producers remain blocked. All 4096 TRAIN and 68 named property rows must still be
+converged, finite, independently identified and within the fixed nozzle envelope.

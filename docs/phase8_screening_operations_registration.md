@@ -32,7 +32,8 @@ Both registered benchmark queue completion records and the benchmark-owner
 release must validate before isolated lightweight fixture checks may run while
 the remaining original chain waits for AC. This supersedes the conservative
 all-fixtures-after-chain sentence above for the gate/product synthetic cases
-and P7.3-A1 fake-backend cases only. These tests use toy files, mocked process
+P7.3-A1 fake-backend cases, P8-S pure contract cases, and freeze/bootstrap
+metadata fixtures only. These tests use toy files, mocked process
 records and fake backends; they must not import the C++ core, Cantera or MLX,
 run the nozzle exact oracle, read scientific test labels, change original
 sources/binaries or launch the original full suite. Prove the original
