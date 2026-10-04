@@ -13,8 +13,9 @@ Execute the originally registered P7.3 comparisons with the full-equilibrium
 C++ v6 backend, keeping the selected Phase 7 v6 calibration frozen. The user
 authorizes a narrowly defined exception to the original A1 dependency after
 disclosure of its penalty-guard-only failure. Preserve the original claim rule
-and conditional ranking decisions. Every artifact and technical README must
-say **conditional on the frozen v6 calibration; A1 FAIL (penalty-dependent)**.
+and conditional ranking decisions. The quantitative artifacts' JSON metadata
+and technical README must say **conditional on the frozen v6 calibration;
+A1 FAIL (penalty-dependent)**. Preserve the parent CSV schemas unchanged.
 Those decisions describe this calibrated model, not demonstrated real-world
 SAF performance, an identifiable calibration, or a passed original gate.
 
@@ -97,32 +98,45 @@ part of this docs-only commit.
    numerical work. No main scientific source integration while the AC chain
    is active.
    The main validator compares its entire registered source set: adding a
-   consumer/test afterward can also invalidate that terminal identity. Run
-   the additive code from a separately frozen isolated worktree while keeping
-   the validated main root unchanged, or prospectively register exact identity
-   extension rules before execution. Do not waive checks or reuse stale records.
-   Supply the main root explicitly for protected imports, inputs, records and
-   binary; verify loaded modules originate there and freeze additive code
-   separately. Do not mix scientific sources from different checkouts.
-2. Validate the main terminal context using
-   `validate_terminal_context(root, expected_identity=..., require_idle=True)`.
-   Require strict benchmark completion/owner-release evidence, referenced
-   stage hashes, no lease, and a PASS `validation_build` with its actual binary
-   hash. Terminal command failures retain their truthful status; they cannot
-   supply a PASS prerequisite. Repeat validation after waits and before launch.
+   consumer/test afterward can invalidate that terminal identity. The
+   prospective source-extension protocol below preserves that original
+   identity and freezes the additive consumer identity separately. Supply the
+   main root explicitly for imports, inputs, records and binary, and verify
+   module origins/hashes. Do not mix unverified sources from different checkouts.
+2. After the main chain terminates and before integrating any new scientific
+   source path, validate the original main terminal context strictly and export
+   a write-once hashed dependency attestation. Include raw registration,
+   queue/stage/completion/owner-release/terminal evidence, command/handshake/log/
+   output hashes, original launch-tree blobs/modes and original module hashes.
+   A new additive helper revalidates all of that evidence and proves every
+   original source/module unchanged, permitting only prospectively registered
+   new paths. Only then may it inject the **proven original main identity**
+   into read-only Workflow checks. `expected_identity` is that original
+   workflow identity, never the new consumer identity. Do not edit the old
+   helper or old records. Terminal failures remain truthful and cannot supply
+   a required PASS prerequisite. Repeat proof after waits and before launch.
 3. Obtain a fresh write-once G0 PASS with the registered comparison rule and
    the same actually loaded full-equilibrium binary to be used by this study.
-   Preserve legacy `outputs/phase8/g0/` and `g0_parity.json`. At registration,
-   the documented `outputs/phase8/g0_rerun_20261003` directory and a matching
-   reservation were not found; their absence is pending, not PASS evidence.
+   Preserve legacy `outputs/phase8/g0/` and `g0_parity.json`. The existing G0
+   script emits no reservation or actual loaded binary hash. Do not claim
+   those records exist. A supplied rerun lacking that evidence remains pending
+   provenance verification, rather than discarded or accepted with fabricated
+   metadata. A separately authorized fresh run may use a registered wrapper
+   that reserves a new namespace and captures actual source/core provenance
+   around the unchanged G0 script. The documented
+   `outputs/phase8/g0_rerun_20261003` directory was not found at registration;
+   fresh evidence remains pending.
 4. Reserve `outputs/phase7/p73_a1_cpp_20261004` atomically with the source,
    parent/input, dependency, registration and binary hashes, environment,
    command, AC evidence and PID/birth ownership. Verify the exact loaded module
-   path/hash equals the validated build and fresh G0 evidence. The benchmark
-   module in `cpp/build` is never rebuilt or overwritten. Explicitly preload
-   and verify the selected `cpp/build_next` module in the parent and every
-   worker; an environment variable or parent-only preload does not select it
-   reliably in spawned workers.
+   path/hash equals the selected core in fresh G0 and blend parity evidence.
+   Select the old `cpp/build` core explicitly, with attested original binary
+   provenance, or select `cpp/build_next` through an explicitly registered
+   preload wrapper with matching PASS build provenance. Disclose that choice;
+   do not require the old core to equal a different validation-build artifact.
+   The benchmark module is never rebuilt or overwritten. Verify the selected
+   module in the parent and every worker; an environment variable or
+   parent-only preload does not select it reliably in spawned workers.
 5. Execute registered backend parity first (coverage/tolerances in JSON). A
    failure records FAIL/ERROR and blocks the conditional blend run; retain all
    parity artifacts. This checks numerical backend equivalence, not empirical
@@ -137,11 +151,34 @@ part of this docs-only commit.
 
 ## File-Level Edits
 
+Prospective clarification dated 2026-10-04, before implementation execution:
+the source-extension attestation is exported to
+`outputs/phase8/screening_operations/main_dependency.json` only
+after strict original-main terminal validation and before new code integration.
+It is not asserted to exist now. The new consumer and
+`tests/test_phase7_p73_a1_cpp.py` are explicitly allowed new paths; the additive
+shared gate is separately registered. Recheck original blobs/modes/modules
+and every referenced raw dependency hash against this immutable attestation.
+Freeze the consumer/helper/test/config identity separately. Any changed or
+deleted original path, undeclared new source, altered raw record or old module
+drift blocks execution. No scientific rule is changed by this clarification.
+
+The separately registered `scripts.phase8.scientific_workflow_gate` exports
+the original attestation through `export_main_context(root)`. The consumer uses
+`prepare_context(root, registration, expected_consumer_identity=...,
+require_g0=True)`, `Context.require_idle_ac()`, and
+`Context.acquire_run(output_dir, registration_sha256, identity=...)`.
+`Run.assert_current()` revalidates dependencies/resource/ownership and
+`Run.release(terminal)` publishes terminal evidence and releases ownership.
+The central lease is `outputs/phase8/screening_operations/owner.lease.json`.
+The consumer never disables the G0 prerequisite.
+
 The future new consumer only adapts orchestration, explicit frozen input paths,
 backend selection, additive dependency exception, provenance and output routing.
 Reuse protected fuel/pair/task/draw/lifecycle/nvPM/claim functions. Do not edit
-the protected implementation. Export the same quantitative columns, plus
-registration/backend/conditional-label provenance; no change to their meaning.
+the protected implementation. Export the same quantitative columns unchanged;
+put registration/backend/conditional-label provenance in JSON and technical
+README, with no change to quantitative meaning.
 
 The future synthetic tests cover exact inheritance, penalty-guard-only
 exception refusal cases, draw/fuel/mode completeness, conditional labels,
@@ -178,12 +215,14 @@ missing-value patterns. No tolerance may be loosened after results.
 - Exactly the original 64 paired fixed draws, fuels, fractions, four points,
   quantities, comparisons, spread S and original claim rule are preserved.
   CLIMB85 remains reported and never claimed. Context families stay separate.
-- Every claim/ranking artifact visibly carries the calibration-conditional
-  disclosure. No empirical validity or operational approval is asserted.
+- Claim/ranking CSVs retain their parent schema and accompany JSON/technical
+  README with the calibration-conditional disclosure. No empirical validity or
+  operational approval is asserted.
 - Original CORSIA draws, liquid-LHV correction and Brem-only validity rules
   remain unchanged; unavailable nvPM outputs contain no number.
-- Fresh G0 and registered blend parity PASS, actual binary/source/input hashes,
-  main terminal-context evidence, AC evidence and exclusive ownership exist
+- Fresh G0 and registered blend parity PASS, verified actual selected core
+  provenance, distinct original-main/additive identities and attestation,
+  source/input hashes, main terminal evidence, AC and exclusive ownership exist
   before the full blend stage. Legacy G0 alone does not authorize this launch.
 - All expected quantitative outputs, technical README and terminal evidence
   exist with recorded hashes; any drift, partial output or prerequisite failure
