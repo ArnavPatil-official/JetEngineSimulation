@@ -551,7 +551,7 @@ def validate_verification(root, reg, context, receipt, path, gate):
             or type(verification.get("skipped")) is not int or verification["skipped"] != 0:
         raise Incomplete("Exact frozen tests have no matching committed PASS receipt")
     raw = verification.get("raw_sha256")
-    names = [declared[key] for key in ("command_spec", "command_log", "command_exit")]
+    names = [declared[key] for key in ("command_spec", "command_log", "command_exit", "junit_xml")]
     if not isinstance(raw, dict) or set(raw) != set(names):
         raise Incomplete("Verification lacks exact registered raw command evidence")
     for name in names:
@@ -567,7 +567,7 @@ def validate_verification(root, reg, context, receipt, path, gate):
             raise Incomplete("Verification raw records do not prove the frozen scientific and test identities")
     argv = command.get("argv")
     suite = ["-m", "pytest", *declared["registered_tests"]]
-    allowed_tails = ([], ["-v"], ["-vv"], ["-v", "--saf-registration", "docs/phase8_saf_surrogate_registration.json"])
+    allowed_tails = (["-v", "--junitxml=" + declared["junit_xml"]],)
     if not isinstance(argv, list) or argv[1:1 + len(suite)] != suite \
             or argv[1 + len(suite):] not in allowed_tails or command.get("workdir") != str(root) \
             or any(not isinstance(command.get(key), int) or command[key] <= 0 for key in ("owner_pid", "child_pid")) \
@@ -584,6 +584,7 @@ def validate_verification(root, reg, context, receipt, path, gate):
             or end.get("passed") != verification["passed"] or end.get("skipped") != 0 \
             or end.get("log_sha256") != raw[declared["command_log"]] \
             or end.get("command_spec_sha256") != raw[declared["command_spec"]] \
+            or end.get("junit_sha256") != raw[declared["junit_xml"]] \
             or not verification.get("ended_utc") or end.get("ended_utc") != verification["ended_utc"]:
         raise Incomplete("Actual waited verification exit and receipt disagree")
     log = safe_path(root, declared["command_log"]).read_text()
@@ -592,6 +593,18 @@ def validate_verification(root, reg, context, receipt, path, gate):
     if len(passed) != 1 or int(passed[0]) != verification["passed"] \
             or re.search(r"\b[1-9]\d* (?:failed|errors?|skipped|deselected)\b", log):
         raise Incomplete("Raw pytest log does not prove the reported complete PASS count")
+    from xml.etree import ElementTree
+    try:
+        junit = ElementTree.fromstring(safe_path(root, declared["junit_xml"]).read_bytes())
+        suites = list(junit.iter("testsuite"))
+        cases = list(junit.iter("testcase"))
+        total = sum(int(suite.attrib["tests"]) for suite in suites)
+        invalid = any(int(suite.attrib[key]) != 0 for suite in suites for key in ("errors", "failures", "skipped"))
+        failed_cases = any(list(case.iter("failure")) or list(case.iter("error")) or list(case.iter("skipped")) for case in cases)
+    except (ElementTree.ParseError, KeyError, ValueError) as exc:
+        raise Incomplete("Verification JUnit is absent or malformed") from exc
+    if not suites or not cases or total != verification["passed"] or len(cases) != total or invalid or failed_cases:
+        raise Incomplete("Actual JUnit does not prove every registered test passed")
 
 
 def required_outputs():
@@ -644,7 +657,7 @@ def run(root, registration=REGISTRATION):
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         mpl_version = matplotlib.__version__
-        plt.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42})
+        matplotlib.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42})
         for prefix in PREFIXES:
             before = len(rows)
             try:

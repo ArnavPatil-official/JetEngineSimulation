@@ -78,6 +78,7 @@ def packaged(tmp_path, monkeypatch):
         "command_spec": "outputs/phase8/screening_operations/product_verification.command_spec.json",
         "command_log": "outputs/phase8/screening_operations/product_verification.command.log",
         "command_exit": "outputs/phase8/screening_operations/product_verification.command.exit.json",
+        "junit_xml": "outputs/phase8/screening_operations/product_verification_run/junit.xml",
         "registered_tests": tests}
     reg = {"id": "P8-SCREENING-TOOL-20261004", "outputs": {"root": "outputs/freeze", "local_tag": "freeze-2026-10-18"},
            "quantitative_freeze_2026_10_04": {"required": ["NUMBERS.md", *freeze.PREFIXES],
@@ -179,19 +180,23 @@ def add_verification(fixture):
     interpreter = root / ".venv/bin/python"
     interpreter.parent.mkdir(parents=True)
     interpreter.write_text("synthetic interpreter bytes\n")
-    command = {"argv": [str(interpreter), "-m", "pytest", *descriptor["registered_tests"], "-v"],
+    command = {"argv": [str(interpreter), "-m", "pytest", *descriptor["registered_tests"], "-v", "--junitxml=" + descriptor["junit_xml"]],
         "workdir": str(root), "interpreter": str(interpreter), "interpreter_sha256": freeze.sha256(interpreter),
         "owner_pid": 90, "owner_birth": "verification-owner", "child_pid": 91, "child_birth": "verification-child"}
     shared = {"identity": fixture.context.identity, "test_files": fixture.tests, "command": command}
     write(root / descriptor["command_spec"], shared)
     log = root / descriptor["command_log"]
     log.write_text("collected 17 items\n================ 17 passed in 0.02s ================\n")
+    junit = root / descriptor["junit_xml"]
+    junit.parent.mkdir(parents=True)
+    junit.write_text('<testsuites><testsuite tests="17" errors="0" failures="0" skipped="0">'
+        + ''.join('<testcase name="synthetic_' + str(index) + '"/>' for index in range(17)) + '</testsuite></testsuites>')
     end = {**shared, "status": "PASS", "exit_code": 0, "waited": True, "passed": 17, "skipped": 0,
            "ended_utc": "2026-10-04T01:00:00+00:00", "command_spec_sha256": freeze.sha256(root / descriptor["command_spec"]),
-           "log_sha256": freeze.sha256(log)}
+           "log_sha256": freeze.sha256(log), "junit_sha256": freeze.sha256(junit)}
     write(root / descriptor["command_exit"], end)
     receipt = {**shared, **{key: end[key] for key in ("status", "exit_code", "waited", "passed", "skipped", "ended_utc")},
-        "raw_sha256": {descriptor[key]: freeze.sha256(root / descriptor[key]) for key in ("command_spec", "command_log", "command_exit")}}
+        "raw_sha256": {descriptor[key]: freeze.sha256(root / descriptor[key]) for key in ("command_spec", "command_log", "command_exit", "junit_xml")}}
     write(root / descriptor["path"], receipt)
     return receipt
 
@@ -290,3 +295,27 @@ def test_output_reservation_never_reuses_old_freeze_directory(packaged):
     freeze.run(packaged.root)
     with pytest.raises(FileExistsError):
         freeze.run(packaged.root)
+
+
+@pytest.mark.parametrize("mutation", ["malformed", "count", "failure", "skipped", "missing_cases"])
+def test_actual_junit_required_even_when_all_summary_hashes_are_updated(packaged, mutation):
+    freeze.run(packaged.root)
+    receipt = add_verification(packaged)
+    junit_path = packaged.root / packaged.descriptor["junit_xml"]
+    text = junit_path.read_text()
+    if mutation == "malformed": text = "not XML"
+    elif mutation == "count": text = text.replace('tests="17"', 'tests="16"')
+    elif mutation == "failure": text = text.replace('failures="0"', 'failures="1"')
+    elif mutation == "skipped": text = text.replace('skipped="0"', 'skipped="1"')
+    elif mutation == "missing_cases": text = text.replace('<testcase name="synthetic_0"/>', '')
+    junit_path.write_text(text)
+    end_path = packaged.root / packaged.descriptor["command_exit"]
+    end = json.loads(end_path.read_text())
+    end["junit_sha256"] = freeze.sha256(junit_path)
+    write(end_path, end)
+    receipt["raw_sha256"][packaged.descriptor["junit_xml"]] = freeze.sha256(junit_path)
+    receipt["raw_sha256"][packaged.descriptor["command_exit"]] = freeze.sha256(end_path)
+    write(packaged.root / packaged.descriptor["path"], receipt)
+    with pytest.raises(freeze.Incomplete, match="JUnit"):
+        freeze.tag_guard(packaged.root, "outputs/freeze/freeze_receipt.json",
+                         verification_receipt=packaged.descriptor["path"])
