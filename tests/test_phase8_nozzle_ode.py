@@ -16,6 +16,14 @@ def registration():
     return json.loads((ROOT / "docs/phase8_nozzle_ode_registration.json").read_text())
 
 
+@pytest.fixture(autouse=True)
+def numerical_authorization():
+    from scripts.phase8.scientific_workflow_gate import prepare_context, authorize_fixture_context
+    context = prepare_context(ROOT,"docs/phase8_nozzle_ode_registration.json",require_g0=True)
+    authorize_fixture_context(context)
+    return context
+
+
 def test_execution_coverage_denies_missing_groups_and_rows():
     from scripts.phase8.nozzle_ode.run import validate_score_coverage
     reg = registration()

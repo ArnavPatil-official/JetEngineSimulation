@@ -290,3 +290,7 @@ accepts a fully completed authenticated FAIL only with `execution_complete=True`
 and `scientific_verdict=FAIL`. Error, incomplete, partial or provenance-invalid
 producers remain blocked. All 4096 TRAIN and 68 named property rows must still be
 converged, finite, independently identified and within the fixed nozzle envelope.
+
+## Prospective fixture authorization clarification — 2026-10-04
+
+The registered source tests have an autouse lazy authorization fixture before scientific imports or oracle/residual evaluation. It prepares the nozzle Context with fresh G0 and calls `authorize_fixture_context`: original completion, current source/core/G0 identity, AC, and either idle ownership or exact recorded live pytest-child membership under the immutable OPS-owned shared lease are required. The child cannot acquire or transfer that parent lease. Scientific scope, cases, equations, models, budgets, seeds, thresholds and one-shot scoring remain unchanged.
