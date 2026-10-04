@@ -235,3 +235,23 @@ overwritten. A changed protocol requires a new prospective attempt preserving
 earlier evidence. Generated artifacts use quantitative JSON/CSV/NPZ and a
 technical `README.md` describing schema, units, commands and limitations;
 there is no `report.md` or narrative results prose.
+
+### Dated prospective implementation clarification — 2026-10-04
+
+Before any numerical execution, the implementation resolves two wording details
+without changing counts, models, seeds, budgets, thresholds or scientific scope.
+The duplicate-profile restriction applies to synthetic conditions and cross-split
+identity collisions. Every one of the 4164 product source-row identities remains
+in the product panel, including equal coefficients and equal exact profiles.
+Canonical named source order follows P8-S: lexicographic fuel name, then the four
+original modes. The listed named fuels define the required set.
+
+Property proofs use `property_inputs_manifest.json`, `generation_terminal.json`
+and `property_manifest.json`, in that order. Binary, dependency, generation-output
+and log paths are relative to main; final prior-proof pointers are basenames.
+Only permitted TRAIN, input-property and provenance files are read or hashed.
+
+The reviewed code automatically reviews the new input manifest by writing its
+complete input/case/source identity once and revalidating all hashes and gates
+before any training exact field is generated. Test fields remain uncomputed until
+all six final checkpoint hashes and the single score reservation are fixed.

@@ -150,6 +150,15 @@
     "start_end_identity": "Freeze at start and recheck at exit; any source/input/binary/registration drift, incomplete evidence or missing required output makes ERROR and a nonzero exit. Interrupted attempts are retained and never mistaken for completion."
   },
   "relevant_new_files": ["scripts/phase8/nozzle_ode/__init__.py", "scripts/phase8/nozzle_ode/run.py", "scripts/phase8/nozzle_ode/inputs.py", "scripts/phase8/nozzle_ode/model.py", "scripts/phase8/nozzle_ode/oracle.py", "scripts/phase8/nozzle_ode/score.py", "tests/test_phase8_nozzle_ode.py", "docs/phase8_nozzle_ode_registration.json", "docs/phase8_nozzle_ode_registration.md"],
+  "implementation_clarification_20261004": {
+    "date": "2026-10-04",
+    "prospective_before_execution": true,
+    "duplicate_profile_scope": "The splits.unit duplicate-profile restriction applies to synthetic test conditions and cross-split training/validation/test identity collisions. ALL4164 product source rows remain separately identified even when coefficients and exact profiles repeat, as required by dependencies.mixture_coverage and splits.product_test; no product deduplication.",
+    "source_order": "Canonical named source order follows the committed P8-S producer: lexicographic order of the exact 17 named fuel names, then original TAKE-OFF/APPROACH/IDLE/CLIMB85 order. The named_fuels array identifies the required set. No selection or relabeling.",
+    "property_paths": "P8-S property_inputs_manifest.json -> generation_terminal.json -> property_manifest.json. Binary/dependency/generation-output/log paths are MAIN-relative; final prior-manifest pointers use the exact basenames. Schema version is integer1. Only allowed TRAIN/property/input/provenance files are opened or hashed; sealed artifacts stay opaque.",
+    "pre_label_identity": "The reviewed registration and implementation define the automatic manifest review: write the complete new input/case/source identity once and revalidate its hashes and all gates before generating any training exact fields. Test exact fields remain uncomputed until all six checkpoint hashes and the single score reservation are fixed.",
+    "unchanged_scientific_contract": "No change to models, seeds, sample counts, numerical budgets, equations, scope, thresholds, old registered evidence or the requirement to retain every source-row identity."
+  },
   "references": [
     {"title": "NASA Glenn: Compressible Area Ratio", "url": "https://www.grc.nasa.gov/www/k-12/BGP/astar.html", "use": "Area-Mach branches, choked mass flow and isentropic invariants."},
     {"title": "NASA Glenn: Nozzle Design", "url": "https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/nozzle-design/", "use": "Quasi-1D continuity, momentum, ideal-gas relation and supersonic exit dependence on area ratio."}
