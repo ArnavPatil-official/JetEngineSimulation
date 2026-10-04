@@ -450,10 +450,13 @@ def test_active_full_pytest_requires_exact_live_child_and_build_evidence(h, monk
     def workflow(*args, **kwargs):
         kwargs["birth"] = lambda _: "fixture birth"; return original(*args, **kwargs)
     monkeypatch.setattr(ac, "Workflow", workflow)
-    context = ac.validate_terminal_context(h.root, "docs/reg.json", allow_active_stage="full_pytest")
+    with pytest.raises(ac.Blocked, match="require_idle"):
+        ac.validate_terminal_context(h.root, "docs/reg.json", require_idle=True, allow_active_stage="full_pytest")
+    context = ac.validate_terminal_context(h.root, "docs/reg.json", require_idle=False, allow_active_stage="full_pytest")
     assert context["chain"] is None and context["lease"]["child"]["pid"] == os.getpid()
     child["pid"] += 1; lease["child"] = child; put(h.wf.lease_path, lease)
-    with pytest.raises(ac.Blocked): ac.validate_terminal_context(h.root, "docs/reg.json", allow_active_stage="full_pytest")
+    with pytest.raises(ac.Blocked):
+        ac.validate_terminal_context(h.root, "docs/reg.json", require_idle=False, allow_active_stage="full_pytest")
 
 
 def test_terminal_context_rejects_forged_chain_and_expected_sources(h, monkeypatch):

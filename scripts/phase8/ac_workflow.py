@@ -1221,6 +1221,8 @@ def validate_terminal_context(root: Path, registration: str = REGISTRATION, *, e
     lease = read_json(wf.lease_path) if wf.lease_path.exists() else None
     active = False
     if wf.lease_path.exists():
+        if require_idle:
+            raise Blocked("main workflow lease is present; require_idle forbids active ownership")
         if allow_active_stage != "full_pytest" or not isinstance(lease, dict):
             raise Blocked("main workflow lease is present; idle completion is not proven")
         child = lease.get("child")
