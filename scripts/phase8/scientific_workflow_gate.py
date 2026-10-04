@@ -700,6 +700,59 @@ def prepare_context(root, registration, *, allow_new_paths=None, expected_consum
     return Context(root, registration, allow_new_paths, expected_consumer_identity, require_g0)
 
 
+def authorize_fixture_context(context):
+    """Validate an idle fixture process or an exact recorded pytest child.
+
+    This read-only gate does not grant ownership, authorize a simulator job,
+    or permit the historical full suite to bypass its original workflow.
+    """
+    if context.require_g0 is not True:
+        raise GateError("Numerical fixture authorization requires fresh G0")
+    context._refresh()
+    root, op = context.root, context.op
+    lease_path = root / op["paths"]["owner_lease"]
+    if not lease_path.exists():
+        context.require_idle_ac()
+        return context
+    ac = _ac(root)
+    if not ac.on_ac(ac.read_power()):
+        raise GateError("Fixture child requires AC power")
+    lease = read(lease_path)
+    expected = {**context.identity, "registration_sha256": digest(root / OPERATIONS)}
+    if lease.get("state") != "RUNNING" \
+            or lease.get("registration_sha256") != expected["registration_sha256"] \
+            or lease.get("identity") != expected \
+            or ac.liveness(lease.get("owner_pid"), lease.get("owner_birth")) != "alive":
+        raise GateError("Fixture parent source/core/G0 ownership is invalid")
+    reservation_path = relative(root, lease.get("output_dir", "")) / "reservation.json"
+    reservation = read(reservation_path)
+    if digest(reservation_path) != lease.get("reservation_sha256") \
+            or any(lease.get(k) != v for k, v in reservation.items() if k not in {"state", "children"}):
+        raise GateError("Fixture parent reservation differs from its lease")
+    argv = list(sys.orig_argv)
+    if len(argv) < 4 or argv[1:3] != ["-m", "pytest"]:
+        raise GateError("Only registered pytest fixture children are authorized")
+    tests = [a for a in argv[3:] if not a.startswith("-")]
+    declared = {p for p in _declared_new_paths(root, op)
+                if p.endswith(".py") and (p.startswith("tests/") or "/tests/" in p)}
+    flags = [a for a in argv[3:] if a.startswith("-")]
+    if not tests or not set(tests) <= declared or len(tests) != len(set(tests)) \
+            or any(flag not in {"-q", "-v", "-vv"} and not flag.startswith("--junitxml=outputs/")
+                   for flag in flags):
+        raise GateError("Fixture argv contains unregistered tests or unsupported flags")
+    for flag in flags:
+        if flag.startswith("--junitxml="):
+            relative(root, flag.split("=", 1)[1])
+    birth = ac.process_birth(os.getpid())
+    children = [c for c in lease.get("children", []) if c.get("pid") == os.getpid()
+                and c.get("birth") == birth and c.get("argv") == argv]
+    if not birth or birth == ac.DEAD or len(children) != 1 \
+            or lease.get("owner_pid") == os.getpid() \
+            or ac.liveness(os.getpid(), birth) != "alive":
+        raise GateError("Fixture process is not the exact recorded live pytest child")
+    return context
+
+
 def validate_consumer_terminal(root, registration_path, output_dir, *, expected_binary_sha256=None, artifact_paths=None, allow_scientific_fail=False):
     """Read-only raw producer proof without decoding sealed numerical labels."""
     ctx = prepare_context(root, registration_path)

@@ -271,6 +271,46 @@ def test_consumer_registration_change_refused(tmp_path):
         gate._scientific_expected(tmp_path, "docs/reg.json", expected)
 
 
+@pytest.mark.parametrize("fault", ["none", "owner", "child", "argv", "source", "power", "reservation", "tests", "state", "g0"])
+def test_fixture_child_requires_actual_recorded_current_owner(tmp_path, monkeypatch, fault):
+    put(tmp_path / gate.OPERATIONS, {"id": "fixture-operations"})
+    identity = {"registration_sha256": "child-reg", "core": "fixture-core", "g0_sha256": "fixture-g0"}
+    op = {"paths": {"owner_lease": "outputs/owner.json"}}
+    ctx = SimpleNamespace(root=tmp_path, identity=identity, op=op, _refresh=lambda: None, require_g0=fault != "g0")
+    parent = {**identity, "registration_sha256": gate.digest(tmp_path / gate.OPERATIONS)}
+    argv = ["/fixture/python", "-m", "pytest", "tests/registered.py", "-v"]
+    reservation = {"owner_pid": 9001, "owner_birth": "parent", "registration_sha256": parent["registration_sha256"],
+                   "identity": parent, "output_dir": "outputs/verification", "argv": ["bootstrap"],
+                   "state": "STARTING", "children": []}
+    put(tmp_path / "outputs/verification/reservation.json", reservation)
+    lease = {**reservation, "state": "RUNNING", "reservation_sha256": gate.digest(tmp_path / "outputs/verification/reservation.json"),
+             "children": [{"pid": os.getpid(), "birth": "child", "argv": argv}]}
+    if fault == "child": lease["children"][0]["birth"] = "different"
+    elif fault == "argv": lease["children"][0]["argv"] = ["foreign"]
+    elif fault == "source": lease["identity"] = {**parent, "core": "different"}
+    elif fault == "reservation": lease["reservation_sha256"] = "wrong"
+    elif fault == "state": lease["state"] = "AMBIGUOUS_CHILD"
+    put(tmp_path / "outputs/owner.json", lease)
+    monkeypatch.setattr(sys, "orig_argv", argv)
+    fake = SimpleNamespace(DEAD="dead", process_birth=lambda pid: "child", read_power=lambda: "battery" if fault == "power" else "AC",
+        on_ac=lambda power: power == "AC", liveness=lambda pid, birth: "dead" if fault == "owner" and pid == 9001 else "alive")
+    monkeypatch.setattr(gate, "_ac", lambda root: fake)
+    monkeypatch.setattr(gate, "_declared_new_paths", lambda *args: set() if fault == "tests" else {"tests/registered.py"})
+    if fault == "none":
+        assert gate.authorize_fixture_context(ctx) is ctx
+        assert not hasattr(ctx, "_owned")
+    else:
+        with pytest.raises(gate.GateError): gate.authorize_fixture_context(ctx)
+
+
+def test_fixture_standalone_uses_normal_idle_gate(tmp_path):
+    calls = []
+    ctx = SimpleNamespace(root=tmp_path, op={"paths": {"owner_lease": "outputs/owner.json"}}, require_g0=True,
+                          _refresh=lambda: calls.append("refresh"), require_idle_ac=lambda: calls.append("idle"))
+    assert gate.authorize_fixture_context(ctx) is ctx
+    assert calls == ["refresh", "idle"]
+
+
 def test_executable_mode_and_symlink_target_are_scientific_identity(tmp_path):
     p = tmp_path / "source.py"
     p.write_text("value = 1\n")
