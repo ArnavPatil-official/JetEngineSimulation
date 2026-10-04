@@ -617,7 +617,14 @@
     "named_registration_commits": [
       "14880c5",
       "4c21d02"
-    ]
+    ],
+    "named_metadata_projection": [
+      "outputs/phase7/p73_a1_cpp_20261004/environment.json",
+      "outputs/phase7/p73_a1_cpp_20261004/artifact_hashes.json",
+      "outputs/phase7/p73_a1_cpp_20261004/command.exit.json",
+      "outputs/phase7/p73_a1_cpp_20261004/parity/parity.json"
+    ],
+    "pre_training_target_seal": "Prerequisite validation supplies this exact metadata artifact allowlist to validate_consumer_terminal; full registered expected path/hash coverage is checked opaquely. No named quantitative CSV/JSON target byte is opened or hashed before frozen all42 fits/selection/predictions and the sole score reservation. Named target bytes are verified and decoded only at that locked score pass."
   },
   "acceptance": {
     "effect_floor": {
@@ -1627,6 +1634,16 @@
         "Prospective fixed100-epoch full exact source/record checkpoints plus full fit start/export/end; every epoch retains lightweight owned reservation/PID/birth, AC, current registration/source-extension raw-byte fingerprints. All overhead charged; no mtime-only or cached final proof. This avoids84000 full original workflow reconstructions while preserving exact launch/exit checks.",
         "All numerical fixtures use the shared strict authorize_fixture_context read-only API; synchronous simulator pools retain all actual waited exits and reject nonzero/unreadable worker shutdown. Invalid reference/model rows retain finite converged-only conditional metrics and invalid counts, while complete-domain gates stay FAIL."
       ]
+    },
+    {
+      "id": "P8-S-C2",
+      "date": "2026-10-04",
+      "registered_before_compute": true,
+      "basis": "Independent static review of shared validator artifact hashing; no new scientific computations or target access.",
+      "science_change": false,
+      "prior_behavior": "Prerequisite call omitted artifact_paths, causing metadata validation to hash every producer artifact before training, despite the numeric-target seal.",
+      "rule": "Explicit exact metadata-only projection environment.json, artifact_hashes.json, command.exit.json, parity/parity.json. Preserve full opaque expected-output coverage and raw reservation/source/core/registration/release/body validation. Reject any target path in that projection. The sole frozen score pass alone opens/hashes the named quantitative target bytes.",
+      "regression": "Pure fake-validator test asserts exact metadata paths and rejects adding a named target path; no real targets or scientific imports."
     }
   ]
 }
