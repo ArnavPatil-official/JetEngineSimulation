@@ -153,7 +153,7 @@ def test_immutable_lease_mutation_never_releases_success(ownership, field, value
     put(path, lease)
     with pytest.raises(gate.GateError):
         owned.assert_current()
-    if field == "owner_pid":
+    if field in {"owner_pid", "owner_birth"}:
         with pytest.raises(gate.GateError, match="ownership"):
             owned.release(success)
         assert path.exists() and not (owned.out / "terminal.json").exists()
