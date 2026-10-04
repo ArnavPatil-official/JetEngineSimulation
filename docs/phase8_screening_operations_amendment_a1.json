@@ -1,0 +1,17 @@
+{
+  "id": "P8-SCREENING-OPERATIONS-20261004-A1",
+  "date": "2026-10-04",
+  "parent": "docs/phase8_screening_operations_registration.json",
+  "parent_sha256": "f17446b39078e05d455687508d40085a9dfdfa6ef93a2589bcb1258b249e6280",
+  "registered_before": "Original dependency export or any post-chain numerical computation. Original registration remains byte-for-byte unchanged.",
+  "additional_registrations": [
+    "docs/phase8_screening_tool_registration.json"
+  ],
+  "reason": "Include the explicitly requested CLI/API source and tests in the exact additive source manifest before integrating any new source. Artifact-only commits remain allowed; scientific paths remain exact and clean.",
+  "terminal_contract": {
+    "success": "PASS/COMPLETE with exit_code0, outputs_complete true, nonempty expected_outputs and artifact_hashes; all paths relative to main repo and all hashes/coverage checked.",
+    "single_pipeline": "Each new study owns one fresh run root and final terminal; write-once internal phase proofs are allowed. Unsupported phase-only launches refuse lease/score bypass.",
+    "G0_receipt": "Publish only after successful terminal/released-lease evidence; bind their raw hashes and recompute original comparisons at consumption. No circular self hashes."
+  },
+  "producer_api": "validate_consumer_terminal(root,registration_path,output_dir,*,expected_binary_sha256=None)->metadata-only raw source/command/exit/coverage/hash/reservation/released-lease proof; sealed targets remain undecoded. Required producer artifacts and all governing receipts/manifests must be committed clean before downstream compute."
+}

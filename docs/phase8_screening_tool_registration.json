@@ -1,0 +1,24 @@
+{
+  "id": "P8-SCREENING-TOOL-20261004",
+  "date": "2026-10-04",
+  "authorized_by": "User direction 2026-10-04; product built after the registered scientific sequence, no results draft.",
+  "parent_study": "docs/phase8_saf_surrogate_registration.json",
+  "new_source_paths": [
+    "scripts/phase8/screening_product.py",
+    "scripts/phase8/screen_blends.py",
+    "tests/test_phase8_screening_product.py"
+  ],
+  "documentation": "README.md usage, after implementation and tests; no model/source/results overwrite.",
+  "api": "from scripts.phase8.screening_product import screen_blends; screen_blends(candidates, *, model, thrust_fraction=1.0, grid_step=None, verify_top_k=0, verification_out=None)",
+  "candidate_schema": "id optional; JetA/HEFA/FT/ATJ nonnegative mass fractions summing to1 within1e-10. Per-candidate thrust_fraction optional; nominal0.07..1.0. No clipping or silent extrapolation.",
+  "grid": "step must divide1 into an integer grid. Enumerate the four-dimensional mass-fraction simplex deterministically; never randomize or fit.",
+  "prediction": "Delegate the locked CPU64 three-seed Mphys Product.predict to all64 original draw IDs. Exact property/postprocess functions remain computed. No new training, tuning, held-out label read or species-mechanism edit.",
+  "outputs": "Per-candidate mean, quantiles0.025/0.5/0.975 and min/max across64 fixed draws for ff,T4,EI_CO2,CO2,lifecycle and available relative Brem; seed spread separately. These are conditional sensitivity bands, not empirical confidence intervals. State conditional on v6 calibration.",
+  "envelope": "Return explicit outside_training_envelope reasons against nominal simplex/thrust and the frozen empirical training feature box from product.json. Invalid physical inputs return flagged rows with missing predictions; physical nominal-but-unseen inputs can receive visibly flagged predictions only. Never silently call them validated.",
+  "deployment": "Default loader requires frozen bundle and complete successful fidelity/ranking/operational receipt. Failed studies retain artifacts and diagnostics; no unsafe default deployment, fabricated weights or fabricated speedup.",
+  "verify": "Optional top-k selected deterministically by registered q95 lifecycle rank with ascending candidate ID ties, before simulator labels. Verify all64draws of selected candidates via the exact bundle/G0 v6 C++ core under exclusive idle-AC shared lease and fresh output reservation. Record predictions and selected IDs before teacher calls, query/source/core hashes, worker and waited-exit proof, reference rows, differences and actual total cost. No claim of global10k simulator overlap from selected-only labels.",
+  "protected": "All original registrations, YAML, existing model weights, frozen reference files and active chain untouched. Saved new model hashes are inherited from P8-S, no push.",
+  "checks": "Meaningful synthetic tests for64draw coverage, deterministic grid/ranking, draw-band semantics, invalid/outside envelope flags, receipt/hash refusal and top-k-before-label locking. No tests or simulator/MLX imports while original benchmark owns lease.",
+  "usage": ".venv/bin/python scripts/phase8/screen_blends.py --model outputs/phase8/saf_surrogate/attempt_001/product.json --grid-step 0.1 --thrust-fraction 1.0 --out outputs/phase8/screening_tool/grid.json",
+  "no_prose_results_draft": true
+}
