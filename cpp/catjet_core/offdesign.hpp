@@ -53,6 +53,9 @@ struct HbtfSpec {
     // flight / design targets (pyCycle units converted at the binding)
     double alt_m = 0.0, MN = 0.0, dTs_K = 0.0;
     double Fn_des_N = 0.0, T4_max_K = 0.0;
+    // P8.4c-C1: optional numerical design-flow upper bound [kg/s].
+    // Zero retains the original architecture-specific bound.
+    double design_W_max_kg_s = 0.0;
     double N_lp_des = 0.0, N_hp_des = 0.0;   // rpm
     double BPR_des = 0.0;
     double ram_recovery = 0.999;
