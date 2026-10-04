@@ -61,6 +61,7 @@
       "command_spec": "outputs/phase8/screening_operations/product_verification.command_spec.json",
       "command_log": "outputs/phase8/screening_operations/product_verification.command.log",
       "command_exit": "outputs/phase8/screening_operations/product_verification.command.exit.json",
+      "junit_xml": "outputs/phase8/screening_operations/product_verification_run/junit.xml",
       "registered_tests": [
         "tests/test_phase8_scientific_workflow_gate.py",
         "tests/test_phase8_screening_product.py",
@@ -71,7 +72,7 @@
         "tests/test_phase8_freeze_screening.py"
       ],
       "when": "After original chain release and source-extension integration, before scientific computations; AC and exclusive shared ownership required. Synthetic-only fixture runs before that point do not satisfy this scientific product verification receipt.",
-      "schema": "Receipt status PASS, exit_code 0, waited true, passed positive integer, skipped 0, ended_utc; identity is the exact product Context identity including registration/source-extension/core/original-main/G0 hashes. test_files is the exact seven-path mapping to frozen committed file SHA256/Git mode identities. command records actual argv, workdir, absolute interpreter and interpreter_sha256, actual owner_pid/owner_birth and waited child_pid/child_birth. raw_sha256 maps the exact three registered raw paths to byte hashes. Raw spec and exit repeat command, identity and test_files; raw exit additionally records status PASS/exit_code 0/waited true/passed/skipped 0/ended_utc plus command_spec_sha256 and log_sha256. The raw pytest log must prove the same complete passed count. All records and test sources must be committed unchanged. No invented or pending PASS receipt."
+      "schema": "Receipt status PASS, exit_code 0, waited true, passed positive integer, skipped 0, ended_utc; identity is the exact product Context identity including registration/source-extension/core/original-main/G0 hashes. test_files is the exact seven-path mapping to frozen committed file SHA256/Git mode identities. command records actual argv, workdir, absolute interpreter and interpreter_sha256, actual owner_pid/owner_birth and waited child_pid/child_birth. raw_sha256 maps the exact spec/log/exit/JUnit paths to byte hashes. Raw spec and exit repeat command, identity and test_files; raw exit additionally records status PASS/exit_code 0/waited true/passed/skipped 0/ended_utc plus command_spec_sha256, log_sha256 and junit_sha256. Exact argv ends with -v,--junitxml=outputs/phase8/screening_operations/product_verification_run/junit.xml after the seven registered files in order. No selection/filter/skip option or unsupported registration CLI flag. The raw pytest log and actual JUnit must agree: tests total equals passed positive count, testcase count matches, failures/errors/skipped are zero. All records and test sources must be committed unchanged. No invented or pending PASS receipt."
     }
   },
   "published_inputs": [
