@@ -808,23 +808,10 @@ def opr_trend(df: pd.DataFrame, tsfc_col: str) -> dict:
     return out
 
 
-def run_holdout(n_workers: int = 8) -> dict:
-    import json
-    reg = load_registration()
-    split = load_split()
-    for p in (HOLDOUT_CSV, HOLDOUT_SUMMARY, HOLDOUT_JSON):
-        if p.exists():
-            raise SystemExit(f"{p} exists; refusing to overwrite")
-    fitted = json.loads(V5_FIT.read_text())
-    cal = calibration_rows(split)
-    held = attach_groups(load_rows(split["heldout_records"], with_targets=True),
-                         split["heldout_groups"])
-    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
-                    n_workers=n_workers)
-    try:
-        pred = model.predict(fitted["params"], held)
-    finally:
-        model.close()
+def holdout_tables(reg: dict, cal: pd.DataFrame, held: pd.DataFrame, pred: pd.DataFrame):
+    """Registered held-out comparison (model vs B0 vs B1; A2, A3) from model
+    predictions ``pred`` for the held-out rows. Shared by v5 and v6 (Phase 7);
+    returns (row table, summary table, A2/A3 result fields)."""
     df = held.rename(columns={"Pressure Ratio": "OPR", "Bypass Ratio": "BPR",
                               "Fuel Flow (kg/s)": "ICAO Fuel Flow (kg/s)"}).drop(
         columns=["CO (g/kg)", "HC (g/kg)"])
@@ -859,6 +846,36 @@ def run_holdout(n_workers: int = 8) -> dict:
     df["tsfc_model"] = df["Predicted Fuel Flow (kg/s)"] / df["Target Thrust (kN)"]
     tr_d, tr_m = opr_trend(df, "tsfc_icao"), opr_trend(df, "tsfc_model")
     a3_modes = {mo: bool(np.sign(tr_d[mo]["slope"]) == np.sign(tr_m[mo]["slope"])) for mo in tr_d}
+    fields = {
+        "primary_group_weighted_mape_pct": {"model": m, "B0": b0, "B1": b1},
+        "A2": {"margin_pp": margin, "verdict": a2},
+        "A3": {"icao": tr_d, "model": tr_m, "sign_agrees": a3_modes,
+               "verdict": "PASS" if all(a3_modes.values()) else "FAIL"},
+        "unreachable_rows": df.loc[df["Status"] == "unreachable",
+                                   ["Unique ID", "Model", "Mode", "Target Thrust (kN)", "Reason"]
+                                   ].to_dict("records"),
+    }
+    return df.drop(columns=["tsfc_icao", "tsfc_model"]), summary, fields
+
+
+def run_holdout(n_workers: int = 8) -> dict:
+    import json
+    reg = load_registration()
+    split = load_split()
+    for p in (HOLDOUT_CSV, HOLDOUT_SUMMARY, HOLDOUT_JSON):
+        if p.exists():
+            raise SystemExit(f"{p} exists; refusing to overwrite")
+    fitted = json.loads(V5_FIT.read_text())
+    cal = calibration_rows(split)
+    held = attach_groups(load_rows(split["heldout_records"], with_targets=True),
+                         split["heldout_groups"])
+    model = V5Model(reg["fixed_central"], nox_fit_exclude_models=split["heldout_models"],
+                    n_workers=n_workers)
+    try:
+        pred = model.predict(fitted["params"], held)
+    finally:
+        model.close()
+    df, summary, fields = holdout_tables(reg, cal, held, pred)
     result = {
         "registration": "outputs/phase6/p61_registration.json (A1)",
         "calibration": str(V5_FIT.relative_to(ROOT)),
@@ -867,16 +884,10 @@ def run_holdout(n_workers: int = 8) -> dict:
                              "handset_v4_kg_s": 79.9,
                              "ratio": (fitted["params"]["W_ref"] / 79.9
                                        if "W_ref" in fitted["params"] else None)},
-        "primary_group_weighted_mape_pct": {"model": m, "B0": b0, "B1": b1},
-        "A2": {"margin_pp": margin, "verdict": a2},
-        "A3": {"icao": tr_d, "model": tr_m, "sign_agrees": a3_modes,
-               "verdict": "PASS" if all(a3_modes.values()) else "FAIL"},
-        "unreachable_rows": df.loc[df["Status"] == "unreachable",
-                                   ["Unique ID", "Model", "Mode", "Target Thrust (kN)", "Reason"]
-                                   ].to_dict("records"),
+        **fields,
         "nox_note": "model_nox_corr_g_s from a NOx correlation refit without held-out models",
     }
-    df.drop(columns=["tsfc_icao", "tsfc_model"]).to_csv(HOLDOUT_CSV, index=False)
+    df.to_csv(HOLDOUT_CSV, index=False)
     summary.to_csv(HOLDOUT_SUMMARY, index=False)
     _write_new(HOLDOUT_JSON, _json(result))
     return result

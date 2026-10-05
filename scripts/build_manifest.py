@@ -351,6 +351,12 @@ PINN_ROWS = [
 
 RECORDS = [   # referenced, never cited as results
     ("Run records", ["outputs/phase5_execution_status.md", "outputs/phase6_execution_status.md", "outputs/logs/"]),
+    ("Phase 7 records (calibration v6: A1, A2, A3 FAIL, A4 PASS; P7.3 gate-closed; P7.4 not run). "
+     "Not manuscript sources until a crosswalk cites them",
+     ["outputs/phase7_execution_status.md", "outputs/phase7/"]),
+    ("Phase 8 records (registration artifacts, profiles, benchmarks, parity checks). "
+     "Not manuscript sources until a crosswalk cites them",
+     ["outputs/phase8_execution_status.md", "outputs/phase8/"]),
     ("Historical calibrations (inputs to the v3/v4 evidence and reproduction paths; superseded by V1)",
      ["outputs/calibration_trent1000_ae3.json", "outputs/calibration_trent1000_ae3_v2.json",
       "outputs/calibration_trent1000_ae3_v3.json", "outputs/calibration_trent1000_ae3_v4.json"]),

@@ -1,0 +1,134 @@
+family,manufacturer,n_engine_ids,n_databank_rows
+CFM56-7B,CFM International,34,51
+CFM56-5B,CFM International,31,40
+CF6-80,General Electric Company,28,54
+Trent 1000,Rolls-Royce plc,28,70
+GEnx-1B,General Electric Company,27,55
+CF34-8,General Electric Company,20,38
+V2500,International Aero Engines,18,27
+JT8D,Pratt & Whitney,15,21
+JT9D,Pratt & Whitney,14,18
+AE3007,Rolls-Royce Corporation,12,34
+CF6-50,General Electric Company,12,15
+CF34-10,General Electric Company,11,22
+LEAP-1B,CFM International,11,28
+PW1100G,Pratt & Whitney,11,35
+PW4000,Pratt & Whitney,11,18
+PW4100,Pratt & Whitney,10,15
+BR700,Rolls-Royce Deutschland,9,17
+GE90,General Electric Company,9,36
+Trent XWB,Rolls-Royce plc,9,19
+LEAP-1A,CFM International,7,20
+CFM56-5C,CFM International,6,6
+PW1400G,Pratt & Whitney,6,12
+CF34-3,General Electric Company,5,5
+PW1500G,Pratt & Whitney,5,19
+PW1900G,Pratt & Whitney,5,15
+CF6-6,General Electric Company,4,4
+D-30,Aviadvigatel,4,4
+CFM56-5A,CFM International,3,3
+GEnx-2B,General Electric Company,3,6
+PS-90,Aviadvigatel,3,4
+CF6-45,General Electric Company,2,3
+CFM56-3C,CFM International,2,2
+D-36,IVCHENKO PROGRESS ZMBK,2,2
+D-436,IVCHENKO PROGRESS ZMBK,2,2
+LEAP-1C,CFM International,2,2
+PW1200G,Pratt & Whitney,2,4
+PW2000,Pratt & Whitney,2,4
+PW6100,Pratt & Whitney,2,2
+RB211-524G,Rolls-Royce plc,2,3
+RB211-524H,Rolls-Royce plc,2,2
+SaM146,PowerJet S.A.,2,4
+Trent 970,Rolls-Royce plc,2,4
+Trent 972,Rolls-Royce plc,2,5
+ALF 502L-2,Textron Lycoming,1,1
+ALF 502R-3,Textron Lycoming,1,1
+ALF 502R-5,Textron Lycoming,1,1
+AS907-1-1A,Honeywell,1,1
+AS907-2-1A (HTF7350),Honeywell,1,1
+AS907-2-1G (HTF7250G),Honeywell,1,1
+AS907-2-1S (HTF7700L),Honeywell,1,1
+AS907-3-1E-A1 (HTF7500E),Honeywell,1,1
+AS907-3-1E-A2 (HTF7500E),Honeywell,1,1
+AS907-3-1E-A3 (HTF7500E),Honeywell,1,1
+CFM56-2,CFM International,1,1
+CFM56-2A,CFM International,1,1
+CFM56-2B,CFM International,1,1
+CFM56-3,CFM International,1,1
+CFM56-3B,CFM International,1,1
+CFM56-5,CFM International,1,1
+GP7270,Engine Alliance,1,1
+HTF7000 (AS907-1-1A),Honeywell,1,2
+HTF7250G (AS907-2-1G),Honeywell,1,2
+HTF7350 (AS907-2-1A),Honeywell,1,1
+HTF7500E (AS907-3-1E-A1),Honeywell,1,1
+HTF7500E (AS907-3-1E-A2),Honeywell,1,1
+HTF7500E (AS907-3-1E-A3),Honeywell,1,1
+HTF7700L (AS907-2-1S),Honeywell,1,1
+JT15D-1 series,Pratt & Whitney Canada,1,1
+JT15D-4 series,Pratt & Whitney Canada,1,1
+"JT15D-5, -5A, -5B",Pratt & Whitney Canada,1,1
+JT15D-5C,Pratt & Whitney Canada,1,1
+JT3D-3B,Pratt & Whitney,1,1
+JT3D-7 series,Pratt & Whitney,1,2
+"LF507-1F, -1H",Textron Lycoming,1,1
+M45H-01,Rolls-Royce plc,1,1
+NK-8-2U,KKBM,1,2
+NK-86,KKBM,1,1
+NK-86A,KKBM,1,1
+NK-86MA,KKBM,1,1
+PW306A,Pratt & Whitney Canada,1,1
+PW306B,Pratt & Whitney Canada,1,1
+PW307A,Pratt & Whitney Canada,1,6
+PW307D,Pratt & Whitney Canada,1,3
+PW308A,Pratt & Whitney Canada,1,2
+PW308C,Pratt & Whitney Canada,1,1
+PW308C BS 1047,Pratt & Whitney Canada,1,1
+PW308C BS 1289,Pratt & Whitney Canada,1,3
+PW4200,Pratt & Whitney,1,1
+PW4400,Pratt & Whitney,1,1
+PW4X58,Pratt & Whitney,1,1
+PW4x50,Pratt & Whitney,1,1
+PW4x52,Pratt & Whitney,1,1
+PW4x56,Pratt & Whitney,1,1
+PW4x58,Pratt & Whitney,1,1
+PW4x60,Pratt & Whitney,1,1
+PW4x62,Pratt & Whitney,1,2
+PW812D,Pratt & Whitney Canada,1,1
+PW812GA,Pratt & Whitney Canada,1,1
+PW814GA,Pratt & Whitney Canada,1,3
+PW815GA,Pratt & Whitney Canada,1,3
+Passport,General Electric Company,1,2
+RB211-22B,Rolls-Royce plc,1,2
+RB211-524B series,Rolls-Royce plc,1,2
+RB211-524C2,Rolls-Royce plc,1,1
+RB211-524D4,Rolls-Royce plc,1,2
+RB211-535C,Rolls-Royce plc,1,1
+RB211-535E4,Rolls-Royce plc,1,4
+RB211-535E4B,Rolls-Royce plc,1,2
+SPEY Mk511,Rolls-Royce plc,1,3
+SPEY Mk555,Rolls-Royce plc,1,2
+Spey 555,Rolls-Royce plc,1,1
+TAY 611-8C,Rolls-Royce plc,1,2
+TAY 650,Rolls-Royce plc,1,1
+TAY 651,Rolls-Royce plc,1,2
+TAY Mk611-8,Rolls-Royce plc,1,1
+TAY Mk620-15,Rolls-Royce plc,1,1
+TAY Mk650-15,Rolls-Royce plc,1,1
+TFE731-2-2B,Allied Signal,1,1
+TFE731-3,Allied Signal,1,1
+Trent 553,Rolls-Royce plc,1,1
+Trent 556,Rolls-Royce plc,1,2
+Trent 768,Rolls-Royce plc,1,4
+Trent 772,Rolls-Royce plc,1,4
+Trent 875,Rolls-Royce plc,1,1
+Trent 877,Rolls-Royce plc,1,1
+Trent 884,Rolls-Royce plc,1,1
+Trent 892,Rolls-Royce plc,1,1
+Trent 895,Rolls-Royce plc,1,1
+Trent7000-68,Rolls-Royce plc,1,2
+Trent7000-70,Rolls-Royce plc,1,2
+Trent7000-72,Rolls-Royce plc,1,4
+Trent7000-72C,Rolls-Royce plc,1,4
+Trent7000-72D,Rolls-Royce plc,1,2

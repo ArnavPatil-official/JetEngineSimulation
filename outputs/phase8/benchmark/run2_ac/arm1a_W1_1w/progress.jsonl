@@ -1,0 +1,10 @@
+{"t_unix": 1790866332.6692932, "phase": "model_create_start", "power": "Now drawing from 'AC Power'"}
+{"t_unix": 1790866332.6798232, "phase": "model_created"}
+{"t_unix": 1790866339.614717, "repeat": 0, "warmup": true, "wall_s": 6.923954874975607, "loadavg_before": [4.51220703125, 7.416015625, 7.5791015625], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866339.9323468, "repeat": 1, "warmup": false, "wall_s": 0.3075373750180006, "loadavg_before": [4.390625, 7.34228515625, 7.55224609375], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866340.246784, "repeat": 2, "warmup": false, "wall_s": 0.3040129580767825, "loadavg_before": [4.390625, 7.34228515625, 7.55224609375], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866340.562475, "repeat": 3, "warmup": false, "wall_s": 0.3054395830258727, "loadavg_before": [4.390625, 7.34228515625, 7.55224609375], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866340.867629, "repeat": 4, "warmup": false, "wall_s": 0.29457025008741766, "loadavg_before": [4.390625, 7.34228515625, 7.55224609375], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866341.182563, "repeat": 5, "warmup": false, "wall_s": 0.3045129160163924, "loadavg_before": [4.390625, 7.34228515625, 7.55224609375], "loadavg_after": [4.390625, 7.34228515625, 7.55224609375], "power": "Now drawing from 'AC Power'", "score": {}, "output_match": true, "n_unreachable": 0}
+{"t_unix": 1790866341.18287, "phase": "untimed_cycle_counts_start"}
+{"t_unix": 1790866341.492401, "phase": "untimed_cycle_counts", "n_solves": 1, "median": 25}

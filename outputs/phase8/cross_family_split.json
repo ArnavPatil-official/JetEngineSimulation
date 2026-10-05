@@ -1,0 +1,308 @@
+{
+ "calibration_families": [
+  "CF34-3",
+  "CF34-8",
+  "CF6-80",
+  "D-436",
+  "LEAP-1B",
+  "PW1100G",
+  "PW1200G",
+  "PW1400G",
+  "PW1900G",
+  "PW4000",
+  "Trent 1000",
+  "Trent 7000"
+ ],
+ "columns_read": [
+  "B/P Ratio",
+  "Combustor Description",
+  "Current Engine Status",
+  "Current Engine Status Date",
+  "Data Superseded",
+  "Eng Type",
+  "Engine Identification",
+  "Manufacturer",
+  "Pressure Ratio",
+  "Rated Thrust (kN)",
+  "Superseded by UID No",
+  "Test Engine Status",
+  "UID No"
+ ],
+ "content_sha256": "63baef1b41234976e3c07606b6a0ec59a37bb3988a1bf01fb4da41c2b7efc258",
+ "databank": "ICAO Aircraft Engine Emissions Databank, EASA download 131424, 'Emissions Databank (03/2026)', accessed 2026-09-29",
+ "families": {
+  "CF34-10": {
+   "geared": false,
+   "median_rated_thrust_kN": 76.9538038752025,
+   "n_eligible_records": 1,
+   "stratum": "S1",
+   "uids": [
+    "07P27GE229"
+   ]
+  },
+  "CF34-3": {
+   "geared": false,
+   "median_rated_thrust_kN": 41.01,
+   "n_eligible_records": 1,
+   "stratum": "S1",
+   "uids": [
+    "07P05GE220"
+   ]
+  },
+  "CF34-8": {
+   "geared": false,
+   "median_rated_thrust_kN": 62.497970498499,
+   "n_eligible_records": 3,
+   "stratum": "S1",
+   "uids": [
+    "07P27GE226",
+    "07P27GE227",
+    "07P27GE228"
+   ]
+  },
+  "CF6-80": {
+   "geared": false,
+   "median_rated_thrust_kN": 260.643673311,
+   "n_eligible_records": 2,
+   "stratum": "S3",
+   "uids": [
+    "07P27GE218",
+    "07P27GE219"
+   ]
+  },
+  "D-36": {
+   "geared": false,
+   "median_rated_thrust_kN": 63.77,
+   "n_eligible_records": 1,
+   "stratum": "S1",
+   "uids": [
+    "13ZM002"
+   ]
+  },
+  "D-436": {
+   "geared": false,
+   "median_rated_thrust_kN": 66.575,
+   "n_eligible_records": 2,
+   "stratum": "S1",
+   "uids": [
+    "13ZM003",
+    "13ZM004"
+   ]
+  },
+  "GE90": {
+   "geared": false,
+   "median_rated_thrust_kN": 503.31637226106307,
+   "n_eligible_records": 2,
+   "stratum": "S3",
+   "uids": [
+    "07P27GE239",
+    "07P27GE240"
+   ]
+  },
+  "GEnx-1B": {
+   "geared": false,
+   "median_rated_thrust_kN": 315.1565014412065,
+   "n_eligible_records": 8,
+   "stratum": "S3",
+   "uids": [
+    "07P27GE230",
+    "07P27GE231",
+    "07P27GE232",
+    "07P27GE233",
+    "07P27GE234",
+    "07P27GE235",
+    "07P27GE236",
+    "07P27GE237"
+   ]
+  },
+  "LEAP-1A": {
+   "geared": false,
+   "median_rated_thrust_kN": 125.462375075653,
+   "n_eligible_records": 6,
+   "stratum": "S2",
+   "uids": [
+    "08P28CM151",
+    "08P28CM152",
+    "08P28CM153",
+    "08P28CM154",
+    "08P28CM155",
+    "08P28CM156"
+   ]
+  },
+  "LEAP-1B": {
+   "geared": false,
+   "median_rated_thrust_kN": 124.71474414,
+   "n_eligible_records": 8,
+   "stratum": "S2",
+   "uids": [
+    "08P28CM141",
+    "08P28CM142",
+    "08P28CM143",
+    "08P28CM144",
+    "08P28CM145",
+    "08P28CM146",
+    "08P28CM147",
+    "08P28CM148"
+   ]
+  },
+  "LEAP-1C": {
+   "geared": false,
+   "median_rated_thrust_kN": 133.55706788327,
+   "n_eligible_records": 2,
+   "stratum": "S2",
+   "uids": [
+    "08P28CM149",
+    "08P28CM150"
+   ]
+  },
+  "PW1100G": {
+   "geared": true,
+   "median_rated_thrust_kN": 120.435034028735,
+   "n_eligible_records": 10,
+   "stratum": "S2",
+   "uids": [
+    "01P22PW158",
+    "01P22PW159",
+    "01P22PW160",
+    "01P22PW161",
+    "01P22PW162",
+    "01P22PW163",
+    "01P22PW164",
+    "01P22PW165",
+    "01P22PW166",
+    "01P22PW167"
+   ]
+  },
+  "PW1200G": {
+   "geared": true,
+   "median_rated_thrust_kN": 71.69,
+   "n_eligible_records": 2,
+   "stratum": "S1",
+   "uids": [
+    "01P22PW168",
+    "01P22PW169"
+   ]
+  },
+  "PW1400G": {
+   "geared": true,
+   "median_rated_thrust_kN": 136.410746852898,
+   "n_eligible_records": 6,
+   "stratum": "S2",
+   "uids": [
+    "01P22PW176",
+    "01P22PW177",
+    "01P22PW178",
+    "01P22PW179",
+    "01P22PW180",
+    "01P22PW181"
+   ]
+  },
+  "PW1500G": {
+   "geared": true,
+   "median_rated_thrust_kN": 97.72,
+   "n_eligible_records": 5,
+   "stratum": "S1",
+   "uids": [
+    "04P20PW195",
+    "04P20PW196",
+    "04P20PW197",
+    "04P20PW198",
+    "04P20PW199"
+   ]
+  },
+  "PW1900G": {
+   "geared": true,
+   "median_rated_thrust_kN": 105.93,
+   "n_eligible_records": 5,
+   "stratum": "S2",
+   "uids": [
+    "04P20PW200",
+    "04P20PW201",
+    "04P20PW202",
+    "04P20PW203",
+    "04P20PW204"
+   ]
+  },
+  "PW4000": {
+   "geared": false,
+   "median_rated_thrust_kN": 275.8,
+   "n_eligible_records": 1,
+   "stratum": "S3",
+   "uids": [
+    "12PW102"
+   ]
+  },
+  "Trent 1000": {
+   "geared": false,
+   "median_rated_thrust_kN": 334.679775058,
+   "n_eligible_records": 10,
+   "stratum": "S3",
+   "uids": [
+    "08P28RR154",
+    "08P28RR155",
+    "08P28RR156",
+    "08P28RR157",
+    "08P28RR158",
+    "08P28RR159",
+    "08P28RR160",
+    "08P28RR161",
+    "08P28RR162",
+    "08P28RR163"
+   ]
+  },
+  "Trent 7000": {
+   "geared": false,
+   "median_rated_thrust_kN": 327.914029396,
+   "n_eligible_records": 5,
+   "stratum": "S3",
+   "uids": [
+    "04P24RR144",
+    "04P24RR145",
+    "04P24RR146",
+    "04P24RR147",
+    "04P24RR148"
+   ]
+  },
+  "Trent XWB": {
+   "geared": false,
+   "median_rated_thrust_kN": 355.2,
+   "n_eligible_records": 9,
+   "stratum": "S3",
+   "uids": [
+    "01P18RR121",
+    "01P18RR122",
+    "01P18RR123",
+    "01P18RR124",
+    "01P21RR125",
+    "07P27RR150",
+    "07P27RR151",
+    "07P27RR152",
+    "07P27RR153"
+   ]
+  }
+ },
+ "heldout_allocation": {
+  "S1": 3,
+  "S2": 2,
+  "S3": 3
+ },
+ "heldout_families": [
+  "CF34-10",
+  "D-36",
+  "GE90",
+  "GEnx-1B",
+  "LEAP-1A",
+  "LEAP-1C",
+  "PW1500G",
+  "Trent XWB"
+ ],
+ "n_eligible_families": 20,
+ "registration": "docs/phase8_family_split.md",
+ "seed": 20261001,
+ "strata_counts": {
+  "S1": 7,
+  "S2": 6,
+  "S3": 7
+ },
+ "xlsx_sha256": "57a9ff572458ad3a3141afc1aea932b5faa5796d279f0ac74600b27869302530"
+}

@@ -1,0 +1,566 @@
+{
+ "gate": "P8.4b checks (ladder A4 pre-score)",
+ "verdict": "FAIL",
+ "checks": {
+  "G1.1_closure_all_modes": false,
+  "G1.2_x1_reproduces_design": true,
+  "G1.3_two_shaft_regression_bit_identical": true
+ },
+ "ae3_inputs": {
+  "OPR": 43.2,
+  "BPR": 9.1,
+  "rated_kN": 310.9
+ },
+ "central_inputs": {
+  "T4_K": 1800.0,
+  "FPR": 1.45,
+  "ipc_share": 0.5714285714285714,
+  "eff_fan": 0.8948,
+  "eff_ipc": 0.9243,
+  "eff_hpc": 0.8707,
+  "eff_hpt": 0.8888,
+  "eff_ipt": 0.8888,
+  "eff_lpt": 0.8996,
+  "duct_scale": 1.0,
+  "cooling_scale": 1.0,
+  "ram_recovery": 0.999
+ },
+ "ae3_central": {
+  "design": {
+   "converged": true,
+   "iterations": 6,
+   "reason": "",
+   "x": [
+    1116.1399468241495,
+    0.026892647431711547,
+    2.32906952752934,
+    2.100538169362795,
+    3.556455365627331
+   ],
+   "scalars": {
+    "A_byp_m2": 3.4719215617765804,
+    "A_core_m2": 0.39390586920572856,
+    "BPR": 9.1,
+    "FAR": 0.026892647431711547,
+    "F_ram_N": 0.0,
+    "Fg_N": 310899.9999999993,
+    "Fg_byp_N": 240121.16983483298,
+    "Fg_core_N": 70778.83016516629,
+    "Fn_N": 310899.9999999993,
+    "N_hp": 1.0,
+    "N_ip": 1.0,
+    "N_lp": 1.0,
+    "OPR": 43.20000000000001,
+    "PR_fan": 1.45,
+    "PR_hpc": 4.310710723289476,
+    "PR_hpt": 2.32906952752934,
+    "PR_ipc": 7.01560571387959,
+    "PR_ipt": 2.100538169362795,
+    "PR_lpt": 3.556455365627331,
+    "Ps0": 101325.0,
+    "R_fan": 0.0,
+    "R_hpc": 0.0,
+    "R_ipc": 0.0,
+    "TSFC_kg_per_N_s": 8.68334866668693e-06,
+    "Ts0": 288.15,
+    "Tt3": 893.4871973587083,
+    "Tt4": 1799.9999999999995,
+    "W": 1116.1399468241495,
+    "Wfuel": 2.6996531004729607,
+    "burner_heat_rejection_W": 13044.057113095312,
+    "byp_choked": 0.0,
+    "core_choked": 1.0,
+    "eff_fan": 0.8948,
+    "eff_hpc": 0.8707,
+    "eff_hpt": 0.8888,
+    "eff_ipc": 0.9243,
+    "eff_ipt": 0.8888,
+    "eff_lpt": 0.8996
+   },
+   "mass_closure": 0.0,
+   "energy_closure": 5.494598332443549e-15,
+   "element_closure": 1.6020654867758247e-15
+  },
+  "modes": {
+   "TAKE-OFF": {
+    "status": "converged",
+    "reason": "",
+    "ff": 2.6996531004729607,
+    "scalars": {
+     "A_byp_m2": 3.4719215617765804,
+     "A_core_m2": 0.39390586920572856,
+     "BPR": 9.1,
+     "FAR": 0.026892647431711547,
+     "F_ram_N": 0.0,
+     "Fg_N": 310899.9999999993,
+     "Fg_byp_N": 240121.16983483298,
+     "Fg_core_N": 70778.83016516629,
+     "Fn_N": 310899.9999999993,
+     "N_hp": 1.0,
+     "N_ip": 1.0,
+     "N_lp": 1.0,
+     "OPR": 43.20000000000001,
+     "PR_fan": 1.45,
+     "PR_hpc": 4.310710723289476,
+     "PR_hpt": 2.32906952752934,
+     "PR_ipc": 7.01560571387959,
+     "PR_ipt": 2.100538169362795,
+     "PR_lpt": 3.556455365627331,
+     "Ps0": 101325.0,
+     "R_fan": 2.2,
+     "R_hpc": 2.05,
+     "R_ipc": 2.15,
+     "TSFC_kg_per_N_s": 8.68334866668693e-06,
+     "Ts0": 288.15,
+     "Tt3": 893.4871973587083,
+     "Tt4": 1799.9999999999995,
+     "W": 1116.1399468241495,
+     "Wfuel": 2.6996531004729607,
+     "burner_heat_rejection_W": 13044.057113095312,
+     "byp_choked": 0.0,
+     "core_choked": 1.0,
+     "eff_fan": 0.8948,
+     "eff_hpc": 0.8707,
+     "eff_hpt": 0.8888,
+     "eff_ipc": 0.9243,
+     "eff_ipt": 0.8888,
+     "eff_lpt": 0.8996
+    },
+    "x": [
+     1116.1399468241495,
+     0.026892647431711547,
+     9.1,
+     1.0,
+     1.0,
+     1.0,
+     2.2,
+     2.15,
+     2.05,
+     2.32906952752934,
+     2.100538169362795,
+     3.556455365627331
+    ],
+    "extrapolated": [],
+    "mass_closure": 0.0,
+    "energy_closure": 5.494598332443549e-15,
+    "element_closure": 1.6020654867758247e-15
+   },
+   "APPROACH": {
+    "status": "unreachable",
+    "reason": "off-design at 0.50 rated: line search failed"
+   },
+   "IDLE": {
+    "status": "unreachable",
+    "reason": "off-design at 0.50 rated: line search failed"
+   }
+  }
+ },
+ "closures": {
+  "TAKE-OFF": {
+   "mass_closure": 0.0,
+   "energy_closure": 5.494598332443549e-15,
+   "element_closure": 1.6020654867758247e-15
+  }
+ },
+ "x1_vs_design_rel": {
+  "W": 0.0,
+  "FAR": 0.0,
+  "PR_hpt": 0.0,
+  "PR_ipt": 0.0,
+  "PR_lpt": 0.0
+ },
+ "two_shaft_regression_max_rel": 0.0,
+ "sensitivity_ff_kg_s_reported": {
+  "T4_K=low:1700": {
+   "TAKE-OFF": [
+    2.490192040955853,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "T4_K=high:1900": {
+   "TAKE-OFF": [
+    2.924437421359243,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "FPR=low:1.4": {
+   "TAKE-OFF": [
+    2.7614913161708996,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "FPR=high:1.55": {
+   "TAKE-OFF": [
+    2.6184345647095433,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "ipc_share=low:0.457143": {
+   "TAKE-OFF": [
+    2.6973364909436337,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "ipc_share=high:0.685714": {
+   "TAKE-OFF": [
+    2.7044194635499808,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_fan=low:0.8748": {
+   "TAKE-OFF": [
+    2.707638725592685,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_fan=high:0.9148": {
+   "TAKE-OFF": [
+    2.6926340293267015,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_ipc=low:0.9043": {
+   "TAKE-OFF": [
+    2.6908013674936075,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_ipc=high:0.9443": {
+   "TAKE-OFF": [
+    2.708505189692255,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_hpc=low:0.8507": {
+   "TAKE-OFF": [
+    2.691795448923271,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_hpc=high:0.8907": {
+   "TAKE-OFF": [
+    2.7074650534659788,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_hpt=low:0.8688": {
+   "TAKE-OFF": [
+    2.707200803282129,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_hpt=high:0.9088": {
+   "TAKE-OFF": [
+    2.6926585593173566,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_ipt=low:0.8688": {
+   "TAKE-OFF": [
+    2.706202810345934,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_ipt=high:0.9088": {
+   "TAKE-OFF": [
+    2.6935594446129207,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_lpt=low:0.8796": {
+   "TAKE-OFF": [
+    2.7116451859803656,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "eff_lpt=high:0.9196": {
+   "TAKE-OFF": [
+    2.6887373317172494,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "duct_scale=low:0": {
+   "TAKE-OFF": [
+    2.656304010953077,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "duct_scale=high:2": {
+   "TAKE-OFF": [
+    2.747058567359429,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "cooling_scale=low:0": {
+   "TAKE-OFF": [
+    2.8726532193647123,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "cooling_scale=high:1": {
+   "TAKE-OFF": [
+    2.6996531004729607,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "ram_recovery=low:0.99": {
+   "TAKE-OFF": [
+    2.7285156757058506,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  },
+  "ram_recovery=high:1": {
+   "TAKE-OFF": [
+    2.6965242991220766,
+    "converged"
+   ],
+   "APPROACH": [
+    null,
+    "unreachable"
+   ],
+   "IDLE": [
+    null,
+    "unreachable"
+   ]
+  }
+ },
+ "ranges": {
+  "T4_K": [
+   1700.0,
+   1900.0
+  ],
+  "FPR": [
+   1.4,
+   1.55
+  ],
+  "ipc_share": [
+   0.4571428571428572,
+   0.6857142857142857
+  ],
+  "eff_fan": [
+   0.8748,
+   0.9148
+  ],
+  "eff_ipc": [
+   0.9043,
+   0.9443
+  ],
+  "eff_hpc": [
+   0.8507,
+   0.8907
+  ],
+  "eff_hpt": [
+   0.8688,
+   0.9088
+  ],
+  "eff_ipt": [
+   0.8688,
+   0.9088
+  ],
+  "eff_lpt": [
+   0.8796,
+   0.9196
+  ],
+  "duct_scale": [
+   0.0,
+   2.0
+  ],
+  "cooling_scale": [
+   0.0,
+   1.0
+  ],
+  "ram_recovery": [
+   0.99,
+   1.0
+  ]
+ },
+ "provenance": {
+  "git_sha": "e29a49ee349c052e527ce0594249027ea624dd91",
+  "dirty_source": "",
+  "module_sha256": "82c5e72fc0b0f98df780bb083745221196b8b10dce5fc24ea4a1bf6b88bb4810"
+ }
+}

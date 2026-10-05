@@ -1,0 +1,279 @@
+{
+  "gate": "P8.3 G1",
+  "verdict": "PASS",
+  "checks": {
+    "G1.1_constant_cp_critical_ratio": true,
+    "G1.2_continuity_at_critical_ratio": true,
+    "G1.3_unchoked_v6_limit": true,
+    "G1.4_separate_real_gas_nozzles_closure": true,
+    "G1.4_protected_hashes": true,
+    "G1.4_g0_sources_unchanged_since_G0": true
+  },
+  "tolerances": {
+    "limit_and_energy": 1e-10,
+    "jump": 1e-08,
+    "eps": 1e-09
+  },
+  "coefficients": {
+    "Cd": 0.96,
+    "Cv": 0.95,
+    "status": "fixed analog priors (TN-1757, RP-1235)"
+  },
+  "G1.1": {
+    "hot_choked": {
+      "gamma": 1.4000119152759916,
+      "analytic": 0.528279780850944,
+      "computed": 0.5282797808509442,
+      "relative": 4.2031630392396544e-16,
+      "pass": true
+    },
+    "hot_unchoked": {
+      "gamma": 1.4000119152759916,
+      "analytic": 0.528279780850944,
+      "computed": 0.5282797808509458,
+      "relative": 3.572688583353695e-15,
+      "pass": true
+    },
+    "cold_unchoked": {
+      "gamma": 1.4000119152759916,
+      "analytic": 0.528279780850944,
+      "computed": 0.5282797808509445,
+      "relative": 1.0507907598099128e-15,
+      "pass": true
+    }
+  },
+  "G1.2": {
+    "hot_choked": {
+      "Cd1.0_Cv1.0": {
+        "p_star": 211311.9123403777,
+        "p_star_over_p0": 0.5282797808509442,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 1.111720957396699e-15,
+        "force_jump": 1.4285573957030722e-09,
+        "energy_relative": 3.5022109382084953e-17,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "Cd0.96_Cv0.95": {
+        "p_star": 211311.9123403777,
+        "p_star_over_p0": 0.5282797808509442,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 1.1580426639548949e-15,
+        "force_jump": 1.4974789731018014e-09,
+        "energy_relative": 2.1013265629250973e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      }
+    },
+    "hot_unchoked": {
+      "Cd1.0_Cv1.0": {
+        "p_star": 84524.76493615133,
+        "p_star_over_p0": 0.5282797808509458,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 0.0,
+        "force_jump": 1.4285590865611215e-09,
+        "energy_relative": 3.5022109382084953e-17,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "Cd0.96_Cv0.95": {
+        "p_star": 84524.76493615133,
+        "p_star_over_p0": 0.5282797808509458,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 0.0,
+        "force_jump": 1.4974809113860487e-09,
+        "energy_relative": 1.7511054691042478e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      }
+    },
+    "cold_unchoked": {
+      "Cd1.0_Cv1.0": {
+        "p_star": 79241.96712764168,
+        "p_star_over_p0": 0.5282797808509445,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 2.7062873156329384e-16,
+        "force_jump": 1.428559650180473e-09,
+        "energy_relative": 1.27349963952623e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "Cd0.96_Cv0.95": {
+        "p_star": 79241.96712764168,
+        "p_star_over_p0": 0.5282797808509445,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 1.4095246435588223e-16,
+        "force_jump": 1.4974813327521908e-09,
+        "energy_relative": 1.411079932993053e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      }
+    }
+  },
+  "G1.3": {
+    "hot_unchoked": {
+      "area": 0.26736949479587474,
+      "mass_flow": 49.99999999999559,
+      "force_new": 26440.8494510522,
+      "force_v6": 26440.84945105444,
+      "relative": 8.475502836309693e-14,
+      "mass_flow_relative": 8.824940778140444e-14,
+      "choked": false,
+      "pass": true
+    },
+    "cold_unchoked": {
+      "area": 0.16024750365044965,
+      "mass_flow": 49.99999999999994,
+      "force_new": 13481.108930575972,
+      "force_v6": 13481.10893057597,
+      "relative": 1.3492876683314073e-16,
+      "mass_flow_relative": 1.1368683772161603e-15,
+      "choked": false,
+      "pass": true
+    }
+  },
+  "G1.4": {
+    "TAKE-OFF": {
+      "states_distinct": true,
+      "areas": [
+        0.34,
+        1.8
+      ],
+      "nozzles": {
+        "core": {
+          "Y_unchanged": true,
+          "element_max_abs": 0.0,
+          "energy_relative": 5.234367245358156e-16,
+          "choked": true,
+          "p0_over_pamb": 1.8676108915351837,
+          "p_star_over_p0": 0.5373003803865789,
+          "mass_flow_capacity": 84.34933338844397,
+          "thrust_pressure": 119.47579594044831
+        },
+        "bypass": {
+          "Y_unchanged": true,
+          "element_max_abs": 0.0,
+          "energy_relative": 5.62164773841644e-13,
+          "choked": false,
+          "p0_over_pamb": 1.45,
+          "p_star_over_p0": 0.5282913814036643,
+          "mass_flow_capacity": 534.9435234841471,
+          "thrust_pressure": 0.0
+        }
+      },
+      "continuity_core": {
+        "p_star": 101676.39939982485,
+        "p_star_over_p0": 0.5373003803865789,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 0.0,
+        "force_jump": 1.5574293383258485e-09,
+        "energy_relative": 5.234367245358156e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "continuity_bypass": {
+        "p_star": 77617.23012005311,
+        "p_star_over_p0": 0.5282913814036643,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 3.9972683749798634e-15,
+        "force_jump": 1.4976312735546162e-09,
+        "energy_relative": 1.7759544538273608e-15,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "sum_consistent": true,
+      "pass": true
+    },
+    "IDLE": {
+      "states_distinct": true,
+      "areas": [
+        0.34,
+        1.8
+      ],
+      "nozzles": {
+        "core": {
+          "Y_unchanged": true,
+          "element_max_abs": 0.0,
+          "energy_relative": 2.3498095063833616e-13,
+          "choked": false,
+          "p0_over_pamb": 1.1142157629895009,
+          "p_star_over_p0": 0.5307242702248348,
+          "mass_flow_capacity": 39.61786231744761,
+          "thrust_pressure": 0.0
+        },
+        "bypass": {
+          "Y_unchanged": true,
+          "element_max_abs": 0.0,
+          "energy_relative": 2.7390044868885296e-15,
+          "choked": false,
+          "p0_over_pamb": 1.012537258771143,
+          "p_star_over_p0": 0.5283431662270642,
+          "mass_flow_capacity": 95.9790585884361,
+          "thrust_pressure": 0.0
+        }
+      },
+      "continuity_core": {
+        "p_star": 59917.66205424448,
+        "p_star_over_p0": 0.5307242702248348,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 2.4710894615240333e-15,
+        "force_jump": 1.5140917274650923e-09,
+        "energy_relative": 8.798881859566113e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "continuity_bypass": {
+        "p_star": 54205.545584320964,
+        "p_star_over_p0": 0.5283431662270642,
+        "choked_below": true,
+        "choked_above": false,
+        "mass_flow_jump": 4.461983561057718e-15,
+        "force_jump": 1.4978314950747872e-09,
+        "energy_relative": 8.289812629203919e-16,
+        "Y_unchanged": true,
+        "flux_is_local_max": true,
+        "pass": true
+      },
+      "sum_consistent": true,
+      "pass": true
+    }
+  },
+  "notes": [
+    "Real-gas areas are declared synthetic values for component tests; nozzle mass-flow capacity is reported, not matched to the imposed v6 flow (P8.4 matching).",
+    "A fresh 180-row g0_parity run is not in this record; the v6 translation units are checked byte-identical to the G0 PASS commit and the C++ parity tests run in pytest."
+  ],
+  "provenance": {
+    "git_sha": "6bf791862df38bb9c6b22c008028a5fad3c1aff2",
+    "dirty_source": "",
+    "p82_g1_sha256": "867b03d11763358ca8296879fc1f5590b88f1dac59f4b159ac62d56de969ac73",
+    "mechanism_sha256": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+    "fixture_sha256": "33e5d43948c98d6f85794b9a7f6e3f132f0310d00bed3510d781cdaa20d895d3",
+    "conda_lock_sha256": "286c595b64e400de246b9200ce58e7f3372647d3ed62985494c79cfcdf5b42ef",
+    "module_sha256": "e0ac78f3d723adcedf707115c5da774ae9debe4b38cac8b47d08ee30ef79e76d",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "machine": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}

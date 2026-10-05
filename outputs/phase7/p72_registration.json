@@ -1,0 +1,148 @@
+{
+  "phase": "P7.2",
+  "calibration_version": 6,
+  "registered": "2026-09-27",
+  "registered_before": "any v6 computation (no v6 fit, profile, held-out or blend value exists). Known at registration: P7.0/P7.1 results (Dooley 2012 passes LHV, fails H and aromatics), all v5/Phase 6 results, and the user's preliminary Phase 7 blend diagnostics (not registered results).",
+  "naming": "Phase number 7 and calibration version 6 are distinct; every v6 artifact is named *_v6 and written under outputs/phase7/ (write-once).",
+  "change_from_v5": "fuel only: Jet A = Dooley et al. (2012) surrogate (JetA_dooley2012 in data/fuel_properties_v7.yaml, P7.0 commit 4b8eeda), replacing pure n-dodecane. No other physics, parameter, bound, weight, budget or rule changes.",
+  "fuel": {
+    "surrogate": "JetA_dooley2012",
+    "source": "data/fuel_properties_v7.yaml (frozen; P7.0 4b8eeda / P7.1 a44c131)",
+    "mole_fractions": {
+      "NC12H26": 0.404,
+      "IC8H18": 0.295,
+      "NPBENZ": 0.228,
+      "TMBENZ": 0.073
+    },
+    "target_fuel_of_surrogate": "Jet-A POSF 4658",
+    "P7.1_check_target": "NJFCP A-2 POSF 10325",
+    "P7.1_outcomes_preserved": "LHV pass (43.38 vs 43.1 MJ/kg liquid basis); hydrogen FAIL (14.12 vs 13.77 %); aromatics FAIL (26.1 vs 18.7 %). A published composition for POSF 4658 is not proof of matching POSF 10325.",
+    "cycle_basis": "gas-phase species enthalpies (CRECK thermo) in the HP equilibrium, as for every v1-v5 fuel; no vaporisation correction in the cycle"
+  },
+  "base_registration": "outputs/phase6/p61_registration.json (amendment A1), reused unchanged",
+  "v5_selected_calibration": "outputs/calibration_v5_A2.json",
+  "split": "outputs/phase6/split_p61.json (unchanged; held-out targets are read only by the held-out step)",
+  "fixed_central": {
+    "combustor_pressure_loss": 0.045,
+    "eta_compressor": 0.86,
+    "eta_turbine_polytropic": 0.9,
+    "eta_fan": 0.9,
+    "fpr_rated": 1.45,
+    "combustor_heat_loss_fraction": 0.0,
+    "eta_b": {
+      "TAKE-OFF": 0.999893720535389,
+      "APPROACH": 0.999833722706198,
+      "IDLE": 0.9981516090869106
+    }
+  },
+  "eta_b_proxy": {
+    "convention": "UNCHANGED from v5: the per-mode eta_b values above are the registered Phase 6 calibration-group proxy eta_b = 1 - (EI_CO*Q_CO + EI_HC*Q_fuel)/(1000*Q_fuel) with Q_fuel = 44.462 MJ/kg (n-C12H26, the v5 production surrogate). They are NOT recomputed with the Dooley 2012 heating value; the proxy is kept as a fixed temperature-rise scaling so that the fuel is the only change. Recorded as an explicit convention, not a physical claim.",
+    "Q_fuel_MJ_kg": 44.462,
+    "Q_CO_MJ_kg": 10.1018
+  },
+  "fit": {
+    "objective": "thrust_matched_v5: sum_i w_i e_i^2, e_i = relative fuel-flow error (unreachable row: e_i = 1.0)",
+    "weighting": "each split group equal; records equal within a group; modes equal (recertifications and input-twin models share one group weight)",
+    "free": [
+      "W_ref",
+      "a_thrust",
+      "k_pi",
+      "k_mdot"
+    ],
+    "bounds": {
+      "W_ref": [
+        60.0,
+        140.0
+      ],
+      "a_thrust": [
+        0.0,
+        2.0
+      ],
+      "k_pi": [
+        0.2,
+        1.5
+      ],
+      "k_mdot": [
+        0.2,
+        1.5
+      ]
+    },
+    "n_trials": 150,
+    "tpe_seed": 42,
+    "polish_max_nfev": 100,
+    "polish": "scipy least_squares (trf, bounds, x_scale = box widths, diff_step 1e-4)",
+    "candidates": [
+      "(1) tpe_then_polish: Optuna TPESampler(seed 42), 150 trials over the box in FIT_ORDER, then least_squares polish (max_nfev 100) from the best trial; the candidate value is min(polished, best trial) exactly as lto_v5.fit",
+      "(2) polish_from_v5_A2: least_squares polish (max_nfev 100) from the v5 A2 optimum (outputs/calibration_v5_A2.json params). This is a second registered start, NOT a new pilot."
+    ],
+    "evaluation_order": "candidate (1) then (2) in one process (same model object; warm-start phi guesses are shared, and run_at_thrust returns the same root cold or warm)",
+    "selection": "lower calibration SSE; exact ties go to candidate (1). Both candidates are recorded.",
+    "unreachable_rows": "ThrustTargetUnreachable rows scored e = 1.0 (unchanged); any other exception aborts (unchanged)"
+  },
+  "identifiability": {
+    "grid_points": 17,
+    "inner_max_nfev": 40,
+    "n_eff": 27,
+    "start": "v6 selected optimum",
+    "rule": "IDENTIFIED iff D >= 3.841 at both box edges (95 % profile interval interior to the box) AND the interval width <= 50 % of the box width",
+    "penalty_guard": "A parameter is NOT called IDENTIFIED if any verdict-deciding grid point (both box edges and the grid points bracketing each 95 % interval end, or the grid minimum and its neighbours when no grid point lies inside) has a returned inner optimum with any unreachable (penalised) calibration row, or an unknown count. Such a parameter is reported as 'penalty_dependent' and A1 fails. The count is taken from the objective log at the returned optimum (re-evaluated once if absent).",
+    "reported_not_gating": [
+      "inner fits that stopped at the 40-evaluation cap (status 0), per grid point, and whether any verdict-deciding point is capped (an unconverged inner fit can only overstate D)",
+      "grid step and whether any grid point lies inside each 95 % interval (grid resolution)",
+      "box-scaled J^T J condition at the optimum",
+      "whether the profile minimum is below the fit SSE"
+    ],
+    "A1": "PASS iff every fitted parameter is IDENTIFIED under the rule and the penalty guard"
+  },
+  "heldout": {
+    "baselines": {
+      "B0": "constant TSFC: per mode, group-weighted calibration mean of ICAO FF / F_target, times the held-out F_target",
+      "B1": "F-A rule: nearest-rated-thrust calibration group (ties: mean over tied groups) per-mode mean ICAO fuel flow x (held-out rated thrust / that group's rated thrust)"
+    },
+    "metrics": {
+      "primary": "group-weighted MAPE over all held-out rows (weights as in the fit)",
+      "secondary": [
+        "record-level MAPE",
+        "per-mode group-weighted MAPE"
+      ],
+      "unreachable_rows": "APE = 100 %, reported by row"
+    },
+    "acceptance": {
+      "A1_identifiability": "every parameter in the final fitted set IDENTIFIED (full profile)",
+      "A2_skill_margin_pp": 0.25,
+      "A2_rule": "PASS iff primary MAPE_model <= min(MAPE_B0, MAPE_B1) - 0.25 pp; ESCALATE (plan section 9) iff MAPE_model > MAPE_B0 + 0.25 pp; otherwise 'no demonstrated skill' (fails A2, reported)",
+      "A3_opr_trend": "per mode, OLS slope of TSFC_i = FF_i / F_target,i on OPR_i across held-out groups (one point per group: group mean OPR, group-weighted mean TSFC), computed for ICAO data and for model predictions; PASS iff the signs agree in all three modes. Partial slope controlling for rated thrust is reported, not gating",
+      "A4_informativeness": "tests/test_holdout_informativeness.py passes on the v5 CSV"
+    },
+    "A4": "the assertions of tests/test_holdout_informativeness.py::test_v5_holdout_prediction_depends_on_the_cycle applied to the v6 table (lto_v6.a4_informativeness; equivalence tested on the v5 CSV)",
+    "reported": "model/B0/B1 group-weighted and record-level MAPE, overall and per mode; calibration airflow W_ref (v6, v5, v4 hand-set 79.9 kg/s); v5-to-v6 parameter and metric changes. No held-out value is used to choose anything."
+  },
+  "nox": "worker engines refit the NOx correlation without the held-out models (lto_v5._init_worker, asserted); every v6 NOx(corr) value is from the calibration-only fit. The correlation's inputs (ICAO OPR, fuel flow) do not involve the fuel, so the P6.1 NOx split validation (3.77 % vs 10.60 %) is unchanged and is not re-run.",
+  "dependency": "P7.3 production blends run only if A1 PASS and the existing B0 escalation (A2 'ESCALATE') is not triggered; otherwise the result is recorded and P7.3 is gate-closed. The held-out step runs regardless (it reports the calibration). Independent P7.4 work continues either way.",
+  "outputs": {
+    "calibration": "outputs/phase7/calibration_v6.json, calibration_v6_evaluations.csv, calibration_v6_rows.csv",
+    "profile": "outputs/phase7/identifiability_profile_v6.{json,csv}, identifiability_profile_v6_progress.log",
+    "heldout": "outputs/phase7/holdout_icao_validation_v6.{csv,json}, holdout_icao_validation_summary_v6.csv"
+  },
+  "commands": {
+    "launch": "bash scripts/run_phase7.sh launch calib",
+    "jobs_in_snapshot": [
+      ".venv/bin/python scripts/optimization/lto_v6.py calibrate",
+      ".venv/bin/python scripts/optimization/lto_v6.py profile",
+      ".venv/bin/python scripts/optimization/lto_v6.py holdout"
+    ],
+    "workers": 6,
+    "inspect": "bash scripts/run_phase7.sh status; outputs/phase7/runs/calib/<job>/attempt_<n>.log"
+  },
+  "inputs_sha256": {
+    "outputs/phase6/p61_registration.json": "31204aee6c6b375b7723e5a430c15bf7c1dda12f59f5a66290b660de9cfd1279",
+    "outputs/phase6/p61_amendment_A2.json": "ad384d2f5a5a4d0f54b11cec7c0859652231d1f4259cdf9284e65979eab5061e",
+    "outputs/phase6/split_p61.json": "0fbbbdfa7feb9532518a5e38019d4de61bd45f4ae4b2ac07dc5ae78c778beb10",
+    "outputs/calibration_v5_A2.json": "1bd1b4b5aab0aa2a2e536b539973d21ed25e764c44fb03cfa633526f62089b11",
+    "outputs/holdout_icao_validation_v5.json": "3cece5bc1280949aa020179d3741fa9311c50a65b75412cc0c5d70b92e7d97a7",
+    "data/fuel_properties_v7.yaml": "701ef191fb35c3766031a32f15cb13b0c0273d178f6a8896bff4b042c1b3fd0c",
+    "data/icao_engine_data.csv": "511ec57a31c4621e1f76754e3c92dbd6c7c151a4cfd0fcdb7f40c9ce6b34d7a7",
+    "data/creck_c1c16_full.yaml": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+    "simulation/fuels_v7.py": "0a4a41854f4214602e073618642fb6a3191255490e98cfb89681aa031677fa3c"
+  }
+}

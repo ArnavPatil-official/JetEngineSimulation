@@ -1,0 +1,404 @@
+{
+  "id": "P8-QUEUE-RECOVERY-20261003",
+  "kind": "operational recovery registration; freezes queue/chain intent only and changes no scientific protocol, gate, tolerance, budget, split or held-out rule",
+  "registered_utc": "2026-10-03T22:45:00Z",
+  "decisions_date": "2026-10-02",
+  "plan": "docs/plan.md, section 'Queue recovery and decision integration - 2026-10-03'",
+  "base_commit": "678db95ad581199fc34ccea77c775349143fe1a6",
+  "governing_registrations": [
+    "docs/phase8_registration.md section 4 and amendment P8-A1 (benchmark protocol, unchanged)",
+    "docs/phase8_registration.md amendment P8-A2 (ablation ladder, unchanged)",
+    "docs/phase8_track4_registration.json (P8-TRACK4-20261002-attempt1, unchanged)"
+  ],
+  "deadlock_reason": "Old queue 45938 waited on a broad process-name predicate (pgrep python.*scripts/phase8/) that matched the parked A2 shell 48047 / caffeinate 48049, which in turn waited for the text 'queue done' in the rerun queue log. The old queue also checked AC before that wait, so it could launch on battery after release.",
+  "rules": [
+    "Completion is established only from registered record files and benchmark result.json files; never from process names, pgrep predicates, log text or a dead PID.",
+    "One atomic owner lease (O_CREAT|O_EXCL). Liveness of the recorded owner/child = PID alive AND the same process birth time. Duplicate live ownership is refused; stale ownership is refused until an explicit, recorded recover-stale.",
+    "AC power is read from 'pmset -g ps' (first line contains 'AC Power'); an unreadable or unknown power source blocks. AC is rechecked after every wait and immediately before every heavy launch.",
+    "Existing terminal benchmark results are validated and skipped without invoking benchmark.py. An occupied result directory without a valid terminal result is a BLOCKER, never an implicit rerun.",
+    "Every record, log and completion file is write-once; old logs are never opened for writing.",
+    "Terminal completion (every spec reached a terminal state) is distinct from a scientifically valid benchmark (every spec PASS with valid timing evidence and no flag).",
+    "No automatic retry of any stage. A failed or refused stage is recorded; independent later stages still run and report truthfully. No COMPLETE marker after a partial stage.",
+    "Heavy stages run strictly one at a time; no other heavy work during benchmark timings (coordination is by this lease, not by process matching)."
+  ],
+  "amendment_1": {
+    "id": "P8-QUEUE-RECOVERY-20261003-A1",
+    "date": "2026-10-03",
+    "before_any_launch": true,
+    "source": "docs/plan.md, 'Queue pre-launch review correction pass'",
+    "kind": "operational clarification only; no scientific protocol, gate, tolerance, budget, split or held-out rule changes",
+    "rules": [
+      "One strict queue-completion validator serves resume, benchmark-owner release and the A2 dependency. It checks the exact expected run-name set from the registered plan, the plan hash, registration id and sha256, queue and spec identities, every spec-record hash and every underlying manifest/result/progress/log hash. A completion whose evidence was deleted or altered is invalid.",
+      "A cached command-stage record is honoured only if its registration id/sha256, source identity (tracked tree and built modules) and command equal the current ones, its waited-exit evidence is present and its log, output, retained-file and report/hashes.json evidence still hash as recorded. A foreign or stale focused-test PASS cannot authorize the diagnostic.",
+      "Spec records have a state and a completion_eligible flag. Only the terminal benchmark verdicts (PASS, FAIL, INCOMPLETE, INVALID_POWER) with complete manifest/result/progress evidence are completion-eligible; FAIL, INCOMPLETE and INVALID_POWER are terminal with flags, never PASS. A run that leaves no output (REFUSED) or a partial/malformed directory (ERROR_PARTIAL) gets a terminal execution record that blocks queue completion; it is never retried and its directory is never overwritten.",
+      "Before each spawn the lease is set to STARTING_CHILD with a handshake path. The child is a stdlib launcher that writes its PID and birth time to the handshake file and waits for an explicit go from the driver before exec of the registered command (same PID). The driver records the child identity, rechecks AC and source identity, then sends go; otherwise it sends abort and records the waited exit. An exception or signal between STARTING_CHILD and a waited exit keeps the lease (AMBIGUOUS_CHILD) and fails closed; it is never released because the child identity is absent. A successful wait() is exit evidence even when the birth time was unreadable.",
+      "Stale recovery holds an exclusive flock on a recovery lock file, re-reads the lease and revalidates its file identity (device, inode, sha256) immediately before removal. A live (including stopped) owner or child is not stale. An ambiguous STARTING_CHILD/AMBIGUOUS_CHILD lease is recoverable only if its handshake process is provably dead or reused, or with an explicit recorded operator attestation. No lease is completion proof.",
+      "benchmark.script_sha256 is enforced before any benchmark work of a queue and again with source identity and AC immediately before each launch.",
+      "A session whose record writing or lease release fails exits nonzero; no success is reported without its records."
+    ],
+    "spec_states": {
+      "completion_eligible": [
+        "PASS",
+        "FAIL",
+        "INCOMPLETE",
+        "INVALID_POWER"
+      ],
+      "blocking": [
+        "REFUSED",
+        "ERROR_PARTIAL"
+      ]
+    },
+    "queue_completion_statuses": [
+      "TERMINAL_COMPLETE",
+      "TERMINAL_COMPLETE_WITH_FLAGS"
+    ],
+    "chain_statuses": [
+      "COMPLETE",
+      "STOPPED_WITH_BLOCKERS",
+      "FINISHED_WITH_FLAGS_OR_FAILURES",
+      "ABORTED"
+    ],
+    "recovery_lock": "outputs/phase8/operations/20261003_recovery/owner.lease.json.recovery.lock",
+    "handshakes": "outputs/phase8/operations/20261003_recovery/sessions/<session>/handshakes/<n>.json"
+  },
+  "not_authorized_as_chain_actions": [
+    "ablation_ladder.py --phase holdout (A2 held-out scoring needs its committed calibration and a separate decision)",
+    "g0_parity.py (supplied as a one-line Terminal command for after the chain)",
+    "any rerun of an existing benchmark result, of the Track 4 attempt, or of A2 calibration",
+    "creating outputs/freeze/NUMBERS.md, the freeze package or the local tag",
+    "git commit, push, merge or tag"
+  ],
+  "output_root": "outputs/phase8/operations/20261003_recovery",
+  "lease_path": "outputs/phase8/operations/20261003_recovery/owner.lease.json",
+  "power": {
+    "command": [
+      "pmset",
+      "-g",
+      "ps"
+    ],
+    "ac_marker": "'AC Power'",
+    "poll_s": 300
+  },
+  "identity": {
+    "tracked_paths": [
+      "scripts/phase8",
+      "scripts/optimization",
+      "simulation",
+      "integrated_engine.py",
+      "cpp",
+      "tests",
+      "docs/phase8_queue_recovery_registration.json",
+      "docs/phase8_track4_registration.json",
+      "data",
+      "models"
+    ],
+    "built_modules_glob": "cpp/build/*.so",
+    "rule": "frozen at chain start: git ls-tree of tracked_paths at HEAD (must have clean git status) plus sha256 of the built modules; any drift before a heavy launch blocks that launch and is recorded"
+  },
+  "queues": {
+    "run2_ac": {
+      "plan": "scripts/phase8/benchmark_plan_run2.txt",
+      "plan_sha256": "175974e8e50c286cc7dc515b243b141f79d1c37985d7fa28a6cd0ffb31d418f7",
+      "n_specs": 56,
+      "out_dir": "outputs/phase8/benchmark/run2_ac"
+    },
+    "run2_ac_rerun": {
+      "plan": "scripts/phase8/benchmark_plan_run2_rerun.txt",
+      "plan_sha256": "521cdf40265e79d22b566d26d21999bc7af957fb3d412090408e1faf6cc718e8",
+      "n_specs": 2,
+      "out_dir": "outputs/phase8/benchmark/run2_ac_rerun",
+      "note": "exactly the two specified rerun jobs (arm1a W2/11 workers, arm1a W4/11 workers); not a second full benchmark suite; no W2/1-worker rerun exists"
+    }
+  },
+  "benchmark": {
+    "script": "scripts/phase8/benchmark.py",
+    "script_sha256": "79b5a5f3534efb750b610f96ab9a0b167c3fefbd4d57cdce591288418c42347e",
+    "command": [
+      ".venv/bin/python",
+      "scripts/phase8/benchmark.py",
+      "--arm",
+      "{arm}",
+      "--variant",
+      "{variant}",
+      "--workload",
+      "{workload}",
+      "--workers",
+      "{workers}",
+      "--out-dir",
+      "{out_dir}"
+    ],
+    "native_flag": "--native",
+    "run_name": "arm{arm}{variant}{native_tag}_{workload}_{workers}w",
+    "validation": {
+      "repeats": 5,
+      "warmups": 1,
+      "timing_samples": 5,
+      "terminal_verdicts": [
+        "PASS",
+        "FAIL",
+        "INCOMPLETE",
+        "INVALID_POWER"
+      ],
+      "timing_valid": "verdict PASS, registered_protocol true, manifest spec matches, 5 timings, every comparison of every executed repeat matches, and progress.jsonl has an AC power reading for the warm-up and each of the 5 timed repeats; missing or malformed evidence is never valid timing",
+      "numerical_reference_valid": "verdict PASS or INVALID_POWER with every comparison matching (power does not change the numbers)"
+    }
+  },
+  "historical_records": {
+    "note": "seven terminal arm-1a results of run 2, preserved byte-identical; the pre-existing old queue log stays a user-dirty file and is never written by the new workflow",
+    "run2_ac": {
+      "arm1a_W1_1w": {
+        "manifest.json": "d9081c8297ced4345436c57924026868591b17e81707ae7068781ba32d1c25e6",
+        "progress.jsonl": "848fb0990a3a7e6134f9d99a935927f58ab803a6772dcf628777b68a1da574ea",
+        "result.json": "2ba3d4bfa389e9a5dbe8c78789dc41b12ad8b4b14e666172b1552b51742a5f2a",
+        "queue_logs/arm1a_W1_1w.log": "21a61f4696e2d50c1c2ceb855edada6d70b63ece5c2332e4d98e2c201a356fcf"
+      },
+      "arm1a_W2_1w": {
+        "manifest.json": "74d687c7bd01748e2931634651995a1cccb28cc18cc48c005f827bc32844eef2",
+        "progress.jsonl": "9e80fa98dd5a3db328c5c474622ba783aa3de4cc849ef8a0578269b650b87ad0",
+        "result.json": "efb07e83cc8c85116acac94b11103f7f04aafe96cd28b3c49d9d486ad59722f8",
+        "queue_logs/arm1a_W2_1w.log": "6e2a45a1f316a9301535e9e0c1566de4c687ee443b99246937d4b5ecd4f320ac"
+      },
+      "arm1a_W3_1w": {
+        "manifest.json": "15cb580101d3ab2e320eeda73a5b5b05c9c4ef24c2a8b2c1ff43baf4f7045731",
+        "progress.jsonl": "eb5e804a289af3356d1d30b121f5444bbc300dce49a8b4e08b0893b8ca7813c9",
+        "result.json": "d393c52f001f4cbdc6c6f8415c57e8000f6ae0ce3312b9a53e7c6d57949740b6",
+        "queue_logs/arm1a_W3_1w.log": "62cad37380c709116a539a6502ce458e9d507241388814a432a009b7d7ad0035"
+      },
+      "arm1a_W4_1w": {
+        "manifest.json": "89d5cacaaaf2a736db73be9d660230b1b9203e191235d07befc72eaaac47591e",
+        "progress.jsonl": "0ed560288c21e0dbebb0db30dc1b95b7fb9585e2f947387e7eeba6af4bc18d1f",
+        "result.json": "5f7bd73a626c892a06e81c34b3733b77f3f5cf1b86fe89ab532502e69ac26deb",
+        "queue_logs/arm1a_W4_1w.log": "21638175693fade96a094ca181733f5d1b86e98b8565166d93fa8b9a1cb2f9a9"
+      },
+      "arm1a_W2_11w": {
+        "manifest.json": "2c8ed7f8e3c48235572104067d62a4dd4d2597a18a4dfbe9923e0afd5d50b4df",
+        "progress.jsonl": "d039ab1a5b3f1f6b7db544bd5690aa1c3b4262393916f1f3b006ce9794e6b363",
+        "result.json": "4dce27683df04a52e6da7569a68a63d2f7535ef88364e83e7ebfa66579c310b8",
+        "queue_logs/arm1a_W2_11w.log": "93cbf39c23e3ac6f01f774814e65909f405546cf9240d8ed6a7de3b068d791db"
+      },
+      "arm1a_W3_11w": {
+        "manifest.json": "573e883353f850dfbb3b93597fdd4599bf4c8205d4639ccba6cf5aa17a0f6452",
+        "progress.jsonl": "7097b44b38db3fc7879556f6babada146645f9d6b1d2fed8b49c050b37535b1f",
+        "result.json": "9f9d87490ba51e17d17d6106b75a8b3bd373641ce5f2d5d1ed9369660c8c2c41",
+        "queue_logs/arm1a_W3_11w.log": "9d0ca06d389539d0f8139a0d18ebc505ff301b54cfcdea4acb26f3ba8f391c01"
+      },
+      "arm1a_W4_11w": {
+        "manifest.json": "4484f4b3c41b8a21fcada48678094d6b1b2d6a18c1646867ab4d7e5bb168f809",
+        "progress.jsonl": "943240446ffb30644bff83a5706ef9c4a0aeeca0618992e1602d0b7a246742d8",
+        "result.json": "eb36f3cdb3d042b2b9ed05e7e313239aba40d3fbb0951c4048930b541df73783",
+        "queue_logs/arm1a_W4_11w.log": "44f9283cb60dbe3e3d24f8717c98cf48de34503dd9a0d4b3a00c7cc1a9b65a88"
+      }
+    },
+    "old_queue_log": {
+      "path": "outputs/phase8/benchmark/run2_ac/queue_logs/queue.log",
+      "sha256_at_registration": "fa226042313999c4b726d007f149bbd24536fb5e9108320af7c6d58832a538ad",
+      "note": "user-dirty pre-existing file, written by the old queue (now paused); left unstaged"
+    }
+  },
+  "flags": [
+    {
+      "record": "run2_ac/arm1a_W2_1w",
+      "flag": "TIMING_INVALID_POWER",
+      "evidence": "progress.jsonl timed repeat 1 of 5 reads 'Battery Power'",
+      "numerical_reference_valid": true,
+      "rerun_registered": false,
+      "consequence": "its timing is not a valid AC benchmark sample; no W2/1-worker rerun is invented, so run 2 cannot be called a clean full benchmark"
+    },
+    {
+      "record": "run2_ac/arm1a_W4_11w",
+      "flag": "TIMING_INVALID_POWER",
+      "evidence": "progress.jsonl timed repeats 1-5 of 5 read 'Battery Power'",
+      "numerical_reference_valid": true,
+      "rerun_registered": true,
+      "rerun": "run2_ac_rerun/arm1a_W4_11w"
+    },
+    {
+      "record": "run2_ac/arm1a_W2_11w",
+      "flag": "TIMING_OVERLAP",
+      "evidence": "pre-existing status note: a ~20 s single-core development run overlapped repeats 1-2",
+      "numerical_reference_valid": true,
+      "rerun_registered": true,
+      "rerun": "run2_ac_rerun/arm1a_W2_11w"
+    },
+    {
+      "record": "run2_ac/arm1a_W4_1w",
+      "flag": "TIMING_OVERLAP",
+      "evidence": "pre-existing status note: a niced P8.4 compile/test overlapped (load average ~4.5 logged per repeat)",
+      "numerical_reference_valid": true,
+      "rerun_registered": false
+    }
+  ],
+  "stages": [
+    {
+      "id": "benchmark_run2",
+      "kind": "benchmark_queue",
+      "queue": "run2_ac"
+    },
+    {
+      "id": "benchmark_rerun",
+      "kind": "benchmark_queue",
+      "queue": "run2_ac_rerun"
+    },
+    {
+      "id": "a2_calibration",
+      "kind": "command",
+      "heavy": true,
+      "requires_queue_completions": [
+        "run2_ac",
+        "run2_ac_rerun"
+      ],
+      "requires_benchmark_owner_released": true,
+      "command": [
+        ".venv/bin/python",
+        "scripts/phase8/ablation_ladder.py",
+        "--step",
+        "A2",
+        "--phase",
+        "calibrate",
+        "--workers",
+        "6"
+      ],
+      "must_not_exist": [
+        "outputs/phase8/ladder/A2/calibration_p8_A2.json",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_evaluations.csv",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_rows.csv",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_provenance.json"
+      ],
+      "expected_outputs": [
+        "outputs/phase8/ladder/A2/calibration_p8_A2.json",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_evaluations.csv",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_rows.csv",
+        "outputs/phase8/ladder/A2/calibration_p8_A2_provenance.json"
+      ],
+      "expected_json_keys": [
+        "params",
+        "sse"
+      ],
+      "retain_unchanged": [
+        "outputs/phase8/ladder/A2/calibration_p8_A2_attempt1_incomplete_provenance.json"
+      ],
+      "note": "calibration only; held-out scoring is not a chain action"
+    },
+    {
+      "id": "validation_build",
+      "kind": "command",
+      "heavy": true,
+      "requires_queue_completions": [
+        "run2_ac",
+        "run2_ac_rerun"
+      ],
+      "requires_benchmark_owner_released": true,
+      "command": [
+        "nice",
+        "-n",
+        "15",
+        "bash",
+        "cpp/build.sh",
+        "--build-dir",
+        "cpp/build_next"
+      ],
+      "expected_outputs": [
+        "cpp/build_next/catjet_core.cpython-312-darwin.so"
+      ],
+      "retain_unchanged": [
+        "cpp/build/catjet_core.cpython-312-darwin.so"
+      ],
+      "note": "Validation prerequisite after A2 and before Track 4; builds the committed opt-in API separately. A failure blocks dependent tests. Never rebuild the benchmark binary."
+    },
+    {
+      "id": "track4_focused_pytest",
+      "kind": "command",
+      "heavy": true,
+      "command": [
+        "nice",
+        "-n",
+        "15",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_phase8_pinn_diagnostics.py",
+        "-v"
+      ],
+      "note": "an exit other than 0 blocks track4_diagnostic",
+      "requires_stage_pass": "validation_build"
+    },
+    {
+      "id": "track4_diagnostic",
+      "kind": "command",
+      "heavy": true,
+      "requires_stage_pass": "track4_focused_pytest",
+      "command": [
+        "nice",
+        "-n",
+        "15",
+        ".venv/bin/python",
+        "-m",
+        "scripts.phase8.pinn_diagnostics.run_diagnostics",
+        "--registration",
+        "docs/phase8_track4_registration.json"
+      ],
+      "must_not_exist": [
+        "outputs/phase8/track4/20261002_attempt1"
+      ],
+      "expected_outputs": [
+        "outputs/phase8/track4/20261002_attempt1/report.json"
+      ],
+      "report": "outputs/phase8/track4/20261002_attempt1/report.json",
+      "note": "exactly once; exit 0 alone is not proof (report status is read); never retried automatically"
+    },
+    {
+      "id": "full_pytest",
+      "kind": "command",
+      "heavy": true,
+      "command": [
+        "nice",
+        "-n",
+        "15",
+        "env",
+        "CATJET_BUILD=cpp/build_next",
+        ".venv/bin/python",
+        "-c",
+        "from pathlib import Path; import sys; root=Path.cwd(); sys.path.insert(0,str(root/'cpp'/'build')); sys.path.insert(0,str(root/'cpp'/'build_next')); import catjet_core; assert Path(catjet_core.__file__).resolve().parent==(root/'cpp'/'build_next').resolve(),catjet_core.__file__; import pytest; raise SystemExit(pytest.main(['tests/','-v']))"
+      ],
+      "requires_stage_pass": "validation_build",
+      "note": "Preload and assert the separate validation binary before pytest collection; the protected backend otherwise prepends cpp/build and can cache the old API."
+    },
+    {
+      "id": "protected_hashes",
+      "kind": "command",
+      "heavy": false,
+      "command": [
+        ".venv/bin/python",
+        "scripts/validation/verify_protected_hashes.py",
+        "--phase7",
+        "--phase8"
+      ]
+    }
+  ],
+  "records": {
+    "spec_records": "outputs/phase8/operations/20261003_recovery/records/<queue>/<run_name>.json",
+    "queue_completion": "outputs/phase8/operations/20261003_recovery/records/<queue>.completion.json",
+    "benchmark_owner_release": "outputs/phase8/operations/20261003_recovery/records/benchmark_owner_released.json",
+    "stage_records": "outputs/phase8/operations/20261003_recovery/records/stages/<stage>.json",
+    "chain_record": "outputs/phase8/operations/20261003_recovery/records/chain.<session>.json",
+    "sessions": "outputs/phase8/operations/20261003_recovery/sessions/<session>/ (launch.json, driver.log, logs/)",
+    "released_leases": "outputs/phase8/operations/20261003_recovery/leases/"
+  },
+  "launch": "caffeinate -i .venv/bin/python scripts/phase8/ac_workflow.py chain --registration docs/phase8_queue_recovery_registration.json",
+  "post_chain_manual": {
+    "g0_rerun": "fresh 180-row + AE3 G0 rerun into a new write-once directory (g0_parity.py --out-dir), unchanged comparison rules, run only after the chain has released its lease",
+    "track4_freeze_note": "conditional on a completed diagnostic before 2026-10-16 America/New_York; reviewed by hand, not a chain action"
+  },
+  "amendment_2": {
+    "id": "P8-QUEUE-RECOVERY-20261003-A2",
+    "date": "2026-10-03",
+    "before_any_launch": true,
+    "kind": "Validation prerequisite and binary selection; scientific protocols and old results unchanged",
+    "rules": [
+      "After benchmark run 2 and its two registered rerun jobs, then A2, build committed validation prerequisites in cpp/build_next under nice 15. Preserve the old benchmark library hash.",
+      "Focused Track 4 tests and full pytest require a validated PASS of the separate-build stage. Track 4 diagnostic still requires focused pytest PASS.",
+      "Full pytest explicitly preloads and verifies cpp/build_next before collection. CATJET_BUILD alone is insufficient because the protected backend prefers cpp/build.",
+      "Any missing, failed, stale or altered build evidence blocks dependent tests. No build is launched on battery."
+    ]
+  }
+}

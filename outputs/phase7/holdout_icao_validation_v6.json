@@ -1,0 +1,139 @@
+{
+  "registration": "outputs/phase7/p72_registration.json",
+  "calibration": "calibration_v6.json",
+  "calibration_version": 6,
+  "fuel": "JetA_dooley2012",
+  "fitted_params": {
+    "W_ref": 103.28521124594644,
+    "a_thrust": 1.109824302894461,
+    "k_pi": 1.3464432287630141,
+    "k_mdot": 0.41381164627320915
+  },
+  "calibration_airflow": {
+    "W_ref_kg_s": 103.28521124594644,
+    "v5_W_ref_kg_s": 102.39547191158805,
+    "handset_v4_kg_s": 79.9
+  },
+  "primary_group_weighted_mape_pct": {
+    "model": 1.8297515498972197,
+    "B0": 2.1886504344831437,
+    "B1": 1.0763401571313587
+  },
+  "A2": {
+    "margin_pp": 0.25,
+    "verdict": "FAIL: no demonstrated skill"
+  },
+  "A3": {
+    "icao": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": -1.1461908799409693e-05,
+        "partial_slope_given_F": 3.382848723372188e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -9.530195668951011e-05,
+        "partial_slope_given_F": 6.518873592178805e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 4.603836779966398e-05,
+        "partial_slope_given_F": 2.137357776630343e-05
+      }
+    },
+    "model": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": 9.571675284067329e-06,
+        "partial_slope_given_F": 6.547241899439929e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -5.6149073540470934e-05,
+        "partial_slope_given_F": 1.969735690308199e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 2.5650522834978867e-05,
+        "partial_slope_given_F": 9.413297402624485e-05
+      }
+    },
+    "sign_agrees": {
+      "APPROACH": false,
+      "IDLE": true,
+      "TAKE-OFF": true
+    },
+    "verdict": "FAIL"
+  },
+  "unreachable_rows": [],
+  "per_mode_group_weighted_mape_pct": {
+    "ALL": {
+      "Model": 1.8297515498972197,
+      "B0": 2.1886504344831437,
+      "B1": 1.0763401571313587
+    },
+    "APPROACH": {
+      "Model": 1.9268073554066873,
+      "B0": 1.1232225878895596,
+      "B1": 0.8548017376326578
+    },
+    "IDLE": {
+      "Model": 1.8425103430610765,
+      "B0": 3.3973241882607366,
+      "B1": 1.7949516685600577
+    },
+    "TAKE-OFF": {
+      "Model": 1.7199369512238958,
+      "B0": 2.045404527299134,
+      "B1": 0.57926706520136
+    }
+  },
+  "A1_profile": "FAIL",
+  "A4": {
+    "checks": {
+      "columns_present": true,
+      "every_row_predicted": true,
+      "tsfc_varies_per_mode": true,
+      "equal_thrust_different_opr_differ": true,
+      "n_equal_thrust_groups": 12
+    },
+    "verdict": "PASS"
+  },
+  "v5_to_v6": {
+    "params_v5": {
+      "W_ref": 102.39547191158805,
+      "a_thrust": 1.109036507149692,
+      "k_pi": 1.3482577723216178,
+      "k_mdot": 0.41360456851971344
+    },
+    "params_v6": {
+      "W_ref": 103.28521124594644,
+      "a_thrust": 1.109824302894461,
+      "k_pi": 1.3464432287630141,
+      "k_mdot": 0.41381164627320915
+    },
+    "calibration_sse_v5": 0.000459706239335649,
+    "calibration_sse_v6": 0.0004570833141686023,
+    "calibration_mape_v5_pct": 1.7961856171968758,
+    "calibration_mape_v6_pct": 1.7848700776636122,
+    "heldout_primary_v5": {
+      "model": 1.8236129405720565,
+      "B0": 2.1886504344831437,
+      "B1": 1.0763401571313587
+    },
+    "heldout_primary_v6": {
+      "model": 1.8297515498972197,
+      "B0": 2.1886504344831437,
+      "B1": 1.0763401571313587
+    },
+    "A2_v5": "FAIL: no demonstrated skill",
+    "A2_v6": "FAIL: no demonstrated skill",
+    "A3_v5": "FAIL",
+    "A3_v6": "FAIL"
+  },
+  "nox_note": "model_nox_corr_g_s from a NOx correlation refit without held-out models (worker exclusion asserted at initialisation)",
+  "blend_gate": {
+    "open": false,
+    "reason": "A1 FAIL"
+  }
+}

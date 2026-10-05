@@ -1,0 +1,129 @@
+{
+  "stage": "P8.1 step 2: C++ vs Python HP equilibrium parity",
+  "commit": "c8e63ad74a9e982c60e0b313a99709a5a609025a",
+  "mechanism": "data/creck_c1c16_full.yaml",
+  "fuel": "NC12H26:0.404, IC8H18:0.295, NPBENZ:0.228, TMBENZ:0.073",
+  "rule": "|dX| <= 1e-12 |X| for T, P, h, cp, mean_mw; |dY| <= 1e-12 |Y| + 1e-18",
+  "attempt_1": "outputs/phase8/p81_hello_equilibrium_attempt1_exactP.json (failed only the exact-P check; P rel diff 5e-16)",
+  "python_cantera": "3.2.0",
+  "python": "3.12.4",
+  "cpp": {
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "sdk": "MacOSX26.5.sdk",
+    "libcantera": "3.2.0 (conda-forge, cpp/conda-lock-osx-arm64.txt)"
+  },
+  "all_pass": true,
+  "cases": [
+    {
+      "case": "AE3 take-off (v6 solution)",
+      "T_in_K": 901.5451512272988,
+      "p_in_Pa": 4377240.0,
+      "phi": 0.33879271456691074,
+      "pass": true,
+      "scalars": {
+        "T": {
+          "python": 1700.811664711411,
+          "cpp": 1700.811664711411,
+          "rel_diff": 0.0
+        },
+        "P": {
+          "python": 4377239.99999957,
+          "cpp": 4377239.999999568,
+          "rel_diff": 4.255295915305398e-16
+        },
+        "h_mass": {
+          "python": 632137.0203116034,
+          "cpp": 632137.0203116139,
+          "rel_diff": 1.6574537841905622e-14
+        },
+        "cp_mass": {
+          "python": 1294.762524583403,
+          "cpp": 1294.7625245834026,
+          "rel_diff": 3.512206618992016e-16
+        },
+        "mean_mw": {
+          "python": 28.8435235507547,
+          "cpp": 28.843523550754696,
+          "rel_diff": 1.23171972125699e-16
+        }
+      },
+      "Y_worst_ratio_to_tolerance": 0.01363839419598842,
+      "Y_worst_species": "CO2",
+      "Y_max_abs_diff": 9.71445146547012e-16
+    },
+    {
+      "case": "approach-like",
+      "T_in_K": 700.0,
+      "p_in_Pa": 2000000.0,
+      "phi": 0.25,
+      "pass": true,
+      "scalars": {
+        "T": {
+          "python": 1323.7404479071067,
+          "cpp": 1323.7404479070856,
+          "rel_diff": 1.597424317558096e-14
+        },
+        "P": {
+          "python": 2000000.000006399,
+          "cpp": 2000000.000006403,
+          "rel_diff": 2.095475792878122e-15
+        },
+        "h_mass": {
+          "python": 404464.693036538,
+          "cpp": 404464.69303652435,
+          "rel_diff": 3.381951638836654e-14
+        },
+        "cp_mass": {
+          "python": 1235.4225539984834,
+          "cpp": 1235.42255399848,
+          "rel_diff": 2.7606790248485844e-15
+        },
+        "mean_mw": {
+          "python": 28.84598120189872,
+          "cpp": 28.84598120189871,
+          "rel_diff": 3.694844339599013e-16
+        }
+      },
+      "Y_worst_ratio_to_tolerance": 0.16295257506631275,
+      "Y_worst_species": "OH",
+      "Y_max_abs_diff": 2.7200464103316335e-15
+    },
+    {
+      "case": "idle-like",
+      "T_in_K": 500.0,
+      "p_in_Pa": 500000.0,
+      "phi": 0.15,
+      "pass": true,
+      "scalars": {
+        "T": {
+          "python": 903.7494217385212,
+          "cpp": 903.7494217385204,
+          "rel_diff": 8.805625153490396e-16
+        },
+        "P": {
+          "python": 500000.00000000146,
+          "cpp": 500000.00000000413,
+          "rel_diff": 5.355104804038986e-15
+        },
+        "h_mass": {
+          "python": 194640.63034540007,
+          "cpp": 194640.63034541058,
+          "rel_diff": 5.397887777200761e-14
+        },
+        "cp_mass": {
+          "python": 1146.4600262379531,
+          "cpp": 1146.4600262379527,
+          "rel_diff": 3.966534728460556e-16
+        },
+        "mean_mw": {
+          "python": 28.847976320158438,
+          "cpp": 28.84797632015843,
+          "rel_diff": 2.4630592034408525e-16
+        }
+      },
+      "Y_worst_ratio_to_tolerance": 0.0334553657114233,
+      "Y_worst_species": "CO2",
+      "Y_max_abs_diff": 1.5543122344752192e-15
+    }
+  ]
+}

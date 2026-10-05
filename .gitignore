@@ -4,3 +4,13 @@ CLAUDE.md
 scripts/dispatch_claude.py
 __pycache__/
 *.pyc
+
+# Phase 8 C++ build tree (cpp/build.sh)
+cpp/build/
+# Phase 8 PC (Linux/WSL2) C++ build tree (cpp/build_pc.sh)
+cpp/build_pc/
+# Phase 8 source PDFs (identity recorded as sha256 in the empirical database)
+data/empirical/pdf/
+# Phase 8 raw third-party data (edition and sha256 recorded in outputs/phase8 and data/empirical/acquisition_log.md)
+data/empirical/raw/
+cpp/build_next/

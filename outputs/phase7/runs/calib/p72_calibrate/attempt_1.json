@@ -1,0 +1,45 @@
+{
+  "job": "p72_calibrate",
+  "queue": "calib",
+  "attempt": 1,
+  "pid": 89355,
+  "supervisor_pid": 89341,
+  "started": "2026-09-27T11:29:36-04:00",
+  "commit": "271656e41497d349c3f8ad32912d8b413140bac7",
+  "snapshot": "/Users/arnavpatil/Documents/JetEngineSimulation_phase7_snapshots/271656e41497d349c3f8ad32912d8b413140bac7",
+  "snapshot_record": {
+    "commit": "271656e41497d349c3f8ad32912d8b413140bac7",
+    "tree": "25850da623e0bfb64390220d3b7bf8e7ccc60947",
+    "created": "2026-09-27T11:29:35-04:00",
+    "archive_sha256": "3208155e47fc4a59cfff94b78e9745efc91aadde64d5b03b6fa3fd5dd8b734c8"
+  },
+  "argv": [
+    "scripts/optimization/lto_v6.py",
+    "calibrate"
+  ],
+  "cwd": "/Users/arnavpatil/Documents/JetEngineSimulation_phase7_snapshots/271656e41497d349c3f8ad32912d8b413140bac7",
+  "env": {},
+  "threads": 6,
+  "config": {
+    "name": "p72_calibrate",
+    "argv": [
+      "scripts/optimization/lto_v6.py",
+      "calibrate"
+    ],
+    "outputs": [
+      "outputs/phase7/calibration_v6.json",
+      "outputs/phase7/calibration_v6_evaluations.csv",
+      "outputs/phase7/calibration_v6_rows.csv"
+    ],
+    "requires": [],
+    "imports": [],
+    "env": {},
+    "threads": 6
+  },
+  "config_hash": "99cb452abc6b78d29393538c28abddb83b5f8f44b5dee6d627679de8213074ef",
+  "registration_sha256": {
+    "outputs/phase7/p72_registration.json": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c"
+  },
+  "imported_inputs_sha256": {},
+  "inspect": "tail -f /Users/arnavpatil/Documents/JetEngineSimulation/outputs/phase7/runs/calib/p72_calibrate/attempt_1.log"
+}

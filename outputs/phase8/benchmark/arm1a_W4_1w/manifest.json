@@ -1,0 +1,35 @@
+{
+  "registration": "docs/phase8_registration.md section 4, amendment P8-A1",
+  "arm": 1,
+  "variant": "a",
+  "workload": "W4",
+  "workers": 1,
+  "repeats": 5,
+  "warmups": 1,
+  "sobol_points": 1000,
+  "registered_protocol": true,
+  "git_sha": "ef4e9282d61cbd0d4969a0223d6fba2aaf2cb36e",
+  "dirty_source": "M cpp/CMakeLists.txt\n M cpp/bindings/catjet_benchmark.cpp\n?? cpp/catjet_core/v6_variant.cpp\n?? cpp/catjet_core/v6_variant.hpp\n?? scripts/phase8/run_benchmark_queue.sh",
+  "machine": {
+    "host": "mac.lan",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "processor": "Apple M3 Pro",
+    "logical_cores": 11,
+    "memory_bytes": "19327352832",
+    "power": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=35782755)\t47%; discharging; 2:09 remaining present: true",
+    "python": "3.12.4",
+    "cantera": "3.2.0",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "developer_dir": "/Library/Developer/CommandLineTools",
+    "sdk": "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk",
+    "cpp_compile_flags": "C++17; -ffp-contract=off; hidden symbols; static Cantera (cpp/CMakeLists.txt)"
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  },
+  "reference": null
+}

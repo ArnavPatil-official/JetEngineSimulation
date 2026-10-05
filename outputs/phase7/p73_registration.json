@@ -1,0 +1,116 @@
+{
+  "phase": "P7.3",
+  "registered": "2026-09-27",
+  "registered_before": "the first run of scripts/optimization/blend_matched_thrust_v6.py and before any v6 calibration result was read by the executor (the v6 calibration job was running at registration). Known at registration: all v5/P6.3 results and the user's preliminary Phase 7 blend DIAGNOSTIC values (including a ~0.44 % fuel-representation spread). Those diagnostics were known when this claim rule was specified; the thresholds (95 % sign agreement over 64 paired draws; |difference| > the Dooley 2012 vs Dooley 2010 spread) are the user's continuation rule, not tuned to them. The rule does not assume the diagnostic 0.44 % spread survives v6: S is recomputed at v6 per mode and quantity.",
+  "dependency": "runs only if outputs/phase7/holdout_icao_validation_v6.json blend_gate.open (A1 PASS and no A2 ESCALATE); otherwise gate-closed and recorded",
+  "engine": "Trent 1000-AE3 inputs (ICAO 02P23RR126: OPR, BPR, rated thrust); SELECTED v6 fitted parameters (outputs/phase7/calibration_v6.json) held fixed for all fuels and all draws; single-zone equilibrium combustor; analytic turbine and nozzle",
+  "operating_points": {
+    "TAKE-OFF": {
+      "thrust_fraction": 1.0,
+      "eta_b": "TAKE-OFF",
+      "domain": "calibration (primary)"
+    },
+    "APPROACH": {
+      "thrust_fraction": 0.3,
+      "eta_b": "APPROACH",
+      "domain": "calibration"
+    },
+    "IDLE": {
+      "thrust_fraction": 0.07,
+      "eta_b": "IDLE",
+      "domain": "calibration"
+    },
+    "CLIMB85": {
+      "thrust_fraction": 0.85,
+      "eta_b": "TAKE-OFF value of the same draw (convention; no ICAO climb data in the CSV)",
+      "domain": "EXTRAPOLATED: reported, never claimed"
+    }
+  },
+  "fuels": {
+    "basis": "MASS fractions of registered surrogates via simulation.fuels_v7.mass_blend (mole fractions for Cantera). Not volumetric certification limits; no operational approval implied.",
+    "JetA": "JetA_dooley2012 (100 %)",
+    "blends": "JetA + {HEFA_liang2025, FT_dooley2012, ATJ_C1matched} at 10, 20, 30, 50 mass %",
+    "neat_context": "HEFA-100, FT-100, ATJ-100 (context only, published separately)",
+    "spread_reference": "JetA_dooley2010 (100 %), central values only"
+  },
+  "quantities": [
+    "ff [kg/s]",
+    "tsfc_mg_Ns",
+    "T4 [K]",
+    "phi",
+    "nox_corr_g_s (ICAO-derived correlation of OPR and fuel flow, calibration-group fit; no fuel-composition term: blend NOx differences follow fuel flow only)",
+    "lifecycle_g_s"
+  ],
+  "draws": {
+    "source": "outputs/p62_bands_v5.csv rows draw_00..draw_63 (the 64 P6.2 fixed-parameter draws, seed 42)",
+    "used_columns": "fixed_combustor_pressure_loss, fixed_eta_compressor, fixed_eta_turbine_polytropic, fixed_fpr_rated, fixed_eta_fan, fixed_eta_b_{TAKE-OFF,APPROACH,IDLE}",
+    "not_used": "the per-draw REFITTED v5 parameters (fit_* columns)",
+    "pairing": "the same draw is applied to every fuel, so each paired difference uses common draws",
+    "label": "conditional fixed-calibration sensitivity bands; NOT refit-conditioned P6.2 bands; NOT statistical confidence intervals"
+  },
+  "pairs": {
+    "SAF_vs_JetA": "{HEFA,FT,ATJ}-{10,20,30,50} vs JetA (12 pairs)",
+    "pathway_like_fraction": "at each of 10,20,30,50: HEFA vs FT, HEFA vs ATJ, FT vs ATJ (12 pairs)",
+    "context_neat_vs_JetA": "{HEFA,FT,ATJ}-100 vs JetA (3 pairs; context, separate)",
+    "context_neat_pathway": "HEFA-100 vs FT-100, HEFA-100 vs ATJ-100, FT-100 vs ATJ-100 (3 pairs; context, separate)",
+    "difference": "delta = Q(a) - Q(b), central values",
+    "denominator": "relative difference = delta / Q(b) central (b = JetA for SAF-vs-JetA and neat-vs-JetA; b = the second-named pathway at the same fraction for pathway pairs)",
+    "spread": "S(point, quantity) = |Q(JetA_dooley2012) - Q(JetA_dooley2010)| central, at unchanged v6 calibration, same point and quantity, absolute units"
+  },
+  "claim_rule": [
+    "CLAIMED iff all hold: (i) operating point in the calibration domain (TAKE-OFF, APPROACH, IDLE; CLIMB85 never)",
+    "(ii) every one of the 64 draws converged for both fuels at that point",
+    "(iii) central difference nonzero",
+    "(iv) at least 95 % of the 64 paired draw differences agree in sign with the central difference (>= 61 of 64; a zero paired difference counts as disagreement)",
+    "(v) |central difference| > S (strict)",
+    "(vi) lifecycle_g_s only: additionally >= 95 % sign agreement over the 1000 CORSIA common scenario draws at the central cycle",
+    "All comparisons are published with pass/fail and reasons, including neat context (separate family)."
+  ],
+  "lifecycle": {
+    "formula": "lifecycle g/s = ff [kg/s] * sum_i mass_i * LHV_i [MJ/kg] * LCEF_i [gCO2e/MJ] (energy-weighted mixture LCEF; component contributions)",
+    "LCEF": "data/corsia_lca_values.yaml (CORSIA Doc 06, same sources as P6.3): fossil baseline 89 gCO2e/MJ for Jet A (both Jet A surrogates); SAF pathways central = triangular mode",
+    "scenario_draws": "1000 common draws, numpy default_rng(42), triangular(min, mode, max) per pathway in the P6.3 order (HEFA, FT, ATJ per draw)",
+    "n_corsia_common": 1000,
+    "seed": 42,
+    "LHV_basis": "LIQUID basis for lifecycle: LHV_i = gas-phase CRECK LHV of component surrogate i (298.15 K, H2O vapour) minus 0.360 MJ/kg. The 0.360 is the n-dodecane heat of vaporisation (NIST) applied to EVERY species -- a common approximation, not a species-specific value. The thermodynamic cycle stays on the gas-phase basis (species enthalpies; no vaporisation), so the correction is applied exactly once, only in the lifecycle energy conversion. P6.3 used gas-phase LHVs; P7.3 values are therefore not directly comparable with P6.3 lifecycle numbers."
+  },
+  "nvpm": {
+    "relation": "Brem et al. (2015) via Teoh et al. (2022) SI Eq. S1 only (CAEP/11 form excluded by P7-A1)",
+    "h_ref_pct": 13.8,
+    "h_saf_pct": 15.3,
+    "hydrogen": "H_blend = 13.8 + f_SAF * (15.30 - 13.8), linear in SAF mass fraction (reference values, not surrogate hydrogen)",
+    "validity": "strict: F > 30 % AND 0 <= dH < 0.6. 10/20/30 % blends at take-off (and 85 % climb) are inside; 50 % (dH 0.75) and neat SAF (dH 1.5) exceed the hydrogen interval -> status 'unavailable', no number; approach (F = 30, not > 30) and idle -> unavailable",
+    "output": "percent change in nvPM number EI vs the Jet A reference; screening only; take-off and extrapolated-engine-condition 85 % climb; not validated engine nvPM; no absolute EI (no measured baseline); no CO2-to-nvPM equivalence; not subject to the claim rule (pathways share one hydrogen reference, so pathway differences are zero)"
+  },
+  "outputs": [
+    "outputs/phase7/p73_blends_v6_central.csv",
+    "outputs/phase7/p73_blends_v6_draws.csv",
+    "outputs/phase7/p73_blends_v6_claims.csv",
+    "outputs/phase7/p73_blends_v6_nvpm.csv",
+    "outputs/phase7/p73_blends_v6_lifecycle_corsia.csv",
+    "outputs/phase7/p73_blends_v6.json",
+    "outputs/phase7/p73_blends_v6.md"
+  ],
+  "commands": {
+    "launch": "bash scripts/run_phase7.sh launch blends (supervisor waits for calib/p72_holdout COMPLETE and the gate)",
+    "job_in_snapshot": ".venv/bin/python scripts/optimization/blend_matched_thrust_v6.py",
+    "workers": 6
+  },
+  "labels": [
+    "Conditional fixed-calibration sensitivity over the 64 P6.2 fixed-parameter draws with v6 parameters frozen; not refit-conditioned P6.2 bands; not confidence intervals.",
+    "Fuel-representation spread S = Dooley 2012 vs Dooley 2010 at v6: a sensitivity measure, not a complete uncertainty bound. Dooley 2012 fails the P7.1 hydrogen and aromatics checks; its target fuel is POSF 4658, the check target POSF 10325.",
+    "Mass-basis blends; not volumetric certification limits; neat SAF is contextual; no operational approval implied.",
+    "NOx is the ICAO-derived correlation of OPR and fuel flow (calibration-group fit); it has no fuel-composition term.",
+    "Lifecycle uses liquid-basis LHVs (one n-dodecane vaporisation correction for all species); the cycle uses gas-phase enthalpies.",
+    "nvPM: Brem (2015) relation only, screening at take-off and extrapolated 85 % climb; unavailable outside F > 30 % and dH < 0.6; no absolute EI; no CO2-to-nvPM equivalence.",
+    "CLIMB85 is an extrapolated operating point (no ICAO climb data in the CSV; eta_b = take-off value)."
+  ],
+  "inputs_sha256": {
+    "outputs/p62_bands_v5.csv": "90145fb6d9cd4e090fd1d2a0deab2a1478539556827617a0e5d831090d7cf333",
+    "data/corsia_lca_values.yaml": "3470d7afce8746926e15e6c5a4b5c9b9bc34bb04afa5a1875678f06d0691542d",
+    "data/fuel_properties_v7.yaml": "701ef191fb35c3766031a32f15cb13b0c0273d178f6a8896bff4b042c1b3fd0c",
+    "simulation/fuels_v7.py": "0a4a41854f4214602e073618642fb6a3191255490e98cfb89681aa031677fa3c",
+    "outputs/phase7/p72_registration.json": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c",
+    "outputs/phase6/p63_registration.json": "dbabb6b79881f2564488db007b80441b8c6371ed4e92ca95d9fdc33b83a10343"
+  }
+}

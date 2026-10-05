@@ -1,0 +1,67 @@
+{
+  "gate": "P8-A1 variant b G0",
+  "verdict": "PASS",
+  "reference": "outputs/phase8/g0/*_python.csv; frozen v6 source artifacts",
+  "rule": "rtol=1e-9, atol=1e-12 per available numeric output; status exact",
+  "checks": {
+    "calibration": {
+      "match": true,
+      "n_rows": 93,
+      "worst_rel_by_field": {
+        "ff": 4.044220481846986e-13,
+        "phi": 4.0439056076355163e-13,
+        "thrust_kN": 1.5147639914090482e-13,
+        "tsfc_mg_Ns": 2.965901978157973e-13,
+        "T3": 1.531216858836241e-16,
+        "T4": 1.7049892416115784e-13,
+        "T5": 2.658692845517924e-13,
+        "p3_bar": 2.0144261471481423e-16,
+        "thrust_core_kN": 6.315885653206398e-13,
+        "thrust_bypass_kN": 1.3196966797660367e-16,
+        "m_core": 1.50303169295454e-16,
+        "pi_c": 1.9094934087489587e-16,
+        "nox_corr_g_s": 7.907668317580636e-13
+      },
+      "failures": []
+    },
+    "heldout": {
+      "match": true,
+      "n_rows": 87,
+      "worst_rel_by_field": {
+        "ff": 2.842211088585665e-13,
+        "phi": 2.843644367790547e-13,
+        "T3": 1.5688684793983359e-16,
+        "T4": 2.2652034475937214e-13,
+        "T5": 3.6318541706235134e-13,
+        "m_core": 1.5466144318282885e-16,
+        "pi_c": 2.1254913346394928e-16,
+        "nox_corr_g_s": 5.558485148223611e-13,
+        "thrust_kN": 2.044337765125607e-13
+      },
+      "failures": []
+    },
+    "ae3": {
+      "match": true,
+      "fields": {
+        "ff": true,
+        "phi": true,
+        "thrust_kN": true,
+        "tsfc_mg_Ns": true,
+        "T3": true,
+        "T4": true,
+        "T5": true,
+        "p3_bar": true,
+        "thrust_core_kN": true,
+        "thrust_bypass_kN": true,
+        "m_core": true,
+        "pi_c": true,
+        "nox_corr_g_s": true
+      }
+    }
+  },
+  "protected": {
+    "manifest_sha256": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "n_protected": 184,
+    "mismatches": []
+  }
+}

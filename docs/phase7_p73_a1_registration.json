@@ -1,0 +1,316 @@
+{
+  "registration_id": "P7.3-A1",
+  "registered": "2026-10-04",
+  "base_commit": "59eab6c2ac52865a470884e55f2c7f3e0539631a",
+  "status": "PROSPECTIVE_REGISTRATION_IMPLEMENTATION_AND_PREREQUISITES_PENDING",
+  "registered_before": "Any P7.3-A1 parity, blend or lifecycle computation; no numerical work or model/core import was performed to prepare this amendment.",
+  "parent": {
+    "path": "outputs/phase7/p73_registration.json",
+    "sha256": "5544900ed6c5eb3e55c510f994c5073065a85675e89548dde9c750d2be52da12",
+    "rule": "This is additive. Parent registration, protected sources, frozen selected fit, A1 verdict and original closed-gate record remain unchanged."
+  },
+  "known_at_registration": {
+    "evidence": "Existing frozen Phase 7 profile and gate JSON metadata, Phase 8 registration section 1, and source-only backend review; no new empirical target access.",
+    "A1": "FAIL",
+    "profile_failure": "For all four fitted parameters W_ref, a_thrust, k_pi and k_mdot: IDENTIFIED_existing_rule=true, IDENTIFIED=false and penalty_dependent=true.",
+    "other_gates": "A2 FAIL (no demonstrated skill, not ESCALATE), A3 FAIL (approach sign), A4 PASS; unchanged.",
+    "original_blend_gate": {
+      "open": false,
+      "reason": "A1 FAIL",
+      "recorded": "2026-09-27T12:35:35-04:00"
+    },
+    "blend_results": "No original P7.3 production result exists; earlier preliminary diagnostics are not results of this amendment.",
+    "fresh_G0": "Only historical outputs/phase8/g0 and outputs/phase8/g0_parity.json were found. The documented outputs/phase8/g0_rerun_20261003 directory and a matching reservation were not found at registration. Fresh evidence remains pending."
+  },
+  "additive_gate_exception": {
+    "authorization": "User requires the original claim rule and conditional rankings unchanged, conditional on the v6 calibration, with explicit penalty-guard-only A1 FAIL disclosure.",
+    "allowed_iff": [
+      "All frozen dependency hashes match.",
+      "A1 is exactly FAIL; profile free parameters match the selected frozen fit free parameters and every parameter has IDENTIFIED_existing_rule true, IDENTIFIED false, penalty_dependent true, with recorded penalty-guard evidence.",
+      "The recorded frozen A2 verdict is not ESCALATE.",
+      "The historical original blend gate remains closed because of A1 FAIL; it is never rewritten as open.",
+      "All operational/backend prerequisites in this registration pass."
+    ],
+    "forbidden": "No bypass for existing-rule failure, unknown or malformed profile evidence, a changed fitted-parameter set, refit/replacement calibration, B0 escalation, source/input/binary drift, or failed parity.",
+    "verdict_disclosure": "A1 FAIL (penalty-dependent); original P7.3 gate closed; this run uses separately authorized P7.3-A1 conditional exception.",
+    "claim_interpretation": "Preserve every original claim-rule pass/fail and ranking. A passing comparison is a conditional model claim under the frozen v6 calibration; it is not evidence that A1 passed, calibration is identified, real-world blend performance is validated, or operational approval exists."
+  },
+  "unchanged_protocol": {
+    "engine": "Trent 1000-AE3 inputs (ICAO 02P23RR126: OPR, BPR, rated thrust); SELECTED v6 fitted parameters (outputs/phase7/calibration_v6.json) held fixed for all fuels and all draws; single-zone equilibrium combustor; analytic turbine and nozzle",
+    "operating_points": {
+      "TAKE-OFF": {
+        "thrust_fraction": 1.0,
+        "eta_b": "TAKE-OFF",
+        "domain": "calibration (primary)"
+      },
+      "APPROACH": {
+        "thrust_fraction": 0.3,
+        "eta_b": "APPROACH",
+        "domain": "calibration"
+      },
+      "IDLE": {
+        "thrust_fraction": 0.07,
+        "eta_b": "IDLE",
+        "domain": "calibration"
+      },
+      "CLIMB85": {
+        "thrust_fraction": 0.85,
+        "eta_b": "TAKE-OFF value of the same draw (convention; no ICAO climb data in the CSV)",
+        "domain": "EXTRAPOLATED: reported, never claimed"
+      }
+    },
+    "fuels": {
+      "basis": "MASS fractions of registered surrogates via simulation.fuels_v7.mass_blend (mole fractions for Cantera). Not volumetric certification limits; no operational approval implied.",
+      "JetA": "JetA_dooley2012 (100 %)",
+      "blends": "JetA + {HEFA_liang2025, FT_dooley2012, ATJ_C1matched} at 10, 20, 30, 50 mass %",
+      "neat_context": "HEFA-100, FT-100, ATJ-100 (context only, published separately)",
+      "spread_reference": "JetA_dooley2010 (100 %), central values only"
+    },
+    "quantities": [
+      "ff [kg/s]",
+      "tsfc_mg_Ns",
+      "T4 [K]",
+      "phi",
+      "nox_corr_g_s (ICAO-derived correlation of OPR and fuel flow, calibration-group fit; no fuel-composition term: blend NOx differences follow fuel flow only)",
+      "lifecycle_g_s"
+    ],
+    "draws": {
+      "source": "outputs/p62_bands_v5.csv rows draw_00..draw_63 (the 64 P6.2 fixed-parameter draws, seed 42)",
+      "used_columns": "fixed_combustor_pressure_loss, fixed_eta_compressor, fixed_eta_turbine_polytropic, fixed_fpr_rated, fixed_eta_fan, fixed_eta_b_{TAKE-OFF,APPROACH,IDLE}",
+      "not_used": "the per-draw REFITTED v5 parameters (fit_* columns)",
+      "pairing": "the same draw is applied to every fuel, so each paired difference uses common draws",
+      "label": "conditional fixed-calibration sensitivity bands; NOT refit-conditioned P6.2 bands; NOT statistical confidence intervals"
+    },
+    "pairs": {
+      "SAF_vs_JetA": "{HEFA,FT,ATJ}-{10,20,30,50} vs JetA (12 pairs)",
+      "pathway_like_fraction": "at each of 10,20,30,50: HEFA vs FT, HEFA vs ATJ, FT vs ATJ (12 pairs)",
+      "context_neat_vs_JetA": "{HEFA,FT,ATJ}-100 vs JetA (3 pairs; context, separate)",
+      "context_neat_pathway": "HEFA-100 vs FT-100, HEFA-100 vs ATJ-100, FT-100 vs ATJ-100 (3 pairs; context, separate)",
+      "difference": "delta = Q(a) - Q(b), central values",
+      "denominator": "relative difference = delta / Q(b) central (b = JetA for SAF-vs-JetA and neat-vs-JetA; b = the second-named pathway at the same fraction for pathway pairs)",
+      "spread": "S(point, quantity) = |Q(JetA_dooley2012) - Q(JetA_dooley2010)| central, at unchanged v6 calibration, same point and quantity, absolute units"
+    },
+    "claim_rule": [
+      "CLAIMED iff all hold: (i) operating point in the calibration domain (TAKE-OFF, APPROACH, IDLE; CLIMB85 never)",
+      "(ii) every one of the 64 draws converged for both fuels at that point",
+      "(iii) central difference nonzero",
+      "(iv) at least 95 % of the 64 paired draw differences agree in sign with the central difference (>= 61 of 64; a zero paired difference counts as disagreement)",
+      "(v) |central difference| > S (strict)",
+      "(vi) lifecycle_g_s only: additionally >= 95 % sign agreement over the 1000 CORSIA common scenario draws at the central cycle",
+      "All comparisons are published with pass/fail and reasons, including neat context (separate family)."
+    ],
+    "lifecycle": {
+      "formula": "lifecycle g/s = ff [kg/s] * sum_i mass_i * LHV_i [MJ/kg] * LCEF_i [gCO2e/MJ] (energy-weighted mixture LCEF; component contributions)",
+      "LCEF": "data/corsia_lca_values.yaml (CORSIA Doc 06, same sources as P6.3): fossil baseline 89 gCO2e/MJ for Jet A (both Jet A surrogates); SAF pathways central = triangular mode",
+      "scenario_draws": "1000 common draws, numpy default_rng(42), triangular(min, mode, max) per pathway in the P6.3 order (HEFA, FT, ATJ per draw)",
+      "n_corsia_common": 1000,
+      "seed": 42,
+      "LHV_basis": "LIQUID basis for lifecycle: LHV_i = gas-phase CRECK LHV of component surrogate i (298.15 K, H2O vapour) minus 0.360 MJ/kg. The 0.360 is the n-dodecane heat of vaporisation (NIST) applied to EVERY species -- a common approximation, not a species-specific value. The thermodynamic cycle stays on the gas-phase basis (species enthalpies; no vaporisation), so the correction is applied exactly once, only in the lifecycle energy conversion. P6.3 used gas-phase LHVs; P7.3 values are therefore not directly comparable with P6.3 lifecycle numbers."
+    },
+    "nvpm": {
+      "relation": "Brem et al. (2015) via Teoh et al. (2022) SI Eq. S1 only (CAEP/11 form excluded by P7-A1)",
+      "h_ref_pct": 13.8,
+      "h_saf_pct": 15.3,
+      "hydrogen": "H_blend = 13.8 + f_SAF * (15.30 - 13.8), linear in SAF mass fraction (reference values, not surrogate hydrogen)",
+      "validity": "strict: F > 30 % AND 0 <= dH < 0.6. 10/20/30 % blends at take-off (and 85 % climb) are inside; 50 % (dH 0.75) and neat SAF (dH 1.5) exceed the hydrogen interval -> status 'unavailable', no number; approach (F = 30, not > 30) and idle -> unavailable",
+      "output": "percent change in nvPM number EI vs the Jet A reference; screening only; take-off and extrapolated-engine-condition 85 % climb; not validated engine nvPM; no absolute EI (no measured baseline); no CO2-to-nvPM equivalence; not subject to the claim rule (pathways share one hydrogen reference, so pathway differences are zero)"
+    },
+    "labels": [
+      "Conditional fixed-calibration sensitivity over the 64 P6.2 fixed-parameter draws with v6 parameters frozen; not refit-conditioned P6.2 bands; not confidence intervals.",
+      "Fuel-representation spread S = Dooley 2012 vs Dooley 2010 at v6: a sensitivity measure, not a complete uncertainty bound. Dooley 2012 fails the P7.1 hydrogen and aromatics checks; its target fuel is POSF 4658, the check target POSF 10325.",
+      "Mass-basis blends; not volumetric certification limits; neat SAF is contextual; no operational approval implied.",
+      "NOx is the ICAO-derived correlation of OPR and fuel flow (calibration-group fit); it has no fuel-composition term.",
+      "Lifecycle uses liquid-basis LHVs (one n-dodecane vaporisation correction for all species); the cycle uses gas-phase enthalpies.",
+      "nvPM: Brem (2015) relation only, screening at take-off and extrapolated 85 % climb; unavailable outside F > 30 % and dH < 0.6; no absolute EI; no CO2-to-nvPM equivalence.",
+      "CLIMB85 is an extrapolated operating point (no ICAO climb data in the CSV; eta_b = take-off value)."
+    ]
+  },
+  "implementation_contract": {
+    "new_consumer": "scripts/phase8/p73_a1_cpp.py",
+    "protected_algorithm": "Import and reuse the registered fuel_parts, pairs, draw_fixed/load_draws, tasks_for/run, lifecycle, nvpm_brem and claim definitions from scripts/optimization/blend_matched_thrust_v6.py. Do not call or modify its main(), which couples input fit/gate paths to its output directory and enforces the historical gate.",
+    "fit_path": "outputs/phase7/calibration_v6.json",
+    "profile_path": "outputs/phase7/identifiability_profile_v6.json",
+    "gate_path": "outputs/phase7/holdout_icao_validation_v6.json",
+    "historical_closed_gate_path": "outputs/phase7/runs/blends/p73_blends/GATE_CLOSED.json",
+    "backend": "cpp, full-equilibrium core.V6Engine via simulation.catjet_backend.CppEngine and scripts.phase8.v6_backend.V6Model; no Python fallback or optimized/new-physics path",
+    "model_construction": "V6Model(reg6.fixed_central, nox_fit_exclude_models=split.heldout_models, n_workers=6, fuel=registered v6 composition, backend=cpp). Preserve task-level per-fuel and per-draw settings through protected run()/solve_task; do not use model.predict() central defaults.",
+    "task_contract": {
+      "phi_guess": null,
+      "workers": 6,
+      "chunksize": 4,
+      "order": "Original fuel_parts insertion order and OPERATING_POINTS order; original draws draw_00..draw_63 in that order.",
+      "central_draws": "Original fixed_central; every one of the 64 sensitivity tasks uses only registered fixed_* columns. fit_* values never enter this computation; central heat loss remains unchanged.",
+      "NOx": "Keep exact heldout_models fit exclusion; NOx correlation has no fuel-composition term."
+    },
+    "claim_implementation_clarifications": "Preserve existing source checks in addition to parent prose: both central rows converged, all 64 paired rows present/converged, central delta finite and nonzero; zero paired differences disagree; all comparisons/rejection reasons published. CLIMB85 never claimed, neat context separated.",
+    "target_policy": "Only AE3 OPR/BPR/rated-thrust inputs via with_targets=False. No new held-out score or empirical nozzle target read. Frozen fit/profile/gate metadata is dependency evidence.",
+    "source_freeze": "Freeze the final committed additive consumer/test/config source identity before compute; this base snapshot alone does not authorize unimplemented code.",
+    "main_root_contract": "Supply an explicit main root for frozen original inputs/records/binary; distinguish original-main and additive consumer identities. Verify imported protected module origins/hashes. Runtime may execute the registered new consumer from an extended validated main tree or isolated frozen worktree only after the attestation/extension proof; no mixed unverified sources.",
+    "evidence_validation": "Every required raw solve quantity of a row labeled converged must be finite before scoring; missing/nonfinite converged evidence is ERROR. Registered unreachable rows retain missing values/status/reason. This validates evidence and does not change the protected claim function or scientific thresholds.",
+    "implementation_status": "Committed isolated consumer; synthetic tests written, not executed while the main benchmark is active. Numerical prerequisites remain pending; not armed."
+  },
+  "backend_parity": {
+    "purpose": "Numerical equivalence gate for the additive consumer; not empirical blend validation and not exhaustive proof of all 64 draw extremes.",
+    "fresh_G0": {
+      "required": true,
+      "legacy_not_reused_as_fresh": true,
+      "documented_pending_directory": "outputs/phase8/g0_rerun_20261003",
+      "existing_script_limit": "scripts/phase8/g0_parity.py emits tables and a verdict JSON with commit/source-status metadata, but no reservation or actual loaded binary hash. Do not claim nonexistent artifacts.",
+      "supplied_rerun": "A supplied fresh rerun may be valid but lack provenance verification. Retain it as pending verification, not fabricated PASS provenance or discarded evidence. Accept only when trustworthy evidence establishes its actually used binary/source identity and table hashes; an unproven binary identity blocks the consumer.",
+      "fresh_wrapper": "If an additional fresh run is separately authorized, a new registered wrapper may reserve a new output namespace and capture source/environment/actual module provenance around the existing unchanged G0 script. It may explicitly preload an optional build_next core; preserve the old benchmark module and disclose the selection.",
+      "required_evidence": "Fresh G0 PASS at unchanged comparison rule; every expected check/table present and hash-valid; committed original source provenance; terminal command evidence; verified actual loaded full-equilibrium core path/hash matching the selected consumer core. Reservation/binary manifest requirements apply to a future wrapper that actually emits them, never retroactively to the historical script."
+    },
+    "study_parity": {
+      "central": "Every original central fuel, including alternative JetA spread reference, at TAKE-OFF, APPROACH, IDLE and CLIMB85.",
+      "fixed_draws": [
+        "draw_00",
+        "draw_31",
+        "draw_63"
+      ],
+      "draw_fuels": "Every original sensitivity-study fuel (all fuel_parts except JetA_dooley2010), at all four operating points; fixed parameters from each named original draw.",
+      "backends": [
+        "protected Python v6",
+        "full-equilibrium C++ v6"
+      ],
+      "task_rule": "Same selected v6 params, inputs, task ordering, fixed values and exact compositions; phi_guess=None and cold solves for both backends. Parity outputs remain separate and are not substituted as study draws.",
+      "numeric_rule": "math.isclose(rel_tol=1e-9, abs_tol=1e-12) per numeric cell; same keys/columns/shape and missing-value pattern.",
+      "status_rule": "Exact status/reason strings; exceptions are ERROR, not unreachable substitutions.",
+      "required_result": "PASS for every comparison; no tolerance change or cherry-picked removal. Failure prevents full blend stage and retains evidence.",
+      "limitation": "Other 61 draws are not cross-backend recomputed by this subset. All 64 are still required in the actual conditional study; missing/unconverged rows fail the original comparison rule."
+    }
+  },
+  "operational_guards": {
+    "active_chain": "Do not interrupt, signal, reorder or integrate scientific source changes into the active main AC workflow. No P7.3 stage is inserted into its registration.",
+    "main_context_api": "scripts.phase8.scientific_workflow_gate.prepare_context(root, registration, expected_consumer_identity=separately frozen consumer identity, require_g0=True), then Context.require_idle_ac() and acquire_run(); the helper injects only proven ORIGINAL main identity into read-only Workflow checks.",
+    "required_main_evidence": "Before any new source integration: strict original main terminal context, queue completions, owner-release, referenced stage/command/log/output hashes and no lease. Export a write-once hashed dependency attestation. Later checks revalidate raw evidence and original source blobs/modes/modules, allowing only explicitly registered new paths. Failure statuses remain truthful and cannot supply a required PASS prerequisite.",
+    "binary_selection": {
+      "choice": "Explicitly selected cpp/build/catjet_core.cpython-312-darwin.so or cpp/build_next/catjet_core.cpython-312-darwin.so; the chosen path and actual hash are frozen in the run manifest before numerical execution.",
+      "old_core": "A selected old core must equal the attested original benchmark module and have fresh G0 provenance and registered blend parity matching that same actual module; do not claim it equals a different validation_build binary.",
+      "optional_build_next": "A selected build_next core additionally requires the validated PASS validation_build artifact/hash (or separately prospectively registered build provenance) and explicit preloading/provenance capture around fresh G0. The old core is preserved.",
+      "worker_rule": "Verify the chosen actual loaded module path/hash in the parent and every worker, matching fresh G0 and parity provenance. No implicit sys.path preference, CATJET_BUILD-only assumption or fallback."
+    },
+    "resources": "Require AC immediately before every heavy stage, caffeinate and nice -n 15; no overlapping owned heavy stage. Revalidate dependencies/resource/ownership/binary after every wait and immediately before launch.",
+    "ownership": "Use record-backed exclusive reservation/lease with PID plus birth/argv handshake; never process-name matching or owner death as completion. Hold ownership for parity/full study/postprocessing until terminal record publication.",
+    "drift": "Freeze source/input/registration/config/environment/binary identity before launch; verify again after compute and before terminal publication. Unreadable identity or drift yields ERROR/nonzero exit and retained evidence, never accepted PASS/COMPLETE.",
+    "failure": "Prerequisite failure is BLOCKED before work; parity mismatch is FAIL; exception/drift/missing expected outputs is ERROR or INCOMPLETE with nonzero exit. Comparison-rule rejections/unconverged rows are preserved quantitative findings, never fabricated successful solves.",
+    "source_integration_caveat": "A source-extension protocol is registered here prospectively. It allows exact declared NEW paths only after attesting terminal main evidence and proving every ORIGINAL blob/mode/module unchanged. Never treat the current extended tree as the original identity, waive checks or silently reuse stale records."
+  },
+  "outputs": {
+    "directory": "outputs/phase7/p73_a1_cpp_20261004",
+    "write_once": true,
+    "reservation": "outputs/phase7/p73_a1_cpp_20261004/reservation.json",
+    "quantitative": [
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6_central.csv",
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6_draws.csv",
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6_claims.csv",
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6_nvpm.csv",
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6_lifecycle_corsia.csv",
+      "outputs/phase7/p73_a1_cpp_20261004/p73_blends_v6.json"
+    ],
+    "technical_README": "outputs/phase7/p73_a1_cpp_20261004/README.md",
+    "parity_directory": "outputs/phase7/p73_a1_cpp_20261004/parity",
+    "provenance": [
+      "outputs/phase7/p73_a1_cpp_20261004/environment.json",
+      "outputs/phase7/p73_a1_cpp_20261004/artifact_hashes.json",
+      "outputs/phase7/p73_a1_cpp_20261004/command.log",
+      "outputs/phase7/p73_a1_cpp_20261004/command.exit.json",
+      "outputs/phase7/p73_a1_cpp_20261004/terminal.json"
+    ],
+    "publication": "Only quantitative tables/metrics and technical README. Do not produce the original narrative p73_blends_v6.md or a manuscript/results draft.",
+    "required_label": "Conditional on the frozen v6 calibration; A1 FAIL (penalty-dependent); original gate closed; P7.3-A1 exception.",
+    "integrity": "All expected artifacts must exist, parse to registered schemas/coverage and match terminal hashes before COMPLETE. Preserve reservation/logs/partial files on failure; occupied output namespace refuses restart. No old result or log overwrite.",
+    "raw_checkpoint": "outputs/phase7/p73_a1_cpp_20261004/partial_rows.jsonl",
+    "raw_checkpoint_rule": "Append-only records of each finished parity or full-study solve batch, with stage/case and frozen identity. No extra simulator requests. Retain completed rows on later failure; nonfinite raw values are explicitly encoded as such, never fabricated successful values. Final quantitative CSV schemas remain unchanged."
+  },
+  "inputs_sha256": {
+    "outputs/phase7/p73_registration.json": "5544900ed6c5eb3e55c510f994c5073065a85675e89548dde9c750d2be52da12",
+    "outputs/phase7/p72_registration.json": "cd21d9502cb426f307c80a063cd0ee4909f13b00faf1849cde6cef869740615c",
+    "outputs/phase7/calibration_v6.json": "8e41b4102ae5a9c76e5d3a8d725be2a73dae2b7d08e2568eb3a61d6df4034dd2",
+    "outputs/phase7/identifiability_profile_v6.json": "dc640a5fe4ce38156d877ce98019e5816c93153313f7b3c0ff2487125b66c86a",
+    "outputs/phase7/holdout_icao_validation_v6.json": "ca8e6707ff2c34da0905dcbde00952c8f916ce8527c465537723d26d8055d481",
+    "outputs/phase7/runs/blends/p73_blends/GATE_CLOSED.json": "fad6cae2d67d0027c3712a5334f8fd8bddae95da4ab1398cfc91c3a2785fdd5f",
+    "outputs/p62_bands_v5.csv": "90145fb6d9cd4e090fd1d2a0deab2a1478539556827617a0e5d831090d7cf333",
+    "outputs/phase6/split_p61.json": "0fbbbdfa7feb9532518a5e38019d4de61bd45f4ae4b2ac07dc5ae78c778beb10",
+    "data/fuel_properties_v7.yaml": "701ef191fb35c3766031a32f15cb13b0c0273d178f6a8896bff4b042c1b3fd0c",
+    "simulation/fuels_v7.py": "0a4a41854f4214602e073618642fb6a3191255490e98cfb89681aa031677fa3c",
+    "data/corsia_lca_values.yaml": "3470d7afce8746926e15e6c5a4b5c9b9bc34bb04afa5a1875678f06d0691542d",
+    "data/creck_c1c16_full.yaml": "c4fc7197668dc089aacce8ec8547838be443741ee10a4d65d272e1c0f0a1edfa",
+    "data/icao_engine_data.csv": "511ec57a31c4621e1f76754e3c92dbd6c7c151a4cfd0fcdb7f40c9ce6b34d7a7",
+    "integrated_engine.py": "68f4d5d1cfb2d520200af348d9181f7280b9f85a19d32c8f6adde582e53647bb",
+    "scripts/optimization/lto_v5.py": "2790e7a0c446fdc7fe054bec63908d7f820ca569bd7e1ed483317f2246826b93",
+    "scripts/optimization/lto_v6.py": "9c47cef382c010055c7b7d9cb27a00c449a821140a80a4b063dfc9c221623f40"
+  },
+  "base_source_and_registration_sha256": {
+    "scripts/optimization/blend_matched_thrust_v6.py": "31c72abf5637904a6ca4f5ba75ee83ad788deac19d2638cea091011cb24ad3ad",
+    "scripts/phase8/v6_backend.py": "4f7c3513fb2d5732e17915686804733596d14f0ca431a8b6b644c9fdc677a1b0",
+    "simulation/catjet_backend.py": "3cbffe8231f73b97d77e8e441d74ae967cfdf5672c1cb1060fb3bc6305055154",
+    "docs/phase7_registration.md": "8b32ef734061c1ec28e16927129b8242ae4bd8cb39a65cfecbb23a50ceb99ce1",
+    "outputs/phase8/protected_sha256_phase8.json": "5f6671ffa4d3f59d5bad5aee6087345f62e7e0ba6aaaf8fc7005663a654fb3ac",
+    "docs/phase8_queue_recovery_registration.json": "faf248d87c516552951ea4bc123feb79327a22011b4abf17b7203d068e6ed194",
+    "scripts/phase8/ac_workflow.py": "b6e046565692fc0a86e85785e3f663c5da10b52c6c0f973433adcb08b638d4ae",
+    "scripts/phase8/g0_parity.py": "44b68f7ec5a658a43751d1f98fdb94bb3f82df7bf8bbe28cbdb051f356e89c08"
+  },
+  "future_prelaunch_manifest_required": [
+    "final committed additive consumer and test/config identity",
+    "selected fit/profile/gate and all registered inputs hashes",
+    "proven original-main workflow identity and source-extension attestation, plus separately frozen additive consumer identity",
+    "strict main queue/owner-release/stage/chain evidence references and hashes",
+    "fresh G0 verdict/table hashes and verified source/environment/actual selected module provenance; wrapper reservation only if one was actually emitted",
+    "actual selected full-equilibrium C++ module path/hash in parent and workers",
+    "AC/ownership launch handshake and full environment versions/compiler/flags",
+    "this registration file SHA256 and parent registration SHA256"
+  ],
+  "docs_only_checks": [
+    "Standard-library JSON parse",
+    "Exact unchanged_protocol equality to named parent sections",
+    "git diff --check",
+    "Git-process/index-lock checks before additive commit"
+  ],
+  "launch_status": "NOT_ARMED; future implementation, fresh G0 and operational prerequisites required",
+  "rollback": "Append or revert additively without history rewrite. After reservation, preserve all evidence; document invalidity with a new dated record, never delete or overwrite protected outputs.",
+  "clarifications": [
+    {
+      "dated": "2026-10-04",
+      "before": "Any additive implementation execution, parity or blend computation",
+      "scope": "Prospective source-extension/dependency attestation, distinct original-main versus consumer identities, and truthful fresh-G0/binary provenance. All parent scientific definitions and conditional claim rules remain unchanged."
+    },
+    {
+      "dated": "2026-10-04",
+      "before": "Any implementation execution or synthetic test execution",
+      "scope": "Declare exact new source/test paths, approved append-only raw solve checkpoints without extra calls, and rejection of malformed nonfinite converged evidence before unchanged claim scoring."
+    }
+  ],
+  "source_extension_protocol": {
+    "attestation_timing": "After the original main chain terminates and BEFORE integration of any new tracked scientific source path. No attestation export while the benchmark is active.",
+    "attestation_path": "outputs/phase8/screening_operations/main_dependency.json (prospective write-once export; not asserted to exist)",
+    "attestation_contents": [
+      "original Workflow identity and registration ID/SHA",
+      "original launch-tree commit and exact tracked paths/blobs/modes/content SHA256",
+      "original built module relative paths and actual SHA256",
+      "raw current registration/queue completions/owner-release/stage/terminal records and all referenced dependency/output/handshake/command/log hashes",
+      "validated original terminal status and explicit required-PASS prerequisites",
+      "attestation SHA256 recorded separately with exclusive creation and provenance"
+    ],
+    "revalidation": "Before every heavy launch, after waits and before terminal publication: revalidate the attestation/hash, raw original evidence, every original source blob/mode and old module against the frozen launch tree. Permit only new paths declared below or in another committed prospective registration; any changed/deleted original path, undeclared new source, modified raw evidence or old binary drift fails closed.",
+    "identity_injection": "Only after successful source-extension proof, use the proven ORIGINAL identity as the read-only Workflow identity provider and expected_identity for strict terminal validation. Do not mutate the old helper, registrations or terminal evidence; do not inject an unproven or consumer identity.",
+    "allowed_new_paths": [
+      "scripts/phase8/p73_a1_cpp.py",
+      "tests/test_phase7_p73_a1_cpp.py"
+    ],
+    "shared_helper": {
+      "module": "scripts.phase8.scientific_workflow_gate",
+      "export_API": "export_main_context(root) -> dict; writes outputs/phase8/screening_operations/main_dependency.json only after original strict idle validation and before new source integration",
+      "prepare_API": "prepare_context(root, registration, *, allow_new_paths=None, expected_consumer_identity=None, require_g0=True) -> Context",
+      "Context": "identity(dict), binary_path(Path), binary_sha256(str), original_context(dict), require_idle_ac(), acquire_run(output_dir, registration_sha256, identity=None) -> Run",
+      "Run": "assert_current(), release(terminal)",
+      "lease": "outputs/phase8/screening_operations/owner.lease.json; central exclusive post-chain ownership, output reservation write-once",
+      "gate_rule": "The separately registered shared helper proves original blob/mode/module and raw dependency evidence integrity before read-only original-identity injection. Registry lists exact allowed new paths; no broad wildcard, process-name predicate or summary-only trust. prepare_context require_g0=False is for a separately registered G0 wrapper only, never this consumer."
+    },
+    "consumer_identity": "Freeze final committed new consumer/helper/test/config paths and hashes separately, plus its chosen actual binary/fresh-G0/parity/registration identities. Both original and new identities must remain readable/unchanged throughout execution.",
+    "no_integration_now": "Implementation remains in this isolated worktree. Do not edit or integrate main tracked scientific source while the active benchmark runs."
+  },
+  "new_source_paths": [
+    "scripts/phase8/p73_a1_cpp.py",
+    "tests/test_phase7_p73_a1_cpp.py"
+  ]
+}

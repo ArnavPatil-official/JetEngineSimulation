@@ -1,0 +1,103 @@
+{
+  "id": "P8-SCREENING-OPERATIONS-20261004",
+  "date": "2026-10-04",
+  "registered_before": "Any source-extension export, new G0 run or post-chain scientific computation. This file changes no original scientific registration or active chain.",
+  "active_chain": "Do not interrupt, reorder, signal, or change original tracked source/registration/binary identity while its lease exists.",
+  "paths": {
+    "registration": "docs/phase8_screening_operations_registration.json",
+    "main_registration": "docs/phase8_queue_recovery_registration.json",
+    "main_dependency": "outputs/phase8/screening_operations/main_dependency.json",
+    "source_extension_manifest": "outputs/phase8/screening_operations/source_extension_manifest.json",
+    "owner_lease": "outputs/phase8/screening_operations/owner.lease.json",
+    "g0_evidence": "outputs/phase8/screening_operations/g0_evidence.json",
+    "g0_attempt": "outputs/phase8/screening_operations/g0_attempt_20261004",
+    "g0_target": "outputs/phase8/g0_rerun_20261003"
+  },
+  "original_dependency_export": [
+    "Export only after the original strict validate_terminal_context(require_idle=True) succeeds, the chain is terminal and the original lease is absent, BEFORE adding new source/test files to main.",
+    "Write once. Preserve exact original registration SHA, launch/terminal context, command/queue/owner-release/spec records and their raw evidence hashes, original scientific Git head/tree identity, every original tracked file blob/mode/byte hash, original built modules and validation_build output hash.",
+    "All original status/flags remain explicit. No failed stage is promoted to PASS; missing valid benchmark completion/owner-release blocks export."
+  ],
+  "source_extension_proof": [
+    "Prepare a write-once source-extension manifest from exact new paths declared in committed P7.3-A1, P8-S, nozzle and this operations registration; record registration/source commit and file hashes/modes before compute. Commit/review it before any new numerical launch. No wildcard source exception.",
+    "Every original tracked path remains present with exact blob bytes and Git mode; symlink targets and executable modes are checked. Prove the retained launch Git tree equals the original recorded tree hash. Original modules and original registration bytes are unchanged.",
+    "Every added file inside original scientific roots must be explicitly enumerated, committed and clean. Reject unregistered additions, dirty sources, deletions or modifications. Separately freeze all new consumer/config/test/helper source bytes and input/registration identities.",
+    "Only after this proof may a read-only Workflow instance receive the proven ORIGINAL identity. Revalidate raw queue completion/spec/result/progress/log evidence, owner release, command/stage/dependency hashes, exact terminal references and derived status. No summary-only attestation, process-name predicate, ancestor or dead PID is completion proof.",
+    "Artifact-only commits may change git_head metadata without changing the scientific file/binary/config identity. Any unreadable or drifting scientific identity is ERROR."
+  ],
+  "G0": {
+    "order": "First numerical post-chain action. The user directed the fresh run on 2026-10-04. Validate and commit existing supplied fresh evidence if complete; otherwise use the authorized fresh wrapper below after strict original completion, released ownership, idle AC and absent output target. No additional path approval is pending.",
+    "procedure": "Preserve scripts/phase8/g0_parity.py comparison rules, frozen inputs, CPP/Python reproductions, workers=6, write-once target directory and every original output table. Never overwrite historical G0.",
+    "wrapper": "scripts/phase8/post_chain_g0.py instruments actual module identity in parent and every C++ worker while delegating the original initializer/task/compare functions unchanged; no protected file mutation.",
+    "core": "Default unique original cpp/build/catjet_core*.so whose hash matches original main identity. Explicit cpp/build_next selection is allowed only with validated PASS build evidence and preload identity in every worker; no fallback.",
+    "proof": "G0 receipt records actual core path/hash, parent/worker PID birth/origin proofs, command, waited exit, raw verdict/table/log hashes, main attestation and consumer start/end identity. Every original C++ check PASS at registered tolerances; recompute table comparisons read-only when consuming supplied evidence.",
+    "supplied_without_provenance": "Retain supplied raw files. Mark provenance pending rather than invent a past reservation/worker manifest or silently replace them.",
+    "command": "caffeinate -i nice -n 15 .venv/bin/python scripts/phase8/post_chain_g0.py run --registration docs/phase8_screening_operations_registration.json --out-dir outputs/phase8/g0_rerun_20261003"
+  },
+  "ownership": [
+    "One post-chain O_CREAT|O_EXCL lease records owner PID and birth, exact registration, consumer identity, AC reading, output reservation and phase. Any existing lease refuses new work, including stale or ambiguous ownership; no automatic stale recovery.",
+    "Acquire only after original lease release, raw evidence validation and AC confirmation. Heavy stage source/binary/AC/dependency checks run immediately before launch and after waits. Unknown power blocks. Caffeinate and nice 15; no other heavy task during timings.",
+    "Output reservations and terminal records are exclusive-create. A consumed score reservation is retained after any failure. No automatic retry, overwrite, test reselection or additional training after test opening.",
+    "Consumers retain child PID/birth and waited-exit evidence. Release only own lease after children are proven ended; ambiguous children preserve the lease for operator review. Failed but ended stages retain their actual verdict and logs.",
+    "Final source/input/binary drift or unreadability invalidates acceptance, gives ERROR/nonzero and preserves evidence. Never report COMPLETE without expected artifact coverage/hash checks."
+  ],
+  "new_paths": [
+    "scripts/phase8/scientific_workflow_gate.py",
+    "scripts/phase8/post_chain_g0.py",
+    "tests/test_phase8_scientific_workflow_gate.py",
+    "scripts/operations/screening_bootstrap.py",
+    "scripts/operations/tests/test_screening_bootstrap.py",
+    "docs/phase8_screening_bootstrap_registration.json",
+    "docs/phase8_screening_bootstrap_registration.md",
+    "docs/phase8_screening_bootstrap_config.json"
+  ],
+  "sibling_registrations": [
+    "docs/phase7_p73_a1_registration.json",
+    "docs/phase8_saf_surrogate_registration.json",
+    "docs/phase8_nozzle_ode_registration.json"
+  ],
+  "api": {
+    "export_main_context": "export_main_context(root)->dict",
+    "prepare": "prepare_context(root,registration,*,allow_new_paths=None,expected_consumer_identity=None,require_g0=True)->Context",
+    "context": [
+      "identity",
+      "binary_path",
+      "binary_sha256",
+      "original_context",
+      "require_idle_ac()",
+      "acquire_run(output_dir,registration_sha256,identity=None)->Run"
+    ],
+    "run": [
+      "assert_current()",
+      "record_children(children)",
+      "release(terminal)->dict"
+    ],
+    "identity": "Expected consumer identity: committed file path->sha256/mode plus registration_sha256. git_head/root are metadata only; Context additionally freezes original/G0/core/helper identities.",
+    "fixture": "authorize_fixture_context(context)->Context: require fresh G0 and full source/core validation; authorize only the actual live recorded pytest child of a matching RUNNING OPS owner lease/reservation, or the ordinary idle-AC standalone context. No ownership bypass."
+  },
+  "checks_before_compute": [
+    "JSON/schema and strict record negative fixtures",
+    "Original blob/mode and unexpected-addition controls",
+    "Registration/binary/log/output mutation refusal",
+    "AC/duplicate lease and ambiguous/dead/reused child cases",
+    "G0 malformed tables/foreign module/missing worker proof controls",
+    "No test/core/MLX/simulator execution while the original benchmark owns its lease"
+  ],
+  "no_push": true,
+  "protected_changes": "none",
+  "no_prose_results_draft": true,
+  "original_pins": {
+    "docs/phase8_queue_recovery_registration.json": "faf248d87c516552951ea4bc123feb79327a22011b4abf17b7203d068e6ed194",
+    "scripts/phase8/ac_workflow.py": "b6e046565692fc0a86e85785e3f663c5da10b52c6c0f973433adcb08b638d4ae",
+    "scripts/phase8/g0_parity.py": "44b68f7ec5a658a43751d1f98fdb94bb3f82df7bf8bbe28cbdb051f356e89c08",
+    "scripts/phase8/v6_backend.py": "4f7c3513fb2d5732e17915686804733596d14f0ca431a8b6b644c9fdc677a1b0",
+    "simulation/catjet_backend.py": "3cbffe8231f73b97d77e8e441d74ae967cfdf5672c1cb1060fb3bc6305055154"
+  },
+  "bootstrap_control_clarification_20261004": {
+    "date": "2026-10-04",
+    "prospective_before_export": true,
+    "paths": "Exact lite bootstrap source/test and committed bootstrap registration/config paths are enumerated in new_paths. They are outside original scientific roots, remain metadata-only while waiting, and freeze through source_extension_manifest.other_declared_files before any new numerical action. No old scientific file changes.",
+    "source_provider": "The archived export provider and later added scientific gate use one identical reviewed commit/path/blob/mode/SHA tuple; no divergent gate versions.",
+    "fixture_exception": "Only prospectively authorized lightweight fake metadata fixtures may run after validated benchmark owner release while the remaining original chain waits for AC. All numerical source checks wait for fresh G0 and an exact registered child authorization."
+  }
+}

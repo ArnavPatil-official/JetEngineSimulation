@@ -1,0 +1,141 @@
+{
+  "step": "A4 (P8.4b, no knobs)",
+  "registration": "docs/phase8_p84b_registration.md",
+  "primary_group_weighted_mape_pct": {
+    "model": 21.243871855747994,
+    "B0": 2.1886504344831437,
+    "B1": 1.0763401571313587
+  },
+  "A2": {
+    "margin_pp": 0.25,
+    "verdict": "ESCALATE (plan section 9: model loses to B0 by more than the registered margin)"
+  },
+  "A3": {
+    "icao": {
+      "APPROACH": {
+        "n_groups": 9,
+        "slope": -1.1461908799409693e-05,
+        "partial_slope_given_F": 3.382848723372188e-05
+      },
+      "IDLE": {
+        "n_groups": 9,
+        "slope": -9.530195668951011e-05,
+        "partial_slope_given_F": 6.518873592178805e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 9,
+        "slope": 4.603836779966398e-05,
+        "partial_slope_given_F": 2.137357776630343e-05
+      }
+    },
+    "model": {
+      "APPROACH": {
+        "n_groups": 8,
+        "slope": -7.092005376277902e-06,
+        "partial_slope_given_F": -1.5691447901055212e-06
+      },
+      "IDLE": {
+        "n_groups": 8,
+        "slope": 3.3740809059454227e-06,
+        "partial_slope_given_F": 1.3480467063594514e-05
+      },
+      "TAKE-OFF": {
+        "n_groups": 8,
+        "slope": -1.409795515304275e-05,
+        "partial_slope_given_F": -4.226448711355953e-06
+      }
+    },
+    "sign_agrees": {
+      "APPROACH": true,
+      "IDLE": false,
+      "TAKE-OFF": false
+    },
+    "verdict": "FAIL"
+  },
+  "unreachable_rows": [
+    {
+      "Unique ID": "11RR052",
+      "Model": "Trent 1000-E",
+      "Mode": "TAKE-OFF",
+      "Target Thrust (kN)": 279.8,
+      "Reason": "design point: line search failed"
+    },
+    {
+      "Unique ID": "11RR052",
+      "Model": "Trent 1000-E",
+      "Mode": "APPROACH",
+      "Target Thrust (kN)": 83.94,
+      "Reason": "design point: line search failed"
+    },
+    {
+      "Unique ID": "11RR052",
+      "Model": "Trent 1000-E",
+      "Mode": "IDLE",
+      "Target Thrust (kN)": 19.586000000000002,
+      "Reason": "design point: line search failed"
+    },
+    {
+      "Unique ID": "12RR058",
+      "Model": "Trent 1000-E",
+      "Mode": "TAKE-OFF",
+      "Target Thrust (kN)": 268.0,
+      "Reason": "design point: evaluation failed at the current iterate"
+    },
+    {
+      "Unique ID": "12RR058",
+      "Model": "Trent 1000-E",
+      "Mode": "APPROACH",
+      "Target Thrust (kN)": 80.39999999999999,
+      "Reason": "design point: evaluation failed at the current iterate"
+    },
+    {
+      "Unique ID": "12RR058",
+      "Model": "Trent 1000-E",
+      "Mode": "IDLE",
+      "Target Thrust (kN)": 18.76,
+      "Reason": "design point: evaluation failed at the current iterate"
+    }
+  ],
+  "calibration_rows_weighted_mape_pct_in_sample_no_fit": 21.15704434377638,
+  "per_mode_group_weighted_mape_pct": {
+    "ALL": {
+      "Model": 21.243871855747994,
+      "B0": 2.1886504344831437,
+      "B1": 1.0763401571313587
+    },
+    "APPROACH": {
+      "Model": 20.380472798605087,
+      "B0": 1.1232225878895596,
+      "B1": 0.8548017376326578
+    },
+    "IDLE": {
+      "Model": 17.939046406481996,
+      "B0": 3.3973241882607366,
+      "B1": 1.7949516685600577
+    },
+    "TAKE-OFF": {
+      "Model": 25.41209636215691,
+      "B0": 2.045404527299134,
+      "B1": 0.57926706520136
+    }
+  },
+  "A4_informativeness": {
+    "checks": {
+      "columns_present": true,
+      "every_row_predicted": false,
+      "tsfc_varies_per_mode": true,
+      "equal_thrust_different_opr_differ": true,
+      "n_equal_thrust_groups": 12
+    },
+    "verdict": "FAIL"
+  },
+  "n_unreachable_heldout": 6,
+  "n_unreachable_calibration": 3,
+  "v6_reference_pct": 1.83,
+  "A1_pct": 1.835,
+  "provenance": {
+    "git_sha": "25d02010087d77c85cfb21e8e557a456a94e14dc",
+    "module_sha256": "b0b92662539e6ba714a547abdd7f267499228a66dbe89808c60136bdb5db07e7"
+  },
+  "note": "scored once after the committed P8.4b checks; no parameter was fitted"
+}

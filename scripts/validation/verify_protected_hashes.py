@@ -8,6 +8,13 @@ old -> new mapping in outputs/archive/pre_phase6/MAPPING.json. Exit status 1
 if any protected file is missing or its SHA-256 differs.
 
 Usage: .venv/bin/python scripts/validation/verify_protected_hashes.py
+       .venv/bin/python scripts/validation/verify_protected_hashes.py --phase7
+         (also the Phase 7 extension outputs/phase7/protected_sha256_phase7.json:
+          v5/Phase 6 evidence, P7.0/P7.1 files, every model checkpoint, mechanisms,
+          Sajben data; frozen before any Phase 7 computation)
+       .venv/bin/python scripts/validation/verify_protected_hashes.py --phase8
+         (also the Phase 8 list outputs/phase8/protected_sha256_phase8.json:
+          the Phase 7 list, v6 evidence and the Python v6 source path)
 """
 
 import hashlib
@@ -18,10 +25,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 BASELINE = ROOT / "outputs" / "logs" / "static_thrust_accounting_protected_sha256.json"
 MAPPING = ROOT / "outputs" / "archive" / "pre_phase6" / "MAPPING.json"
+PHASE7_BASELINE = ROOT / "outputs" / "phase7" / "protected_sha256_phase7.json"
+PHASE8_BASELINE = ROOT / "outputs" / "phase8" / "protected_sha256_phase8.json"
 
 
-def verify() -> list[str]:
-    baseline = json.loads(BASELINE.read_text())
+def verify(baseline_path: Path = BASELINE) -> list[str]:
+    baseline = json.loads(baseline_path.read_text())
     mapping = json.loads(MAPPING.read_text()) if MAPPING.exists() else {}
     bad = []
     for old, sha in baseline.items():
@@ -37,4 +46,11 @@ def verify() -> list[str]:
 
 
 if __name__ == "__main__":
-    sys.exit(1 if verify() else 0)
+    bad = verify()
+    if "--phase7" in sys.argv[1:]:
+        print(f"--- Phase 7 extension: {PHASE7_BASELINE.relative_to(ROOT)}")
+        bad += verify(PHASE7_BASELINE)
+    if "--phase8" in sys.argv[1:]:
+        print(f"--- Phase 8 list: {PHASE8_BASELINE.relative_to(ROOT)}")
+        bad += verify(PHASE8_BASELINE)
+    sys.exit(1 if bad else 0)

@@ -1,0 +1,106 @@
+# CAT-JET empirical database: controlled vocabulary (Phase 8, P8.6).
+# Registered before any source is entered. Changes after that are amendments
+# recorded in docs/phase8_registration.md. scripts/phase8/empirical_db.py
+# rejects any quantity, unit or class not listed here.
+version: 3   # v3 (P8-R1b): raw core-test and LPT quantities; prior entries unchanged
+
+reference_state:            # for corrected parameters (standard day)
+  T_ref_K: 288.15
+  p_ref_Pa: 101325.0
+
+# quantity: {unit: SI unit stored in value_si, dim: dimension key of the
+# conversion table, range: plausibility interval [lo, hi] in SI (QA), desc}
+quantities:
+  Tt_in:        {unit: K,      dim: temperature, range: [150, 2500], desc: inlet total temperature}
+  Pt_in:        {unit: Pa,     dim: pressure,    range: [1.0e3, 1.0e7], desc: inlet total pressure}
+  Tt_out:       {unit: K,      dim: temperature, range: [150, 2500], desc: exit total temperature}
+  Pt_out:       {unit: Pa,     dim: pressure,    range: [1.0e3, 1.0e7], desc: exit total pressure}
+  ps_out:       {unit: Pa,     dim: pressure,    range: [1.0e3, 1.0e7], desc: exit static pressure}
+  p_back:       {unit: Pa,     dim: pressure,    range: [1.0e2, 1.0e7], desc: nozzle back (ambient/plenum) pressure}
+  mdot:         {unit: kg/s,   dim: mass_flow,   range: [1.0e-4, 2000], desc: mass flow rate}
+  mdot_corr:    {unit: kg/s,   dim: mass_flow,   range: [1.0e-4, 2000], desc: "standard-day corrected flow mdot*sqrt(Tt_in/T_ref)/(Pt_in/p_ref)"}
+  flow_param:   {unit: m^2,    dim: area,        range: [1.0e-8, 10], desc: "composition-aware flow parameter mdot*sqrt(R*Tt_in)/(Pt_in*sqrt(gamma))"}
+  N:            {unit: rad/s,  dim: angular_speed, range: [0, 1.0e5], desc: shaft speed}
+  N_corr:       {unit: rad/s,  dim: angular_speed, range: [0, 1.0e5], desc: "corrected speed N/sqrt(Tt_in/T_ref)"}
+  PR:           {unit: "1",    dim: ratio,       range: [1.0, 60], desc: "pressure ratio, >= 1 (turbine: Pt_in/Pt_out; compressor: Pt_out/Pt_in)"}
+  NPR:          {unit: "1",    dim: ratio,       range: [1.0, 60], desc: nozzle pressure ratio Pt_in/p_back}
+  eta_tt:       {unit: "1",    dim: ratio,       range: [0.0, 1.0], desc: total-to-total isentropic efficiency}
+  eta_ts:       {unit: "1",    dim: ratio,       range: [0.0, 1.0], desc: total-to-static isentropic efficiency}
+  work_specific: {unit: J/kg,  dim: specific_energy, range: [0, 2.0e6], desc: specific shaft work}
+  torque:       {unit: N*m,    dim: torque,      range: [0, 1.0e6], desc: shaft torque}
+  A_throat:     {unit: m^2,    dim: area,        range: [1.0e-6, 20], desc: throat area}
+  A_exit:       {unit: m^2,    dim: area,        range: [1.0e-6, 20], desc: exit area}
+  M_exit:       {unit: "1",    dim: ratio,       range: [0.0, 5.0], desc: exit Mach number}
+  Cd:           {unit: "1",    dim: ratio,       range: [0.5, 1.05], desc: discharge coefficient}
+  Cv:           {unit: "1",    dim: ratio,       range: [0.5, 1.05], desc: velocity (thrust) coefficient}
+  thrust_ratio: {unit: "1",    dim: ratio,       range: [0.5, 1.10], desc: measured thrust / ideal isentropic thrust}
+  thrust:       {unit: N,      dim: force,       range: [0, 1.0e6], desc: thrust}
+  fuel_flow:    {unit: kg/s,   dim: mass_flow,   range: [0, 20], desc: fuel mass flow}
+  FAR:          {unit: "1",    dim: ratio,       range: [0, 0.1], desc: measured fuel-to-air mass ratio}
+  eta_chemical: {unit: "1",    dim: ratio,       range: [0, 1.0], desc: "combustion efficiency from chemical analysis, not thermodynamic cycle efficiency"}
+  PR_ts:        {unit: "1",    dim: ratio,       range: [1.0, 60], desc: turbine inlet total to exit static pressure ratio}
+  torque_corr:  {unit: N*m,    dim: torque,      range: [0, 1.0e6], desc: "source-defined corrected shaft torque (NASA TN D-6967: torque times epsilon/delta); correction basis in experiment notes"}
+  # --- added in v2 (P8-R1a) ---
+  speed_param:  {unit: "rad/s/K^0.5", dim: speed_parameter, range: [0, 1.0e3], desc: "speed parameter N/sqrt(Tt_in), inlet total temperature"}
+  flow_function: {unit: "kg*K^0.5/(s*Pa)", dim: flow_function, range: [0, 1.0e-2], desc: "flow function mdot*sqrt(Tt_in)/Pt_in (no R, no gamma)"}
+  PR_reported:  {unit: "1",    dim: ratio,       range: [1.0, 60], desc: "pressure/expansion ratio as the source reports it when the total/static basis is not stated; basis in experiment notes"}
+  reaction_p:   {unit: "1",    dim: ratio,       range: [-0.5, 1.0], desc: "static-pressure reaction: rotor static pressure drop / stage static pressure drop"}
+  eta_thermo_cooled: {unit: "1", dim: ratio,     range: [0.0, 1.0], desc: "cooled-turbine thermodynamic efficiency sum(m_i dh_i)/sum(m_i dh_i') over primary, coolant and leakage streams, ideal expansion to turbine exit pressure (source definition in experiment notes)"}
+  tip_clearance: {unit: m,     dim: length,      range: [0, 0.05], desc: average rotor tip clearance}
+  shock_x:      {unit: m,      dim: length,      range: [-10, 10], desc: shock position along the duct axis}
+  EI_NOx:       {unit: kg/kg,  dim: emission_index_mass, range: [0, 0.2], desc: NOx emission index (as NO2)}
+  EI_CO:        {unit: kg/kg,  dim: emission_index_mass, range: [0, 0.5], desc: CO emission index}
+  EI_HC:        {unit: kg/kg,  dim: emission_index_mass, range: [0, 0.5], desc: unburned hydrocarbon emission index}
+  EI_nvPM_mass: {unit: kg/kg,  dim: emission_index_mass, range: [0, 1.0e-2], desc: nvPM mass emission index}
+  EI_nvPM_number: {unit: 1/kg, dim: emission_index_number, range: [0, 1.0e18], desc: nvPM number emission index}
+
+# dim: {unit: factor or [factor, offset]}: value_si = value * factor + offset
+units:
+  temperature: {K: 1.0, degR: 0.5555555555555556, degC: [1.0, 273.15], degF: [0.5555555555555556, 255.37222222222223]}
+  pressure: {Pa: 1.0, kPa: 1000.0, MPa: 1.0e6, bar: 1.0e5, atm: 101325.0,
+             psi: 6894.757293168361, psia: 6894.757293168361, "lbf/ft^2": 47.88025898033584,
+             inHg: 3386.389, cmHg: 1333.22387415}
+  mass_flow: {kg/s: 1.0, lbm/s: 0.45359237, lbm/hr: 1.2599788055555556e-4, kg/hr: 2.777777777777778e-4}
+  angular_speed: {rad/s: 1.0, rpm: 0.10471975511965977}
+  ratio: {"1": 1.0, percent: 0.01}
+  specific_energy: {J/kg: 1.0, kJ/kg: 1000.0, "Btu/lbm": 2326.0}
+  torque: {N*m: 1.0, "ft*lbf": 1.3558179483314004}
+  area: {m^2: 1.0, cm^2: 1.0e-4, in^2: 6.4516e-4, ft^2: 0.09290304}
+  length: {m: 1.0, cm: 0.01, mm: 0.001, in: 0.0254, ft: 0.3048}
+  force: {N: 1.0, kN: 1000.0, lbf: 4.4482216152605}
+  emission_index_mass: {kg/kg: 1.0, g/kg: 1.0e-3, mg/kg: 1.0e-6}
+  emission_index_number: {1/kg: 1.0}
+  speed_parameter: {"rad/s/K^0.5": 1.0, "rpm/degR^0.5": 0.1404962946208145}
+  flow_function: {"kg*K^0.5/(s*Pa)": 1.0, "lbm*degR^0.5/(s*psia)": 4.903548837995186e-05}
+
+# Fidelity tiers (plan section E). Validation and locked tests use tier 4 only
+# (enforced by a trigger in schema.sql).
+fidelity_tiers:
+  0: collocation points without labels (never stored here)
+  1: quasi-1D component or matched-engine simulation
+  2: mean-line model with a published loss correlation
+  3: CFD (RANS)
+  4: experiment, or manufacturer / certification data
+
+# Quality classes, assigned per experiment from how the values were obtained.
+quality_classes:
+  A: values tabulated in the source with a stated measurement uncertainty
+  B: values tabulated without a stated uncertainty, or digitised from a clear plot with calibrated axes
+  C: values digitised from a small or low-resolution plot, or derived through assumptions stated in `notes`
+
+sigma_kinds:
+  reported: uncertainty stated by the source
+  derived: propagated from stated uncertainties of the inputs of a derived value
+  class_default: sigma_class(tier, quality) default, used only when nothing else is available
+  digitisation: spread of three repeat digitisations
+
+# sigma_class(tier, quality) values are NOT set here. They are fixed by a
+# registration amendment before the first calibration stage (P8.7). Until
+# then an observation without a reported/derived/digitisation sigma stores
+# sigma_si = NULL.
+
+component_stopping_rule:
+  min_independent_calibration_sources: 3
+  min_locked_validation_sources: 1
+  independence: "distinct independence_key values (one rig reported in several papers counts once)"
+  acquisition_close_date: null   # set by amendment; acquisition stops on that date

@@ -1,0 +1,75 @@
+{
+ "registration": "P8.3-A2",
+ "date": "2026-10-03",
+ "user_decisions_date": "2026-10-02",
+ "document": "docs/phase8_p83_amendment_a2.md",
+ "timing": "after ladder A4 was scored once (2dd705f, 21.24 %); not backdated; A4 is not rescored",
+ "supersedes_for": "models registered after this commit (first: A4c, docs/phase8_p84c_registration.md); A4/P8.4b keep Cd 0.96, Cv 0.95",
+ "model_definition": {
+  "mass_flow": "m_dot = Cd * A_geometric * G(p_exit)  (P8.3, unchanged)",
+  "velocity": "u_exit = Cv * u_ideal(p_exit)  (P8.3, unchanged; Cv multiplies velocity)",
+  "energy": "h_exit = h0 - u_exit^2/2 (kinetic-energy shortfall stays in gas enthalpy; P8.3, unchanged)"
+ },
+ "coefficients": {
+  "Cv_core": {"central": 0.985, "sensitivity": [0.95, 1.0]},
+  "Cv_bypass": {"central": 0.985, "sensitivity": [0.95, 1.0]},
+  "Cd_core": {"central": 0.96, "sensitivity": [0.90, 0.99]},
+  "Cd_bypass": {"central": 0.96, "sensitivity": [0.90, 0.99]}
+ },
+ "basis": {
+  "Cv_central_0.985": "engineering choice informed by TP-2171 corrected Cfg level and pyCycle generic Cv; NOT a measured Cv",
+  "Cv_low_0.95": "engineering bound: former P8.3 central (rounded TN-1757 reading); also brackets TP-2171 low-NPR Cfg 0.958 at NPR 2.5",
+  "Cv_high_1.00": "mathematical no-loss limit",
+  "Cd_central_0.96": "unchanged P8.3 engineering central (TN-1757 reading); consistent with TP-2171 measured 0.965 / 0.957 on a different nozzle",
+  "Cd_range_0.90_0.99": "unchanged P8.3 engineering envelope",
+  "ranges_are": "declared engineering sensitivity envelopes, not confidence intervals, not fitted, not Trent measurements"
+ },
+ "sources": [
+  {
+   "id": "NASA-TP-2171",
+   "citation": "Straight, D.M. and Cullom, R.R., Thrust performance of a variable-geometry, nonaxisymmetric, two-dimensional, convergent-divergent exhaust nozzle on a turbojet engine at altitude, NASA TP-2171, June 1983",
+   "url": "https://ntrs.nasa.gov/api/citations/19830018568/downloads/19830018568.pdf",
+   "retrieved": "2026-10-03",
+   "pdf_sha256": "b47ac6fa8cd27c5f7b54ebfde14892eb36ab6830abb264787288af42450a4793",
+   "pdf_pages": 40,
+   "role": "primary measurement on another machine (full-scale 2D C-D nozzle, J85-13 turbojet, altitude facility, NPR 1.6-14); central reference for Cv level and support for Cd",
+   "verified_statements": {
+   "printed_p14": "corrected peak gross thrust coefficient 0.985-0.990 for NPR > 4.0 (dry cruise throat, Fig. 16); 0.958 at NPR 2.5; max-afterburning setting 0.967 at NPR 2.0, 0.996 at 6.5, 0.987 at 14.0 (Fig. 17); Cd = effective/measured throat area, nearly constant above NPR 5: 0.965 dry cruise, 0.957 max-afterburning (Fig. 18)",
+    "printed_p15": "full-scale Cd about 2 % below scale-model values; full-scale Cd decreases below NPR 5",
+    "printed_p30": "Summary of Results items 1, 3, 5 repeat Cfg >= 0.985 above NPR 4, 0.958 at NPR 2.5 (area ratio 1.2), Cd 0.965 / 0.957 above NPR 5"
+   },
+   "definitions": {
+    "Cfg": "C_F = F_g / F_i, measured gross thrust over ideal 1-D isentropic gross thrust of the corrected flows (eq. 1, printed pp. 8-9); a thrust ratio",
+    "Cd": "effective throat area (from corrected throat flow, mixed hot-gas temperature, measured total pressure) / measured throat area"
+   },
+   "not_inferred": "Cfg is not equated with Cd and no Cv is derived from Cfg: the denominator conventions differ from m_dot*u_ideal(p_exit) and Cd*A*G"
+  },
+  {
+   "id": "pyCycle-4.4.0-HBTF",
+   "url": "https://raw.githubusercontent.com/OpenMDAO/pyCycle/4.4.0/example_cycles/high_bypass_turbofan.py",
+   "tag_commit": "867f1d6acb340d5a9840ce5a53345aa8893ce133",
+   "local_copy": "envs/pycycle/upstream/example_cycles/high_bypass_turbofan.py (untracked, unmodified; SOURCES.json)",
+   "sha256": "feace41f4214cdf2edb9064406f92f778c17d77d59fd6285e2098f9aac9fd420",
+   "lines": {"329": "self.pyc_add_cycle_param('core_nozz.Cv', 0.9933)", "331": "self.pyc_add_cycle_param('byp_nozz.Cv', 0.9939)"},
+   "definition": "pycycle/elements/nozzle.py (4.4.0, sha256 0bb04787ccd6495f28eb0d953e6473f5d4c8e2fda77e65454b1c8f9487012a4d) lines 116-118: Fg = W/g_c * V_actual * Cv * Cang * CmixCorr + (Ps_actual - Ps_calc) * A_actual; Cv multiplies velocity",
+   "role": "generic NPSS modelling reference, not a measurement"
+  },
+  {
+   "id": "NACA-TN-1757",
+   "url": "https://ntrs.nasa.gov/citations/19930082415",
+   "role": "older analog context (P8.3 registration), small convergent nozzles near NPR 2; not full-scale Trent"
+  },
+  {
+   "id": "NASA-RP-1235",
+   "url": "https://ntrs.nasa.gov/citations/19900011721",
+   "role": "older analog context (P8.3 registration), qualitative support"
+  }
+ ],
+ "heldout_data_used": "none; only the committed A4 aggregates were known",
+ "unchanged": [
+  "docs/phase8_p83_registration.md law and G1 thresholds; outputs/phase8/p83_g1.json verdict",
+  "P8.3-A1 1e-13 isentrope/HP inversion tolerances",
+  "A4 / P8.4b nozzle priors Cd 0.96, Cv 0.95 and every A4 output",
+  "scripts/phase8/trent_p84b.py"
+ ]
+}

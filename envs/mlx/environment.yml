@@ -1,0 +1,23 @@
+# Phase 8 MLX environment (Track D3): MLX residual/emulator/PINN scaffolding
+# and the MLX-vs-PyTorch parity test (tests/test_phase8_mlx_parity.py).
+# Infrastructure only: no model is trained on project data before gate G2.
+# torch is the parity reference only, pinned to the project's torch (2.9.1,
+# requirements.txt); on osx-arm64 the PyPI wheel is the CPU(+MPS) build.
+# numpy comes from PyPI (Accelerate BLAS), not conda-forge: the conda-forge
+# numpy links OpenBLAS built against llvm-openmp, and the torch wheel bundles
+# its own libomp.dylib, which aborts at import with OMP Error #15.
+# Exact builds: envs/mlx/conda-lock-osx-arm64.txt + envs/mlx/pip-freeze.txt.
+#   ~/miniforge3/bin/conda env create -f envs/mlx/environment.yml
+#   exact: ~/miniforge3/bin/conda create -n catjet-mlx --file envs/mlx/conda-lock-osx-arm64.txt
+#          ~/miniforge3/envs/catjet-mlx/bin/python -m pip install -r envs/mlx/pip-freeze.txt
+name: catjet-mlx
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pytest
+  - pip
+  - pip:
+      - numpy==2.5.3
+      - mlx==0.32.3
+      - torch==2.9.1

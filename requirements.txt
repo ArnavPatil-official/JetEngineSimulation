@@ -38,3 +38,5 @@ pytest==9.0.2
 
 # Dashboard (archive/code/dashboard.py only; not used by the manifest pipeline)
 streamlit==1.55.0
+# pybind11: Phase 8 C++ core bindings (cpp/CMakeLists.txt); build-time only
+pybind11==3.1.0

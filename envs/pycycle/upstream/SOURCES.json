@@ -1,0 +1,46 @@
+{
+  "description": "Unmodified pyCycle upstream files for the Phase 8 D2 reference run. Do not edit; re-download and compare sha256 instead.",
+  "repository": "https://github.com/OpenMDAO/pyCycle",
+  "tag": "4.4.0",
+  "tag_commit": "867f1d6acb340d5a9840ce5a53345aa8893ce133",
+  "retrieved": "2026-09-29",
+  "files": [
+    {
+      "path": "example_cycles/__init__.py",
+      "url": "https://raw.githubusercontent.com/OpenMDAO/pyCycle/4.4.0/example_cycles/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "role": "package marker (empty) so 'from example_cycles.high_bypass_turbofan import MPhbtf' works as in upstream"
+    },
+    {
+      "path": "example_cycles/high_bypass_turbofan.py",
+      "url": "https://raw.githubusercontent.com/OpenMDAO/pyCycle/4.4.0/example_cycles/high_bypass_turbofan.py",
+      "sha256": "feace41f4214cdf2edb9064406f92f778c17d77d59fd6285e2098f9aac9fd420",
+      "bytes": 21999,
+      "role": "published HBTF example: HBTF cycle, MPhbtf multipoint group (DESIGN, OD_full_pwr, OD_part_pwr), viewer(), __main__ flight-envelope sweep"
+    },
+    {
+      "path": "example_cycles/tests/benchmark_hbtf.py",
+      "url": "https://raw.githubusercontent.com/OpenMDAO/pyCycle/4.4.0/example_cycles/tests/benchmark_hbtf.py",
+      "sha256": "d571c5d926f16e23bbe0b5b3dea166304fd55957bc05a08195d98269f5a7db41",
+      "bytes": 7344,
+      "role": "upstream regression test (HBTFTestCase.benchmark_case1) asserting 26 reference values at tol 1e-5 (assert_near_equal, relative)"
+    },
+    {
+      "path": "LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/OpenMDAO/pyCycle/4.4.0/LICENSE.txt",
+      "sha256": "036d18e49ae3978a3d44bd7ee9bd08547f557bce36f234ebb2693894fadaffdb",
+      "bytes": 554,
+      "role": "pyCycle license (Apache 2.0), kept with the redistributed files"
+    }
+  ],
+  "not_downloaded": {
+    "example_cycles/tests/test_all_examples.py": "runs every example as a script; it SKIPS high_bypass_turbofan.py upstream ('Runtime is more than 25 min.'), so it asserts nothing for HBTF",
+    "maps": "FanMap, LPCMap, HPCMap, HPTMap, LPTMap are imported from the installed om-pycycle 4.4.0 package (pycycle/maps/{Fan_map,LPC_map,HPC_map,HPT_map,LPT_map}.py); nothing extra fetched"
+  },
+  "installed_package_check": "The installed om-pycycle 4.4.0 wheel's pycycle/ tree is byte-identical to pycycle/ in the GitHub tag 4.4.0 tarball (codeload.github.com/OpenMDAO/pyCycle/tar.gz/refs/tags/4.4.0), apart from the pycycle/docs directory that the wheel does not ship (diff -r -q, 2026-09-29).",
+  "pypi_wheel": {
+    "filename": "om_pycycle-4.4.0-py3-none-any.whl",
+    "sha256": "b666f7c1794dc41bc1c2d27cb3659180d783aaaaed55a8de639be3a5f32472f5"
+  }
+}

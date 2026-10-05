@@ -1,0 +1,15 @@
+{
+  "step": "A2",
+  "ablation_level": 2,
+  "git_sha": "99a05782004969dc8d130b97b4fd4d3500410b62",
+  "dirty_source": "M cpp/CMakeLists.txt\n M cpp/bindings/catjet_core.cpp\n?? cpp/catjet_core/reactor_network.cpp\n?? cpp/catjet_core/reactor_network.hpp",
+  "module_sha256": "a85b0b0a1d48f0e7c23dd48a5a93fc04e06b22570b31631db5fa6e6a75146f45",
+  "p82_defaults": {
+    "vaporization_J_kg": 360000.0,
+    "ngv_fraction": 0.0641,
+    "rotor_fraction": 0.0275,
+    "pressure_steps": 50
+  },
+  "registration": "docs/phase8_registration.md P8-A2; docs/phase8_p82_registration.md",
+  "solver": "cpp/catjet_core/thrust_match.hpp (v6 procedure, cycle callback replaced)"
+}
