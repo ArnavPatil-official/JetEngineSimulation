@@ -10,23 +10,25 @@ from .registration import sha256_file
 def backend_array(value,xp):
     """Explicit backend dtype; never send a NumPy64 buffer to MLX implicitly."""
     import numpy as np
-    return xp.array(value,dtype=np.float64 if xp is np else xp.float32)
+    dtype=np.float64 if xp is np else getattr(xp,"training_dtype",getattr(xp,"dtype",xp.float32))
+    return xp.array(value,dtype=dtype)
 
 
 class TorchOps:
     """The xp subset used by the shared algebra, on one fixed torch device.
 
     ``array`` uses ``torch.as_tensor``: constants are placed on the device as
-    float32, while existing float32 graph tensors on that device are returned
+    float64, while existing float64 graph tensors on that device are returned
     unchanged, so the parameter graph is never detached or moved.
     """
 
-    def __init__(self, device="cpu"):
+    def __init__(self, device="cpu", dtype=None):
         import torch
         self.torch, self.device, self.float32 = torch, torch.device(device), torch.float32
+        self.training_dtype = dtype or torch.float64
 
     def array(self, value, dtype=None):
-        return self.torch.as_tensor(value, dtype=dtype or self.float32, device=self.device)
+        return self.torch.as_tensor(value, dtype=dtype or self.training_dtype, device=self.device)
 
     def where(self, condition, a, b):
         return self.torch.where(condition, a, b)

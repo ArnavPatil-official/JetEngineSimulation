@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 from .inputs import FUELS, MODES, canonical_query, feature_rows, named_queries
-from .models import ensemble_prediction, forward64, load_product, training_envelope
+from .models import ensemble_prediction, forward_cpu64, load_product, training_envelope
 from .postprocess import derived_outputs
 from .registration import artifact_hashes, read_json, sha256_file, verify_artifacts, write_once
 from .thermo import Thermo
@@ -30,13 +30,15 @@ def named_product_queries(draws, public):
 def _params(output, member):
     import numpy as np
     with np.load(output / member["weight_path"], allow_pickle=False) as archive:
-        return {key: archive[key].astype(np.float64) for key in archive.files}
+        return {key: archive[key].astype(np.float64) for key in archive.files if key.startswith("layers.")}
 
 
-def seal_predictions(output, reg, reg_sha, context, run):
+def seal_predictions(output, reg, reg_sha, context, run, *, backend=None):
     import numpy as np
     output = Path(output)
     validation = read_json(output / "validation.json")
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     selection = read_json(output / "selection.json")["selection"]
     public, draws = read_json(output / "public_inputs.json"), read_json(output / "fixed_draws.json")
     named = named_product_queries(draws, public)
@@ -49,7 +51,7 @@ def seal_predictions(output, reg, reg_sha, context, run):
         scaler = member["feature_scaler"]
         mean, scale = np.asarray(scaler["mean"]), np.asarray(scaler["scale"])
         for name, queries in query_sets.items():
-            values = forward64(_params(output, member), (feature_rows(queries, draws, public)-mean)/scale)
+            values = forward_cpu64(_params(output, member), (feature_rows(queries, draws, public)-mean)/scale, backend)
             stream = io.BytesIO()
             np.savez(stream, ff=values[0], T4=values[1], Y4=values[2],
                      input_sha256=np.asarray([q["input_sha256"] for q in queries]))
@@ -69,6 +71,9 @@ def seal_predictions(output, reg, reg_sha, context, run):
         "predictions_freeze.json"] + [m["weight_path"] for m in members])
     bundle = {"schema_version": 1, "registration_id": reg["id"], "registration_sha256": reg_sha,
         "binary_sha256": context.binary_sha256, "consumer_identity": context.identity,
+        "training_backend":validation.get("training_backend", {}).get("backend", backend),
+        "score_backend":"torch" if backend == "torch" else "numpy",
+        "score_device":"cpu", "score_dtype":"float64",
         "scientific_sources": manifest["scientific_sources"], "selected_N": N,
         "model": {"seeds": [42,43,44], "output_dimension": 494, "hidden_widths": [128]*4, "activation": "silu"},
         "properties_path": "frozen_properties.json", "public_inputs_path": "public_inputs.json",
@@ -78,6 +83,9 @@ def seal_predictions(output, reg, reg_sha, context, run):
         "nominal_domain": {"simplex": list(FUELS), "thrust_fraction": [.07,1], "draw_ids": [f"draw_{i:02d}" for i in range(64)]}}
     if getattr(context, "execution_profile", None) == "pc":
         bundle["execution_profile"] = "pc"
+    if getattr(context, "simulator_backend", None) == "python":
+        bundle.update(simulator=context.simulator_identity,
+                      simulator_identity_sha256=context.simulator_identity_sha256)
     write_once(output / "product.json", bundle)
     run.assert_current()
 
@@ -256,7 +264,7 @@ def _distribution(values):
         "q025_q50_q975":np.quantile(finite,[.025,.5,.975]).tolist() if len(finite) else None}
 
 
-def physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_data,central,drawn,thermo,public,draws,run):
+def physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_data,central,drawn,thermo,public,draws,run,backend=None):
     import numpy as np
     from .train import monotonic_endpoints
     data=dict(datasets);qsets=dict(queries)
@@ -301,7 +309,7 @@ def physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_d
                 elif name=="named_central":pred=tuple(v[prediction_indices] for v in _prediction(output,member,"named"))
                 else:
                     scaler=member["feature_scaler"];features=feature_rows(model_queries,draws,public)
-                    pred=forward64(_params(output,member),(features-np.asarray(scaler["mean"]))/np.asarray(scaler["scale"]))
+                    pred=forward_cpu64(_params(output,member),(features-np.asarray(scaler["mean"]))/np.asarray(scaler["scale"]),backend)
                 predictions.append(pred);values=residuals(*pred,model_states)
                 arm_rows[str(member["seed"])]= {key:_distribution(value) for key,value in values.items()} | {
                     "signed_model_minus_teacher":{key:_distribution(values[key]-matching_teacher[key]) for key in ("rE","rE_LHV")}}
@@ -318,8 +326,8 @@ def physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_d
         members=[m for m in validation if m["arm"]==arm and m["N"]==N];slopes=[];records={}
         for member in members:
             run.assert_current();mean=np.asarray(member["feature_scaler"]["mean"]);scale=np.asarray(member["feature_scaler"]["scale"])
-            low=forward64(_params(output,member),(feature_rows(minus,draws,public)-mean)/scale)[0]
-            high=forward64(_params(output,member),(feature_rows(plus,draws,public)-mean)/scale)[0]
+            low=forward_cpu64(_params(output,member),(feature_rows(minus,draws,public)-mean)/scale,backend)[0]
+            high=forward_cpu64(_params(output,member),(feature_rows(plus,draws,public)-mean)/scale,backend)[0]
             slope=(high-low)/width;slopes.append(slope)
             records[str(member["seed"])]= {"negative_slope_count":int((slope<0).sum()),"negative_slope_penalty":_distribution(np.maximum(-slope,0))}
         mean=np.mean(slopes,axis=0);records["ensemble"]={"negative_slope_count":int((mean<0).sum()),"negative_slope_penalty":_distribution(np.maximum(-mean,0))}
@@ -359,10 +367,12 @@ def _auxiliary_pass(metrics):
          ("R_relative_max",.001),("gamma_absolute_max",.002)))
 
 
-def score_all(root, output, reg, reg_sha, context, run):
+def score_all(root, output, reg, reg_sha, context, run, *, backend=None):
     import numpy as np
     from .run import csv_once
     output, root = Path(output), Path(root)
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     run.assert_current()
     frozen = read_json(output / "predictions_freeze.json")
     for key in ("predictions","weights","inputs"):
@@ -435,7 +445,7 @@ def score_all(root, output, reg, reg_sha, context, run):
                   metrics_by_member[("Mphys",N,seed)][name]["auxiliary_pass"]
                   for seed in (42,43,44) for name in ("test","ranking_test","named"))
     fidelity=selection["Mphys"]["validation_pass"] and all_seeds and all(row["fidelity_pass"] and row["auxiliary_pass"] for row in ensemble_metrics.values())
-    physics=physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_data,central,drawn,thermo,public,draws,run)
+    physics=physics_diagnostics(output,validation,N,datasets,queries,named_q,named_aux_data,central,drawn,thermo,public,draws,run,backend)
     baseline=physics["sets"]["test"]["models"]["Mdata"]["ensemble"]["rE"]["RMS"]
     physical=physics["sets"]["test"]["models"]["Mphys"]["ensemble"]["rE"]["RMS"]
     comparator_pass=all(metrics_by_member[("Mdata",N,seed)][name]["fidelity_pass"] and metrics_by_member[("Mdata",N,seed)][name]["auxiliary_pass"]
@@ -456,8 +466,8 @@ def score_all(root, output, reg, reg_sha, context, run):
     physics["comparator_fidelity_pass"]=bool(comparator_pass)
     physics["benefit_pass"]=bool(fidelity and comparator_pass and baseline is not None and math.isfinite(baseline) and baseline>0
         and physical is not None and math.isfinite(physical) and physical<=.8*baseline)
-    # Registered CPU64 maps preserve float32 weights; precision diagnostics are
-    # independent source/float32-vs64 checks produced before the score pass.
+    # CPU64 scoring preserves native Torch64 weights and promotes optional
+    # MLX32 exports; the source/export diagnostic records the actual precision.
     precision=read_json(output/"precision.json")
     write_once(output/"test_metrics.json",{"ensemble":ensemble_metrics,"physics":physics,"fidelity_pass":fidelity})
     write_once(output/"ranking_metrics.json",ranking)

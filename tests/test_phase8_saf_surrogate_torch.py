@@ -93,7 +93,7 @@ def params64(model):
 
 def torch_inputs(arrays, widths, states, index, pindex):
     X, target, Y, P, Pminus, Pplus = arrays
-    to = lambda value: torch.as_tensor(np.asarray(value, dtype=np.float32))
+    to = lambda value: torch.as_tensor(np.asarray(value, dtype=np.float64))
     return ([to(v) for v in (X[index], target[index], Y[index], P[pindex], Pminus[pindex], Pplus[pindex])]
             + [{key: to(value[pindex]) for key, value in states.items()}, to(widths[pindex])])
 
@@ -115,7 +115,7 @@ def test_residuals_match_numpy64_preserve_graph_and_device(thermo):
     rows = 32; states = toy_states(thermo, rows)
     ff = rng.uniform(.3, 2, rows); T4 = rng.uniform(1100, 1700, rows); Y = rng.dirichlet(np.ones(K)*.05, rows)
     energy64, element64 = thermo.residuals(ff, T4, Y, states)
-    ops = TorchOps("cpu")
+    ops = TorchOps("cpu", dtype=torch.float32)  # explicit optional float32 graph diagnostic
     ff_t, T4_t, Y_t = (torch.tensor(v, dtype=torch.float32, requires_grad=True) for v in (ff, T4, Y))
     energy, element = thermo.residuals(ff_t, T4_t, Y_t, {k: torch.as_tensor(v, dtype=torch.float32) for k, v in states.items()}, ops)
     assert energy.device.type == "cpu" and energy.dtype == torch.float32 and energy.requires_grad
@@ -140,8 +140,8 @@ def test_registered_loss_parity_with_numpy64(thermo, arm):
     with torch.no_grad():
         actual = float(registered_loss(model, arm, thermo, TorchOps(), *torch_inputs(arrays, widths, states, index, pindex)))
     X, target, Y, P, Pminus, Pplus = arrays
-    # NumPy64 reference on the float32-cast inputs, identical registered algebra.
-    cast = lambda value: np.asarray(value, dtype=np.float32).astype(np.float64)
+    # Primary Torch and the independent reference both use the original float64 inputs.
+    cast = lambda value: np.asarray(value, dtype=np.float64)
     args = [cast(v) for v in (X[index], target[index], Y[index], P[pindex], Pminus[pindex], Pplus[pindex])]
     args += [{key: cast(value[pindex]) for key, value in states.items()}, cast(widths[pindex])]
     expected = registered_loss(lambda x: numpy_logits(params, x), arm, thermo, np, *args)
@@ -163,7 +163,7 @@ def test_physics_parameter_gradients_finite_and_match_central_difference(thermo)
     # Directional central difference of the physics-only loss in NumPy64.
     direction = {key: np.random.default_rng(9).standard_normal(value.shape) for key, value in params.items()}
     X, target, Y, P, Pminus, Pplus = arrays
-    cast = lambda value: np.asarray(value, dtype=np.float32).astype(np.float64)
+    cast = lambda value: np.asarray(value, dtype=np.float64)
     args = [cast(v) for v in (X[index], target[index], Y[index], P[pindex], Pminus[pindex], Pplus[pindex])]
     args += [{key: cast(value[pindex]) for key, value in states.items()}, cast(widths[pindex])]
     def loss64(step):
@@ -226,10 +226,10 @@ def test_export_writes_canonical_once_and_cpu64_inference_matches(tmp_path, ther
     assert all(np.array_equal(checkpoint[key].astype(np.float64), stored[key]) for key in LAYER_SHAPES)
     record = json.loads((tmp_path/"models/Mphys/N64/seed42.json").read_text())
     assert record["training_backend"]["backend"] == "torch" and record["training_backend"]["device"] == "cpu"
-    assert record["training_backend"]["dtype"] == "float32" and record["training_backend"]["version"] == torch.__version__
+    assert record["training_backend"]["dtype"] == "float64" and record["training_backend"]["version"] == torch.__version__
     with pytest.raises(FileExistsError):
         backend.save(model, tmp_path, "Mphys", 64, 42, metadata)
-    features = np.random.default_rng(39001).standard_normal((33, 12)).astype(np.float32)
+    features = np.random.default_rng(39001).standard_normal((33, 12)).astype(np.float64)
     with torch.no_grad():
         actual = [v.numpy().astype(np.float64) for v in output_map(model(torch.as_tensor(features)), TorchOps())]
     expected = forward64(stored, features.astype(np.float64))
@@ -367,7 +367,7 @@ def test_torch_cuda_gpu_timing_reports_unavailable_without_real_cuda(tmp_path, n
 def test_selected_device_forward_parity_rejects_wrong_and_nonfinite_outputs(monkeypatch, change):
     """CPU toy tensors stand in for device tensors; no CUDA or project inputs."""
     from scripts.phase8.saf_surrogate import inputs, timing
-    models = [make_model(seed, "torch", "cpu") for seed in (42, 43, 44)]
+    models = [make_model(seed, "torch", "cpu", dtype="float32") for seed in (42, 43, 44)]  # optional GPU32 diagnostic
     product = SimpleNamespace(bundle={"members": [{"seed": seed} for seed in (42, 43, 44)]},
         params=[params64(model) for model in models],
         scalers=[(np.zeros(12), np.ones(12)) for _ in models], draws={}, public={},
@@ -408,7 +408,7 @@ def test_gpu_complete_refused_before_benchmarks_when_selected_export_parity_fail
     product = SimpleNamespace(output=tmp_path, bundle={"members": members})
     monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
     monkeypatch.setattr(torch.cuda, "synchronize", lambda: None)
-    monkeypatch.setattr(timing, "make_model", lambda *a: SimpleNamespace(load_state_dict=lambda state: None))
+    monkeypatch.setattr(timing, "make_model", lambda *a, **kw: SimpleNamespace(load_state_dict=lambda state: None))
     monkeypatch.setattr(train_torch, "read_safetensors", lambda data: {})
     failed = {"state": "FAIL", "rows": 33, "device": "cuda:1", "ff_max_normalized_error": .1}
     monkeypatch.setattr(timing, "_torch_cuda_precision", lambda *a: failed)
@@ -425,7 +425,7 @@ def test_torch_training_runs_with_mlx_import_blocked(tmp_path, thermo, no_mlx):
     model, steps, _, _ = fit_toy(42, tmp_path, "blocked", thermo, epochs=2)
     assert steps == 2 and sys.modules["mlx"] is None
     with pytest.raises(ImportError):
-        make_model(42)  # the default MLX backend genuinely needs MLX
+        make_model(42,"mlx")  # the optional explicit MLX backend needs MLX
 
 
 @pytest.mark.skipif(not HAS_MLX, reason="MLX is not installed in this environment")
@@ -436,12 +436,12 @@ def test_mlx_default_path_matches_torch_loss_and_reads_torch_checkpoint(tmp_path
     backend = TorchBackend("cpu")
     model = fit_toy(42, tmp_path, "fit", thermo, epochs=1, backend=backend)[0]
     backend.save(model, tmp_path, "Mphys", 64, 42, {})
-    twin = make_model(42)
-    twin.load_weights(str(tmp_path/"models/Mphys/N64/seed42.safetensors"))
+    from simulation.ml_backend import get_backend
+    twin = get_backend("mlx",device="auto").load_npz(tmp_path/"models/Mphys/N64/seed42.npz")
     arrays, widths = toy_arrays(); states = toy_states(thermo, 128)
     index, pindex = np.arange(40), np.arange(64)
     inputs = torch_inputs(arrays, widths, states, index, pindex)
-    as_mx = lambda value: mx.array(value.numpy())
+    as_mx = lambda value: mx.array(value.numpy().astype(np.float32))  # optional native float32 diagnostic
     mlx_inputs = [as_mx(v) for v in inputs[:6]] + [{k: as_mx(v) for k, v in inputs[6].items()}, as_mx(inputs[7])]
     for arm in ("Mdata", "Mphys"):
         with torch.no_grad():

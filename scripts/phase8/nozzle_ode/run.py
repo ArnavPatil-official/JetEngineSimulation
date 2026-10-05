@@ -150,7 +150,7 @@ def validate_score_coverage(reg, splits, values, panels):
             raise Blocked("incomplete registered score/prediction row coverage")
 
 
-def run(main_root, *, context_factory=None, source_loader=None, portable=False):
+def run(main_root, *, context_factory=None, source_loader=None, portable=False, backend=None):
     root = Path(main_root).resolve()
     if root != SOURCE_ROOT and context_factory is None:
         raise Blocked("execute only the committed implementation integrated into main")
@@ -163,10 +163,14 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
     prepare = context_factory or gate.prepare_context
     context = prepare(root, REGISTRATION, expected_consumer_identity=expected, require_g0=True)
     context.require_idle_ac()
-    if portable and os.getpriority(os.PRIO_PROCESS, 0) < 15:
-        os.nice(15 - os.getpriority(os.PRIO_PROCESS, 0))
-    if os.getpriority(os.PRIO_PROCESS, 0) < 15:
-        raise Blocked("registered nice>=15 is required")
+    priority_supported = all(hasattr(os, name) for name in ("getpriority", "PRIO_PROCESS", "nice"))
+    if priority_supported:
+        if portable and os.getpriority(os.PRIO_PROCESS, 0) < 15:
+            os.nice(15 - os.getpriority(os.PRIO_PROCESS, 0))
+        if os.getpriority(os.PRIO_PROCESS, 0) < 15:
+            raise Blocked("registered nice>=15 is required")
+    elif not portable:
+        raise Blocked("registered POSIX niceness is unavailable")
     owned = context.acquire_run(reg["outputs"]["root"], expected["registration_sha256"], identity=context.identity)
     out, errors, frozen, status = owned.out, [], {}, "ERROR"
     scientific_verdict = None
@@ -216,9 +220,14 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
             torch.set_num_interop_threads(1)
         torch.use_deterministic_algorithms(True)
         from . import model, oracle, score
+        selected = model.selected_backend(backend)
+        backend = selected.name
         write_json(out / "environment.json", {"python":platform.python_version(), "platform":platform.platform(),
-            "torch":torch.__version__, "numpy":np.__version__, "dtype":"float64", "device":"cpu", "threads":1,
-            "nice":os.getpriority(os.PRIO_PROCESS,0), "context_identity":context.identity,
+            "torch":torch.__version__, "numpy":np.__version__, "training_backend":backend,
+            "dtype":"float64" if backend == "torch" else "float32", "score_backend":"torch" if backend == "torch" else "numpy",
+            "score_dtype":"float64", "device":"cpu", "threads":1,
+            "nice":os.getpriority(os.PRIO_PROCESS,0) if priority_supported else None,
+            "priority_status":"ENFORCED" if priority_supported else "UNAVAILABLE", "context_identity":context.identity,
             "source_commit":gate.git(root,"rev-parse","HEAD").strip(),
             "execution_profile":"pc" if portable else "mac"})
         splits = make_splits(reg, properties)
@@ -249,18 +258,21 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
         for seed in reg["models"]["paired_seeds"]:
             record(f"TRAIN_SEED_{seed}")
             pair = model.train_pair(reg,seed,splits["train"],reference,out,guard,
-                                    {"context":context.identity,"input_manifest_sha256":sha256(out/"input_manifest.json")})
+                                    {"context":context.identity,"input_manifest_sha256":sha256(out/"input_manifest.json")},
+                                    backend=backend)
             for arm, network in pair.items():
                 networks[(seed,arm)] = network
-                checkpoint = out / "checkpoints" / f"{arm}-seed{seed}.pt"
+                checkpoint = out / "checkpoints" / f"{arm}-seed{seed}.npz"
                 frozen[str(checkpoint.relative_to(root))] = sha256(checkpoint)
+                frozen[str(checkpoint.with_suffix(".json").relative_to(root))] = sha256(checkpoint.with_suffix(".json"))
             freeze_finished()
         guard()
         record("VALIDATION_FINAL_CHECKPOINTS")
-        validation = score.score_panels(reg,{"validation":splits["validation"]},networks,reference,out,guard,final_test=False)
+        validation = score.score_panels(reg,{"validation":splits["validation"]},networks,reference,out,guard,
+                                        final_test=False,backend=backend)
         validate_score_coverage(reg, splits, validation, ("validation",))
         freeze_finished()
-        checkpoint_hashes = {name:digest for name,digest in frozen.items() if name.endswith(".pt")}
+        checkpoint_hashes = {name:digest for name,digest in frozen.items() if name.endswith(".npz") and "/checkpoints/" in name}
         if len(checkpoint_hashes) != 6:
             raise Blocked("six final checkpoints are required before score reservation")
         write_json(out / "score_reservation.json", {"registration_sha256":expected["registration_sha256"],
@@ -269,7 +281,7 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
         freeze_finished()
         record("SINGLE_FINAL_TEST_PASS")
         tests = score.score_panels(reg,{name:splits[name] for name in ("synthetic_test","product_test")},
-                                   networks,reference,out,guard,final_test=True)
+                                   networks,reference,out,guard,final_test=True,backend=backend)
         validate_score_coverage(reg, splits, tests, ("synthetic_test", "product_test"))
         decisions = score.paired_decisions(tests,reg)
         status = "PASS" if decisions["registered_comparison_pass"] else "FAIL"
@@ -282,8 +294,10 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
             "product_test_conditions":len(splits["product_test"]), "original_shock_oracle_status":inherited_status,
             "execution_profile":"pc" if portable else "mac",
             "registered_prerequisites_complete":inherited_status == "PASS",
-            "registered_status":status if inherited_status == "PASS" else "INCOMPLETE",
+            "registered_status":status if inherited_status == "PASS" and backend == "torch" else "INCOMPLETE",
             "claim":"Smooth-nozzle diagnostic only; original Track 4 evidence is not inferred",
+            "training_backend":backend, "score_backend":"torch" if backend == "torch" else "numpy", "score_dtype":"float64",
+            "primary_scientific_procedure":backend == "torch",
             "wall_s":time.perf_counter()-started, "start_identity":context.identity, "end_identity":context.identity})
         freeze_finished()
         complete = True
@@ -305,8 +319,9 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
         write_json(out / "hashes.json", output_hashes)
         output_hashes[str((out/"hashes.json").relative_to(root))] = sha256(out/"hashes.json")
         expected_outputs = [str((out/name).relative_to(root)) for name in reg["outputs"]["required"] if not name.endswith("/")]
-        expected_outputs += [str((out/"checkpoints"/f"{arm}-seed{seed}.pt").relative_to(root))
-                             for seed in reg["models"]["paired_seeds"] for arm in reg["models"]["arms"]]
+        expected_outputs += [str((out/"checkpoints"/f"{arm}-seed{seed}.{extension}").relative_to(root))
+                             for seed in reg["models"]["paired_seeds"] for arm in reg["models"]["arms"]
+                             for extension in ("npz","json")]
         expected_outputs += [str((out/"training_logs"/f"{arm}-seed{seed}.jsonl").relative_to(root))
                              for seed in reg["models"]["paired_seeds"] for arm in reg["models"]["arms"]]
         expected_outputs += [str((out/"score_reservation.json").relative_to(root)), str((out/"case_selection.json").relative_to(root))]
@@ -331,9 +346,10 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--main-root", type=Path, default=SOURCE_ROOT)
+    parser.add_argument("--backend", choices=("torch","mlx"), default=os.environ.get("CATJET_ML_BACKEND","torch"))
     args = parser.parse_args(argv)
     try:
-        return run(args.main_root)
+        return run(args.main_root,backend=args.backend)
     except Exception as exc:
         print(f"BLOCKED: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1

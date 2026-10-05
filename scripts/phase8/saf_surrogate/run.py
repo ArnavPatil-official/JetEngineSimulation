@@ -29,6 +29,12 @@ def utc():
 
 
 def birth(pid):
+    if os.name == "nt" or os.environ.get("CATJET_SIMULATOR_BACKEND") == "python":
+        from simulation.runtime import process_birth
+        value = process_birth(pid)
+        if not value or value == "<dead>":
+            raise RuntimeError("Recorded process is absent or unreadable")
+        return value
     result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="], check=True, capture_output=True, text=True)
     value = " ".join(result.stdout.split())
     if not value:
@@ -37,6 +43,9 @@ def birth(pid):
 
 
 def native_command(pid):
+    if os.name == "nt":
+        # Spawn handshakes bind exact Python argv; Windows has no procps ps.
+        return f"Windows process {pid}; command bound by child sys.orig_argv"
     return subprocess.check_output(["ps","-ww","-p",str(pid),"-o","command="],text=True).strip()
 
 
@@ -69,9 +78,17 @@ def check_child_authorization(spec):
         raise RuntimeError("Child registration drift")
     verify_artifacts(root, spec["source_hashes"])
     verify_artifacts(root,spec["input_source_hashes"])
-    if sha256_file(root / spec["binary"]["path"]) != spec["binary"]["sha256"]:
+    if spec.get("simulator", {}).get("name") == "python-v6":
+        from scripts.phase8.pc_python_runtime import fingerprint
+        verify_artifacts(root, spec["simulator"]["source_hashes"])
+        if fingerprint(spec["simulator"]) != spec["simulator_identity_sha256"]:
+            raise RuntimeError("Child Python simulator identity drift")
+    elif sha256_file(root / spec["binary"]["path"]) != spec["binary"]["sha256"]:
         raise RuntimeError("Child core drift")
-    if spec.get("execution_profile") == "pc":
+    if spec.get("simulator", {}).get("name") == "python-v6":
+        from simulation.runtime import require_ac
+        require_ac()
+    elif spec.get("execution_profile") == "pc":
         from scripts.phase8.pc_runtime import require_idle_ac_linux
         require_idle_ac_linux()
     else:
@@ -101,11 +118,13 @@ def mac_platform_info():
             "hardware": subprocess.check_output(["sysctl", "hw.model", "hw.memsize"], text=True)}
 
 
-def freeze(root, output, reg, reg_sha, context, run, backend="mlx", platform_info=None,
+def freeze(root, output, reg, reg_sha, context, run, backend=None, platform_info=None,
            source_hashes=None, provenance_dependencies=None):
     from .inputs import load_fixed_draws, load_public_inputs, named_queries, query_designs
     from .thermo import freeze_properties
     import importlib.metadata
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     run.assert_current()
     public, draws = load_public_inputs(root, reg), load_fixed_draws(root, reg)
     queries, named = query_designs(reg, draws, public), named_queries(draws, public)
@@ -123,14 +142,20 @@ def freeze(root, output, reg, reg_sha, context, run, backend="mlx", platform_inf
     if source_hashes is not None:
         verify_artifacts(root, source_hashes)
         sources.update(source_hashes)
+    python_simulator = getattr(context, "simulator_backend", None) == "python"
     environment = {"registration_id": reg["id"], "registration_sha256": reg_sha,
-        "identity": context.identity, "binary_path": str(context.binary_path.relative_to(root)),
+        "identity": context.identity, "binary_path": None if python_simulator else str(context.binary_path.relative_to(root)),
         "binary_sha256": context.binary_sha256, "executable": sys.executable,
         "python": sys.version, "thread_environment": {key: os.environ[key] for key in THREAD_ENV},
         "training_backend": backend,
+        "training_dtype":"float64" if backend == "torch" else "float32",
+        "score_backend":"torch" if backend == "torch" else "numpy", "score_dtype":"float64", "score_device":"cpu",
         "versions": {name: importlib.metadata.version(name) for name in
                      ("numpy", "scipy", "PyYAML", "Cantera", backend)},
         **(platform_info or mac_platform_info)()}
+    if python_simulator:
+        environment.update(simulator=context.simulator_identity,
+            simulator_identity_sha256=context.simulator_identity_sha256, workers=context.workers)
     write_once(output / "environment.json", environment)
     manifest = {"registration_id": reg["id"], "registration_sha256": reg_sha,
         "consumer_identity": context.identity, "scientific_sources": sources,
@@ -158,6 +183,8 @@ def freeze(root, output, reg, reg_sha, context, run, backend="mlx", platform_inf
                             for q in queries["train"]],
                   "named_central": [{key: q[key] for key in ("named_case_id", "fuel", "op", "input_sha256", "in_product_API", "fuel_parts")}
                                     for q in named]}}
+    if python_simulator:
+        pre.update(simulator=context.simulator_identity, simulator_identity_sha256=context.simulator_identity_sha256)
     write_once(output / "property_inputs_manifest.json", pre)
     run.assert_current()
 
@@ -165,6 +192,7 @@ def freeze(root, output, reg, reg_sha, context, run, backend="mlx", platform_inf
 def command_spec(root, output, context, reg_sha, stage, argv):
     lease = "outputs/phase8/screening_operations/owner.lease.json"
     pc = getattr(context, "execution_profile", None) == "pc"
+    python_simulator = getattr(context, "simulator_backend", None) == "python"
     if pc:
         lease = str(Path(context.pc_lease_path).relative_to(root))
     manifest = read_json(output / "manifest.json")
@@ -173,7 +201,7 @@ def command_spec(root, output, context, reg_sha, stage, argv):
     spec = {"schema_version": 1, "stage": stage, "root": str(root), "output": str(output),
         "registration_path": REGISTRATION, "registration_sha256": reg_sha,
         "consumer_identity": context.identity, "start_identity": context.identity,
-        "binary": {"path": str(context.binary_path.relative_to(root)), "sha256": context.binary_sha256},
+        "binary": None if python_simulator else {"path": str(context.binary_path.relative_to(root)), "sha256": context.binary_sha256},
         "property_inputs_manifest_sha256": sha256_file(output / "property_inputs_manifest.json"),
         "owner_lease": dict(_dependency(root, lease), snapshot_path=str((output / f"proofs/{prefix}_owner_lease.json").relative_to(root))),
         "owner_pid": os.getpid(), "owner_birth": birth(os.getpid()),
@@ -184,6 +212,9 @@ def command_spec(root, output, context, reg_sha, stage, argv):
         "command_spec_path": str((output / f"proofs/{prefix}_command_spec.json").relative_to(root))}
     if pc:
         spec["execution_profile"] = "pc"
+    if python_simulator:
+        spec.update(simulator=context.simulator_identity, simulator_identity_sha256=context.simulator_identity_sha256,
+                    workers=context.workers)
     return spec
 
 
@@ -245,15 +276,16 @@ def wait_generation(root, output, context, run, reg_sha):
             run.assert_current()
         except BaseException:
             if child.poll() is None:
-                os.killpg(child.pid, signal.SIGTERM)
+                child.terminate() if os.name == "nt" else os.killpg(child.pid, signal.SIGTERM)
                 try:
                     child.wait(timeout=10)
                 except subprocess.TimeoutExpired:
-                    os.killpg(child.pid, signal.SIGKILL); child.wait()
+                    child.kill() if os.name == "nt" else os.killpg(child.pid, signal.SIGKILL)
+                    child.wait()
             raise
     starting=list((output/"proofs/spawns").glob("generate_*.starting.json"))
     completed=list((output/"proofs/spawns").glob("generate_*.complete.json"))
-    if len(starting)!=len(completed) or len(completed)!=6:
+    if len(starting)!=len(completed) or len(completed)!=spec.get("workers", 6):
         raise RuntimeError("Unresolved or wrong-count generation pool spawn; lease retained")
     worker_proofs=[]
     for receipt_path in sorted(completed):
@@ -267,7 +299,9 @@ def wait_generation(root, output, context, run, reg_sha):
         core_path=output/f"proofs/workers/generate_{receipt['pid']}_core.json"
         exit_path_worker=output/f"proofs/workers/generate_{receipt['pid']}_exit.json"
         loaded,ended=read_json(core_path),read_json(exit_path_worker)
-        if any(loaded[key]!=receipt[key] for key in ("pid","birth","parent_pid")) or loaded["input_source_hashes"]!=spec["input_source_hashes"] or loaded["actual_core"]!=spec["binary"] or loaded["spec_sha256"]!=sha256_file(spec_path) or loaded["handshake_sha256"]!=sha256_file(expected_handshake):
+        actual_identity = loaded.get("actual_simulator") if spec.get("simulator") else loaded.get("actual_core")
+        expected_identity = spec.get("simulator") or spec["binary"]
+        if any(loaded[key]!=receipt[key] for key in ("pid","birth","parent_pid")) or loaded["input_source_hashes"]!=spec["input_source_hashes"] or actual_identity!=expected_identity or loaded["spec_sha256"]!=sha256_file(spec_path) or loaded["handshake_sha256"]!=sha256_file(expected_handshake):
             raise RuntimeError("Generation worker did not prove the selected loaded core")
         go=output/f"proofs/go/worker_{receipt['pid']}.json"
         if loaded["go_sha256"]!=sha256_file(go) or read_json(go)!={"receipt_sha256":sha256_file(receipt_path),"spec_sha256":sha256_file(spec_path)}:
@@ -298,11 +332,13 @@ def wait_generation(root, output, context, run, reg_sha):
     terminal = dict(summary, schema_version=1, registration_id="P8-S-20261004",
         registration_sha256=reg_sha, stage="generate", state="COMPLETE",
         start_identity=context.identity, end_identity=context.identity, identity_problems=[],
-        binary_path=spec["binary"]["path"], binary_sha256=context.binary_sha256,
+        binary_path=None if spec.get("simulator") else spec["binary"]["path"], binary_sha256=context.binary_sha256,
         property_inputs_manifest_sha256=spec["property_inputs_manifest_sha256"], raw_command=raw,workers=worker_proofs,
         launch={"pid": child.pid, "birth": child_birth, "argv": argv, "started_utc": spec["started_utc"],
                 "finished_utc": exit_record["finished_utc"], "exit_code": 0, "waited": True,
                 "log_path": str(log.relative_to(root)), "log_sha256": sha256_file(log)})
+    if spec.get("simulator"):
+        terminal.update(simulator=spec["simulator"], simulator_identity_sha256=spec["simulator_identity_sha256"])
     write_once(output / "generation_terminal.json", terminal)
     pre = read_json(output / "property_inputs_manifest.json")
     allowed = ("teacher_rows.csv", "teacher_species.npz", "named_central_properties.csv", "frozen_properties.json")
@@ -354,10 +390,12 @@ def generate_child(spec_path):
     write_once(output / "proofs/generation_handshake.json", dict(spec, pid=os.getpid(), birth=birth(os.getpid()), argv=actual_argv))
     properties, public, draws = (read_json(output / name) for name in ("frozen_properties.json", "public_inputs.json", "fixed_draws.json"))
     prerequisite = read_json(output / "prerequisite.json")
-    proof = {"source_registration_sha256": spec["registration_sha256"], "binary_sha256": spec["binary"]["sha256"],
+    proof = {"source_registration_sha256": spec["registration_sha256"], "binary_sha256": None if spec.get("simulator") else spec["binary"]["sha256"],
         "source_commit": read_json(output / "manifest.json")["source_commit"],
         "property_manifest_sha256": spec["property_inputs_manifest_sha256"]}
-    pool = ParallelTeacher(spec, properties, public, draws, 6)
+    if spec.get("simulator"):
+        proof["simulator_identity_sha256"] = spec["simulator_identity_sha256"]
+    pool = ParallelTeacher(spec, properties, public, draws, spec.get("workers", 6))
     paths, converged = [], {}
     try:
         for name in ("train", "validation", "test", "ranking_test"):
@@ -402,12 +440,14 @@ def generate_child(spec_path):
         "outputs": {str((output / path).relative_to(root)): sha256_file(output / path) for path in paths}})
 
 
-def pipeline(root, output, registration, backend="mlx", device="auto"):
+def pipeline(root, output, registration, backend=None, device="auto"):
     from scripts.phase8 import scientific_workflow_gate as gate
     from .score import seal_predictions, score_all, deployment_receipt
     from .timing import measure, source_diagnostics, finalize_timing
     from .study import screen
     from .train import train_all
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     # The one-thread-per-worker policy must be enforced before any Torch
     # import: OMP/OpenBLAS/MKL/Accelerate read these env vars at library
     # init, so setting them after import is a no-op for that process.
@@ -453,10 +493,10 @@ def pipeline(root, output, registration, backend="mlx", device="auto"):
         source_diagnostics(root,output,reg,context,run,backend)
         wait_generation(root, output, context, run, reg_sha)
         train_all(output, reg, reg_sha, run, backend=backend, device=device)
-        seal_predictions(output, reg, reg_sha, context, run)
-        scored = score_all(root, output, reg, reg_sha, context, run)
+        seal_predictions(output, reg, reg_sha, context, run, backend=backend)
+        scored = score_all(root, output, reg, reg_sha, context, run, backend=backend)
         timing = measure(root, output, reg, reg_sha, context, run, backend, resolved_device)
-        study = screen(root, output, reg, reg_sha, context, run)
+        study = screen(root, output, reg, reg_sha, context, run, backend=backend)
         timing = finalize_timing(root,output,started,timing,study,scored)
         report = {"registration_id": reg["id"], "registration_sha256": reg_sha,
             "metrics": scored, "timing": timing, "study": study,
@@ -506,10 +546,10 @@ def main(argv=None):
     parser.add_argument("--registration", default=REGISTRATION)
     parser.add_argument("--out", default="outputs/phase8/saf_surrogate/attempt_001")
     parser.add_argument("--spec")
-    parser.add_argument("--backend", choices=("mlx", "torch"), default="mlx",
-                        help="training backend; torch never imports MLX (default: mlx)")
+    parser.add_argument("--backend", choices=("mlx", "torch"), default=os.environ.get("CATJET_ML_BACKEND", "torch"),
+                        help="training/scoring backend (default: CATJET_ML_BACKEND or torch)")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto",
-                        help="torch device; auto picks CUDA when available, else CPU. MLX keeps its default device")
+                        help="torch training device; auto uses CPU. All primary scoring uses CPU float64")
     args = parser.parse_args(argv)
     if args.backend == "mlx" and args.device != "auto":
         parser.error("--device applies to --backend torch; MLX uses its default device")

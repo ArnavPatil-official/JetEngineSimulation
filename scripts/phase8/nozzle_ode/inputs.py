@@ -129,7 +129,10 @@ def property_cases(train, named, reg, context, producer_sha, property_input_sha)
                 for name, expected in (("source_registration_sha256", producer_sha),
                                        ("binary_sha256", context.binary_sha256),
                                        ("property_manifest_sha256", property_input_sha)):
-                    if row.get(name) != expected:
+                    actual = row.get(name)
+                    if name == "binary_sha256" and getattr(context, "simulator_backend", None) == "python" and actual == "":
+                        actual = None
+                    if actual != expected:
                         raise Blocked(f"SOURCE_PROOF_MISMATCH:{name}")
                 if not row.get("input_sha256") or not row.get("source_commit"):
                     raise Blocked("SOURCE_IDENTITY_MISSING")

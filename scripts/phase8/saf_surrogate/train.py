@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 
 from .inputs import feature_rows
-from .models import forward64, make_model, output_map
+from .models import forward_cpu64, make_model, output_map
 from .registration import append_progress, read_json, sha256_file, write_once
 from .thermo import Thermo
 
@@ -273,7 +273,7 @@ class MLXBackend:
         import mlx.optimizers as optim
         from functools import partial
         mx = self.mx
-        model = make_model(seed)
+        model = make_model(seed, "mlx", "auto")
         mx.random.seed(seed)
         optimizer = optim.Adam(learning_rate=.001, betas=(.9, .999), eps=1e-8, bias_correction=True)
         optimizer.init(model.trainable_parameters())
@@ -312,13 +312,15 @@ class MLXBackend:
             os.link(temporary, target)
         finally:
             temporary.unlink()
-        params = {key: np.asarray(value, dtype=np.float32).astype(np.float64)
+        params = {key: np.asarray(value, dtype=np.float32).copy()
                   for key, value in tree_flatten(model.parameters())}
         return export_member(output, base, target, params, metadata)
 
 
-def make_backend(backend="mlx", device="auto"):
+def make_backend(backend=None, device="auto"):
     """MLX keeps its default device; --device selects only the Torch device."""
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     if backend == "mlx":
         if device != "auto":
             raise ValueError("--device applies to --backend torch; MLX uses its default device")
@@ -329,7 +331,7 @@ def make_backend(backend="mlx", device="auto"):
     raise ValueError(f"Unknown training backend {backend!r}")
 
 
-def train_all(output, reg, registration_sha256, run, *, backend="mlx", device="auto"):
+def train_all(output, reg, registration_sha256, run, *, backend=None, device="auto"):
     import numpy as np
     from .run import light_training_check
 
@@ -362,7 +364,7 @@ def train_all(output, reg, registration_sha256, run, *, backend="mlx", device="a
                     "data_forward_rows":2000*int(valid.sum()),"physics_residual_forward_rows":64*steps if arm=="Mphys" else 0,
                     "monotonic_forward_rows":128*steps if arm=="Mphys" else 0}
                 params, weight_path = trainer.save(model, output, arm, N, seed, metadata)
-                predicted = forward64(params, (validation_features-mean)/scale)
+                predicted = forward_cpu64(params, (validation_features-mean)/scale, trainer.info()["backend"])
                 try:
                     metrics = prediction_metrics(*predicted, val_ff, val_T4, val_Y, thermo)
                 except ValueError:
@@ -382,7 +384,11 @@ def train_all(output, reg, registration_sha256, run, *, backend="mlx", device="a
                 results[-1]["compute_accounting"]["fit_wall_seconds"]=time.perf_counter()-fit_started
                 append_progress(output / "progress.jsonl", {"stage": "train", "arm": arm, "N": N, "seed": seed,
                     "validation_pass": results[-1]["validation_pass"]})
-    write_once(output / "validation.json", {"registration_sha256": registration_sha256, "members": results})
+    if len(results) != 24:
+        raise RuntimeError("The four-size paired three-seed procedure requires exactly24 fits")
+    write_once(output / "validation.json", {"registration_sha256": registration_sha256,
+        "training_backend":trainer.info(), "score_backend":"torch" if trainer.info()["backend"] == "torch" else "numpy",
+        "score_device":"cpu", "score_dtype":"float64", "members": results})
     selection = {}
     for arm in reg["model"]["arms"]:
         passing = [N for N in reg["sampling"]["train_sizes"]

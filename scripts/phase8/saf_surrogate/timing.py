@@ -19,12 +19,14 @@ def break_even(setup_seconds, cpp_per_query, product_per_query):
     return math.ceil(setup_seconds/difference)
 
 
-def source_diagnostics(root,output,reg,context,run,backend="mlx"):
+def source_diagnostics(root,output,reg,context,run,backend=None):
     """No HP equilibrium or project label reads; fixed prospective checks."""
     import cantera as ct
     import numpy as np
     from .inputs import canonical_query,state_for
-    from .teacher import load_selected_core
+    from .teacher import load_selected_core, make_verifier
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
     run.assert_current()
     started=time.perf_counter()
     properties,public,draws=(read_json(output/name) for name in ("frozen_properties.json","public_inputs.json","fixed_draws.json"))
@@ -45,15 +47,27 @@ def source_diagnostics(root,output,reg,context,run,backend="mlx"):
             cases+=1
     if cases!=3444:
         raise RuntimeError("Fixed source-only thermochemistry case budget changed")
-    core=load_selected_core(context.binary_path,context.binary_sha256)
-    engine=core.V6Engine(str(root/"data/creck_c1c16_full.yaml"));T3error=0.0;compressor_calls=0
+    python_simulator=getattr(context,"simulator_backend",None)=="python"
+    if python_simulator:
+        engine=make_verifier(context,properties,public,draws,assert_current=run.assert_current).engine
+    else:
+        core=load_selected_core(context.binary_path,context.binary_sha256)
+        engine=core.V6Engine(str(root/"data/creck_c1c16_full.yaml"))
+    T3error=0.0;compressor_calls=0
     for draw in ("central","draw_00","draw_63"):
         for x in (.07,.15,.30,.55,.70,.85,.925,1):
             run.assert_current()
             query={"f_JetA":1,"f_HEFA":0,"f_FT":0,"f_ATJ":0,"thrust_fraction":x,"draw_id":draw}
-            state=state_for(query,public,draws);config=engine.config
-            config.pi_c,config.eta_c=state["pi_c"],state["eta_c"];engine.config=config
-            actual=engine.run_compressor(288.15,101325)
+            state=state_for(query,public,draws)
+            if python_simulator:
+                import contextlib, io
+                engine.design_point["pi_c"]=state["pi_c"];engine.compressor.eta_c=state["eta_c"]
+                with contextlib.redirect_stdout(io.StringIO()):
+                    actual=engine.run_compressor(288.15,101325)
+            else:
+                config=engine.config
+                config.pi_c,config.eta_c=state["pi_c"],state["eta_c"];engine.config=config
+                actual=engine.run_compressor(288.15,101325)
             T3error=max(T3error,abs(float(actual["T_out"])-thermo.compressor_temperature(state["pi_c"],state["eta_c"])))
             compressor_calls+=1
     passed &= T3error<=1e-6
@@ -70,14 +84,14 @@ def source_diagnostics(root,output,reg,context,run,backend="mlx"):
             model=make_model(42,"torch","cpu")
             with torch.no_grad():
                 actual=[np.asarray(v,dtype=np.float64) for v in output_map(model(cpu.array(features)),cpu)]
-            return actual,{key:v.detach().numpy().astype(np.float32).astype(float) for key,v in model.state_dict().items()}
+            return actual,{key:v.detach().numpy().copy() for key,v in model.state_dict().items()}
     else:
         import mlx.core as mx
         from mlx.utils import tree_flatten
         def gradient(control=None):
             return np.asarray(mx.grad(lambda t:physical_loss(t,mx,control))(mx.array(theta)),dtype=np.float64)
         def exported(features):
-            model=make_model(42)
+            model=make_model(42,"mlx","cpu")
             actual=[np.asarray(v,dtype=np.float64) for v in output_map(model(mx.array(features)),mx)]
             return actual,{key:np.asarray(v,dtype=np.float32).astype(float) for key,v in tree_flatten(model.parameters())}
         old=mx.default_device();mx.set_default_device(mx.cpu)
@@ -87,7 +101,8 @@ def source_diagnostics(root,output,reg,context,run,backend="mlx"):
         states=thermo.input_states([query],public,draws)
         indices=[thermo.names.index("CO2"),thermo.names.index("H2O")]
         logits=np.full(492,-12.0);logits[thermo.names.index("N2")]=0;logits[indices]=[-1,-2]
-        theta=np.asarray([math.log(.6),math.log(1.5),.2,-.1],dtype=np.float32)
+        native_dtype=np.float64 if backend=="torch" else np.float32
+        theta=np.asarray([math.log(.6),math.log(1.5),.2,-.1],dtype=native_dtype)
         def physical_loss(value,xp,control=None):
             active=value if control!="constant_output" else backend_array(theta,xp)
             z=backend_array(logits,xp)
@@ -118,7 +133,7 @@ def source_diagnostics(root,output,reg,context,run,backend="mlx"):
             wrong=gradient(control)
             error=float(np.max(np.abs(wrong-analytic))/max(1e-5,float(np.max(np.abs(wrong))),float(np.max(np.abs(analytic)))))
             controls[control]=error;passed &= error>.02
-        features=np.random.default_rng(39001).standard_normal((33,12)).astype(np.float32)
+        features=np.random.default_rng(39001).standard_normal((33,12)).astype(native_dtype)
         actual,params=exported(features)
         expected=forward64(params,features.astype(float))
         relative=[float(np.max(np.abs(a-b))/max(1e-30,float(np.max(np.abs(b))))) for a,b in zip(actual[:2],expected[:2])]
@@ -254,8 +269,10 @@ def _torch_cuda_precision(product, queries, models, device):
             "ff_T4_normalized_limit": 5e-5, "species_L1_limit": 1e-4}
 
 
-def gpu_measurements(output,product,study,run,backend="mlx",device="cpu"):
+def gpu_measurements(output,product,study,run,backend=None,device="cpu"):
     from scripts.phase8.scientific_workflow_gate import GateError
+    from simulation.ml_backend import resolve_backend
+    backend=resolve_backend(backend)
     started=time.perf_counter();record={"mandatory_attempt":True,"available":False,"state":"UNAVAILABLE"}
     try:
         if backend=="torch":
@@ -268,7 +285,7 @@ def gpu_measurements(output,product,study,run,backend="mlx",device="cpu"):
                 raise RuntimeError("Torch CUDA GPU is unavailable")
             setup_started=time.perf_counter();models=[]
             for member in product.bundle["members"]:
-                model=make_model(member["seed"],"torch",device)
+                model=make_model(member["seed"],"torch",device,dtype="float32")
                 checkpoint=(product.output/member["weights_path"].replace(".npz",".safetensors")).read_bytes()
                 tensors=read_safetensors(checkpoint)
                 model.load_state_dict({key:torch.as_tensor(value,device=device) for key,value in tensors.items()})
@@ -306,7 +323,7 @@ def gpu_measurements(output,product,study,run,backend="mlx",device="cpu"):
         try:
             setup_started=time.perf_counter();models=[]
             for member in product.bundle["members"]:
-                model=make_model(member["seed"]);model.load_weights(str(product.output/member["weights_path"].replace(".npz",".safetensors")))
+                model=make_model(member["seed"],"mlx","gpu");model.load_weights(str(product.output/member["weights_path"].replace(".npz",".safetensors")))
                 mx.eval(model.parameters());models.append(model)
             record["cold_model_setup_seconds"]=time.perf_counter()-setup_started
             rows=[]
@@ -330,11 +347,11 @@ def gpu_measurements(output,product,study,run,backend="mlx",device="cpu"):
     return record
 
 
-def measure(root,output,reg,reg_sha,context,run,backend="mlx",device="cpu"):
+def measure(root,output,reg,reg_sha,context,run,backend=None,device="cpu"):
     from .run import command_spec
     from .teacher import ParallelTeacher
     output=Path(output);run.assert_current()
-    load_started=time.perf_counter();product=load_product(output/"product.json",require_deployment=False)
+    load_started=time.perf_counter();product=load_product(output/"product.json",require_deployment=False,backend=backend)
     product_load_seconds=time.perf_counter()-load_started
     study=read_json(output/"splits/study.json")
     workers=read_json(output/"environment.json")["physical_cores"]

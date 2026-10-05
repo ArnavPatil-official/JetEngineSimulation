@@ -1,4 +1,4 @@
-"""Paired MLX factory and checksum-verified, receipt-gated CPU64 product API."""
+"""Shared native model factory and receipt-gated CPU64 product API."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,31 +9,11 @@ from .registration import contained, read_json, sha256_file, verify_artifacts
 from .thermo import Thermo
 
 
-def make_model(seed, backend="mlx", device="cpu"):
-    """Import the backend only within a previously authorized scientific run.
-
-    Torch never imports MLX. Its keyed U[-1/sqrt(fan_in), +1/sqrt(fan_in)]
-    draws use a CPU torch.Generator, so a seed gives the same initial weights
-    on every device; they are not bitwise MLX's draws for that seed.
-    """
-    from scripts.phase8.ml.spec import MLPSpec
-    spec = MLPSpec(12, (128, 128, 128, 128), 494, "silu", "linear")
-    if backend == "mlx":
-        from scripts.phase8.ml.models_mlx import MLP
-        return MLP(spec, seed)
-    if backend != "torch":
-        raise ValueError(f"Unknown training backend {backend!r}")
-    import math
-    import torch
-    from scripts.phase8.ml.models_torch import TorchMLP
-    model = TorchMLP(spec)
-    generator = torch.Generator(device="cpu").manual_seed(int(seed))
-    with torch.no_grad():
-        for layer in model.layers:
-            bound = 1.0 / math.sqrt(layer.weight.shape[1])
-            for parameter in (layer.weight, layer.bias):
-                parameter.copy_(torch.rand(parameter.shape, generator=generator, dtype=torch.float32)*(2*bound)-bound)
-    return model.to(device)
+def make_model(seed, backend=None, device="cpu", *, dtype=None):
+    """Native shared-backend MLP; Torch float64, optional MLX float32."""
+    from simulation.ml_backend import get_backend
+    selected = get_backend(backend, device=device, dtype=dtype)
+    return selected.mlp(12, (128, 128, 128, 128), 494, activation="silu", seed=seed)
 
 
 def output_map(z, xp):
@@ -60,6 +40,25 @@ def forward64(params, features):
     return output_map(value, np)
 
 
+def cpu64_model(params):
+    """Restore neutral weights into the primary CPU Torch float64 model."""
+    from simulation.ml_backend import get_backend
+    selected = get_backend("torch", device="cpu", dtype="float64")
+    network = selected.mlp(12, (128, 128, 128, 128), 494, activation="silu", seed=0)
+    return selected.set_parameters(network, params)
+
+
+def forward_cpu64(params, features, backend=None, *, model=None):
+    """Torch scores on CPU in float64; optional MLX exports score in NumPy64."""
+    from simulation.ml_backend import get_backend, resolve_backend
+    if resolve_backend(backend) == "mlx":
+        return forward64(params, features)
+    selected = get_backend("torch", device="cpu", dtype="float64")
+    with selected.torch.no_grad():
+        values = output_map(selected.forward(model if model is not None else cpu64_model(params), features), selected.ops)
+        return tuple(selected.to_numpy(value) for value in values)
+
+
 def ensemble_outputs(members):
     """Mean in CPU64, with the registered mean-species renormalization."""
     import numpy as np
@@ -76,13 +75,13 @@ def ensemble_prediction(members):
     return arrays["mean_ff"],arrays["mean_T4"],arrays["mean_Y4"]
 
 
-def load_product(bundle_path, *, require_deployment=True):
+def load_product(bundle_path, *, require_deployment=True, backend=None):
     """Load the sealed three-seed product; unvalidated use must be explicit."""
-    return Product(bundle_path, require_deployment=require_deployment)
+    return Product(bundle_path, require_deployment=require_deployment, backend=backend)
 
 
 class Product:
-    def __init__(self, bundle_path, *, require_deployment=True):
+    def __init__(self, bundle_path, *, require_deployment=True, backend=None):
         import numpy as np
         self.bundle_path = Path(bundle_path).resolve()
         self.output = self.bundle_path.parent
@@ -106,17 +105,24 @@ class Product:
             if not all(receipt.get("gates", {}).get(name) == "PASS" for name in
                        ("fidelity", "ranking", "precision", "provenance", "operational")):
                 raise ValueError("Deployment evidence contains a failed gate")
-            if self.bundle.get("execution_profile") == "pc":
-                from scripts.phase8.pc_saf import validate_local_terminal as validate_consumer_terminal
-            else:
-                from scripts.phase8.scientific_workflow_gate import validate_consumer_terminal
             projected={str(self.bundle_path.relative_to(root)),str((self.output/"deployment_receipt.json").relative_to(root))}
             projected.update(str((self.output/path).relative_to(root)) for path in self.bundle["artifacts"])
             projected.update(str((self.output/path).relative_to(root)) for path in receipt["evidence_sha256"])
-            metadata=validate_consumer_terminal(root,"docs/phase8_saf_surrogate_registration.json",self.output,
-                expected_binary_sha256=self.bundle["binary_sha256"],artifact_paths=sorted(projected))
-            if metadata["status"] not in ("PASS","COMPLETE"):
-                raise ValueError("Deployment producer has no successful authenticated release")
+            if self.bundle.get("simulator", {}).get("name") == "python-v6":
+                from scripts.phase8.python_pc import validate_product_provenance
+                metadata = validate_product_provenance(root, self.output,
+                    artifact_paths=sorted(projected), expected_simulator_identity_sha256=self.bundle["simulator_identity_sha256"])
+                if metadata["status"] != "COMPLETE":
+                    raise ValueError("Python product has no completed authentic producer")
+            elif self.bundle.get("execution_profile") == "pc":
+                from scripts.phase8.pc_saf import validate_local_terminal as validate_consumer_terminal
+            else:
+                from scripts.phase8.scientific_workflow_gate import validate_consumer_terminal
+            if self.bundle.get("simulator", {}).get("name") != "python-v6":
+                metadata=validate_consumer_terminal(root,"docs/phase8_saf_surrogate_registration.json",self.output,
+                    expected_binary_sha256=self.bundle["binary_sha256"],artifact_paths=sorted(projected))
+                if metadata["status"] not in ("PASS","COMPLETE"):
+                    raise ValueError("Deployment producer has no successful authenticated release")
         self.properties = read_json(contained(self.output, self.bundle["properties_path"]))
         self.public = read_json(contained(self.output, self.bundle["public_inputs_path"]))
         self.draws = read_json(contained(self.output, self.bundle["fixed_draws_path"]))
@@ -141,14 +147,17 @@ class Product:
             self.scalers.append((mean, scale))
         if len(self.params) != 3 or [row["seed"] for row in self.bundle["members"]] != [42, 43, 44]:
             raise ValueError("Exactly the three fixed ordered seeds are required")
+        from simulation.ml_backend import resolve_backend
+        self.backend = resolve_backend(backend)
+        self.cpu_models = [cpu64_model(params) for params in self.params] if self.backend == "torch" else [None]*3
 
     def arrays(self, queries):
         """Internal full-species results, shared by scoring and exact postprocess."""
         import numpy as np
         queries = self.canonical_queries(queries)
         features = feature_rows(queries, self.draws, self.public)
-        members = [forward64(params, (features-mean)/scale)
-                   for params, (mean, scale) in zip(self.params, self.scalers)]
+        members = [forward_cpu64(params, (features-mean)/scale, self.backend, model=network)
+                   for params, (mean, scale), network in zip(self.params, self.scalers, self.cpu_models)]
         return queries, ensemble_outputs(members)
 
     def canonical_queries(self,queries):

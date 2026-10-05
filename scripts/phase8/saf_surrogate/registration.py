@@ -62,7 +62,7 @@ def load_registration(root, path=REGISTRATION):
     doc = read_json(path)
     if doc["id"] != REGISTRATION_ID or doc["state"] != "PROSPECTIVE_REGISTRATION_NOT_ARMED":
         raise ValueError("Foreign or draft SAF registration")
-    if doc["sampling"]["train_sizes"] != [64, 128, 256, 512, 1024, 2048, 4096]:
+    if doc["sampling"]["train_sizes"] != [64, 256, 1024, 4096]:
         raise ValueError("Unregistered learning budget")
     if doc["model"]["seeds"] != [42, 43, 44] or doc["model"]["output_dimension"] != 494:
         raise ValueError("Unregistered model/seed contract")

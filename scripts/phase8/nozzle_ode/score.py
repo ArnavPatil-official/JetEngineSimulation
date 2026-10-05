@@ -104,10 +104,22 @@ def fieldnames():
                    "branch_pass", "exit_pressure_relative", "throat_mach_absolute", "NPR_invariance_relative"]
 
 
-def score_panels(reg, panels, networks, reference, out, assert_current, *, final_test):
+def score_panels(reg, panels, networks, reference, out, assert_current, *, final_test, backend=None):
     """Predictions and references are produced once in bounded deterministic batches."""
     import numpy as np
-    import torch
+    from simulation.ml_backend import resolve_backend
+    backend = resolve_backend(backend)
+    if backend == "torch":
+        selected = model.selected_backend("torch")
+        restored = {}
+        for key, network in networks.items():
+            params = model.neutral_parameters(network, "torch")
+            incoming = params["layers.0.weight"].shape[1]
+            count = sum(name.endswith(".weight") for name in params)
+            hidden = tuple(params[f"layers.{i}.weight"].shape[0] for i in range(count-1))
+            current = selected.mlp(incoming, hidden, params[f"layers.{count-1}.weight"].shape[0], activation="tanh", seed=0)
+            restored[key] = selected.set_parameters(current, params)
+        networks = restored
     xs = np.linspace(-1, 1, 161)
     aggregates, invariance = {}, {}
     scores_path = out / ("test_scores.csv" if final_test else "validation_scores.csv")
@@ -128,11 +140,16 @@ def score_panels(reg, panels, networks, reference, out, assert_current, *, final
                     batch = cases[offset:offset+32]
                     exact = np.stack([reference.profile(case, xs)[0] for case in batch])
                     for (seed, arm), network in networks.items():
-                        raw = model.features(batch, xs, requires_grad=True)
-                        predicted = model.evaluate(network, raw)
-                        residual = model.residuals(predicted, raw)
-                        predicted = predicted.detach().numpy().reshape(len(batch), 161, 4)
-                        residual = residual.detach().numpy().reshape(len(batch), 161, 4)
+                        raw = np.asarray([[x, case["NPR"], case["gamma"], case["R"]]
+                                          for case in batch for x in xs], dtype=np.float64)
+                        if backend == "torch":
+                            native = selected.array(raw, requires_grad=True)
+                            predicted = selected.to_numpy(model.evaluate(network, native, "torch"))
+                            residual = selected.to_numpy(model.residuals(lambda x:model.evaluate(network, x, "torch"), native, "torch"))
+                        else:
+                            predicted, residual = model.predict_numpy64(model.neutral_parameters(network, backend), raw)
+                        predicted = predicted.reshape(len(batch), 161, 4)
+                        residual = residual.reshape(len(batch), 161, 4)
                         for index, case in enumerate(batch):
                             row, squared = metrics(case, xs, predicted[index], exact[index], residual[index], reg["acceptance"])
                             prefix = {"panel":panel, "regime":case["regime"], "case_id":case["case_id"], "seed":seed, "arm":arm,

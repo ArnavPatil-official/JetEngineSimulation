@@ -37,7 +37,7 @@ def test_registered_total_requests_and_exact_outputs(inputs):
     reg,_,_=inputs
     budget=reg["sampling"]["main_teacher_budget"]
     assert budget["total_new_P8S_full_cycle_requests_excluding_separate_A1"]==11264+68+37449+640==49421
-    assert reg["sampling"]["train_sizes"]==[64,128,256,512,1024,2048,4096]
+    assert reg["sampling"]["train_sizes"]==[64,256,1024,4096]
     assert reg["model"]["seeds"]==[42,43,44]
     assert reg["teacher"]["workers"]==6
     expected=reg["provenance"]["successful_release"]["expected_outputs"]

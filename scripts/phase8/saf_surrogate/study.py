@@ -4,7 +4,10 @@ from __future__ import annotations
 import csv
 import math
 import os
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None
 import time
 from pathlib import Path
 
@@ -13,11 +16,11 @@ from .postprocess import lifecycle_scenarios
 from .registration import read_json, sha256_file, write_once
 
 
-def screen(root,output,reg,reg_sha,context,run):
+def screen(root,output,reg,reg_sha,context,run,*,backend=None):
     from .run import command_spec,csv_once
     from .teacher import ParallelTeacher
     output=Path(output);run.assert_current()
-    product=load_product(output/"product.json",require_deployment=False)
+    product=load_product(output/"product.json",require_deployment=False,backend=backend)
     queries=read_json(output/"splits/study.json")
     if len(queries)!=640000:
         raise RuntimeError("Registered study budget changed")
@@ -56,7 +59,8 @@ def screen(root,output,reg,reg_sha,context,run):
     spec=command_spec(root,output,context,reg_sha,"study",[__import__('sys').executable,"P8-S","selected640verification"])
     write_once(root/spec["owner_lease"]["snapshot_path"],(root/spec["owner_lease"]["path"]).read_bytes())
     write_once(root/spec["command_spec_path"],spec)
-    teacher=ParallelTeacher(spec,product.properties,product.public,product.draws,6,run=run)
+    workers=context.workers if getattr(context,"simulator_backend",None)=="python" else 6
+    teacher=ParallelTeacher(spec,product.properties,product.public,product.draws,workers,run=run)
     audit_started=time.perf_counter()
     try:actual=teacher(selected_queries)
     finally:teacher.close()
@@ -84,7 +88,7 @@ def screen(root,output,reg,reg_sha,context,run):
         scenario_rows.append({"design_id":design_id,"common_scenarios":1000,"state":"COMPLETE" if rates else "INVALID_REFERENCE",
             "selected_only_lifecycle_q95_common_LCEF_q025_q50_q975":np.quantile(rates,[.025,.5,.975]).tolist() if rates else None})
     result={"state":"COMPLETE","queries":640000,"compositions":10000,"cpu64_total_seconds":elapsed,
-        "peak_rss_native_units":resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,"invalid_prediction_rows":invalid,
+        "peak_rss_native_units":resource.getrusage(resource.RUSAGE_SELF).ru_maxrss if resource is not None else None,"invalid_prediction_rows":invalid,
         "selected_teacher_requests":640,"selected_verification_seconds":time.perf_counter()-audit_started,
         "selected_reference_converged":sum(r["status"]=="converged" for r in actual),
         "selected_ff_MAE_kg_s":float(np.mean(fferrors)) if fferrors else None,"selected_ff_max_kg_s":max(fferrors) if fferrors else None,
