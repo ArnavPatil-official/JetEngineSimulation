@@ -6,8 +6,10 @@ Brem nvPM changes from blend mass fractions and thrust. Predictions are
 v6 C++ simulator and computational speed; real-world accuracy is inherited
 from v6. The historical A1 failure on the penalty guard remains disclosed.
 
-The registered post-chain workflow creates the saved model bundle shown
-below. Numerical work starts only after the original AC chain releases its lease.
+The [PC setup guide](PC_SETUP.md) and `pc_pipeline.py` run the screening workflow
+on Linux/WSL2 with PyTorch CPU or CUDA training and CPU64 scoring. A2 is deferred.
+The historical Mac chain is retired; existing registrations and evidence are
+preserved. No scientific SAF fit or passing product result is supplied yet.
 The default product loader requires passing
 fidelity, ranking and measured-speed gates and verified model hashes.
 A fully computed failed study retains diagnostics and does not enable the tool.
@@ -24,8 +26,10 @@ Candidate JSON files use IDs and nonnegative `JetA`, `HEFA`, `FT`, `ATJ`
 mass fractions summing to one; supply them with `--candidates candidates.json`
 in place of `--grid-step`. Thrust fractions range from 0.07 to 1.0.
 Use `--verify-top-k 10 --verification-out outputs/phase8/screening_tool/verify_001`
-to verify selected candidates with the simulator. Verification requires idle
-AC power and a fresh output directory. Existing results are never overwritten.
+to verify selected candidates with the simulator through the historical Mac
+workflow gate. PC portability of this optional verification is deferred in
+`docs/FIXES.md`. Verification requires idle AC power and a fresh output directory.
+Existing results are never overwritten.
 
 ## Python API
 

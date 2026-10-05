@@ -9,7 +9,41 @@ post-chain scientific sequence. No prose results draft.
 **Working deadline: October 28, 2026 (America/New_York).** Prioritize the
 working product. Preserve the local tag name `freeze-2026-10-18`.
 
-The main AC chain is unchanged. At the 19:14 local check on 2026-10-04,
+**Latest user directive — 2026-10-04:** A2 is deferred. The parked original
+chain was stopped with SIGTERM before any A2 child started; its owner lease was
+released and its ABORTED session record retained. Benchmark records are unchanged.
+The first push published phase8 at a906ea7. The PyTorch backend and PC entry
+are now implemented in the requested order; the reviewed implementation is
+published by the final task push. Existing registrations remain unchanged;
+further refinements are out of scope.
+
+**PyTorch backend and PC pipeline — 2026-10-04:** SAF sources
+and shared consumers are copied onto phase8, and `train_torch.py` adds
+CPU/CUDA training behind `run.py run --backend torch --device auto|cpu|cuda`.
+MLX stays the default and is bitwise unchanged on toy fits. Scoring stays
+NumPy CPU64. [PC_SETUP.md](../PC_SETUP.md) documents Linux/WSL2 setup and the
+root `pc_pipeline.py` command. Its actual order is preflight, separate build,
+focused checks, local G0, P7.3-A1, SAF, nozzle, product checks and freeze. A2
+never dispatches. New PC runs record actual local core/source/G0/backend
+identity; no historical Mac completion is manufactured.
+
+The final full `.venv/bin/python -m pytest tests/ -v` run reported **767 passed,
+4 skipped, 1 failed, 16 setup errors**, plus four passed subtests. The failure
+is the historical all-20 workflow gate; the 16 errors are SAF/nozzle fixtures
+requiring absent historical Mac evidence. These concrete defects remain in
+`docs/FIXES.md` for later repair. Final focused PC/backend/product checks report
+**211 passed, 1 MLX-only skip**, including the CUDA precision refusal fixtures.
+Protected baselines pass (40 original, 134 Phase 7, 184 Phase 8; zero drift).
+Registrations, requirements, data, weights and original C++/Mac-chain sources
+are unchanged. No scientific study fit, G0, rebuild, locked score or A2 was run
+on this Mac. Actual Linux/CUDA validation remains pending on the PC. Missing
+historical Track 4 proof stays INCOMPLETE and no freeze tag is created.
+
+## Historical pre-deferral records (superseded execution direction)
+
+The following entries preserve their original dates/statuses. Commands and
+future orders below are historical; use PC_SETUP.md for the current PC route.
+At the 19:14 local check on 2026-10-04,
 run 2 and its two registered reruns had finished. The validated run-2
 completion retains **48 PASS, 1 INVALID_POWER and 7 FAIL** (including the
 seven historical specs); both reruns are **PASS**. Benchmark-owner release
