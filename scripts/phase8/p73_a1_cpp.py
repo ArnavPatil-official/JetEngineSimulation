@@ -208,6 +208,13 @@ def import_protocol(root: Path):
 
 
 def worker_record(workers_dir, pool_tag, backend, binary=None, expected_hash=None):
+    if pool_tag == "study_python" and os.environ.get("CATJET_SIMULATOR_BACKEND") == "python":
+        from simulation.runtime import process_birth, host_identity
+        path = Path(workers_dir) / f"{pool_tag}-{os.getpid()}.json"
+        write_new(path, json_text({"pid": os.getpid(), "birth": process_birth(os.getpid()),
+            "host": host_identity(), "pool": pool_tag, "argv": list(sys.orig_argv), "backend": "python-v6",
+            "python_module": "integrated_engine.py", "python_module_sha256": sha256(ROOT / "integrated_engine.py")}))
+        return
     birth = subprocess.run(["ps", "-p", str(os.getpid()), "-o", "lstart="],
                            capture_output=True, text=True, check=True).stdout
     birth = " ".join(birth.split())
@@ -242,6 +249,13 @@ def init_python_worker(root, excluded, workers_dir, pool_tag):
 
 
 def make_model(protocol, backend, reg6, split, kind, context, output_dir, tag):
+    if getattr(context, "simulator_backend", None) == "python":
+        model = backend.V6Model(reg6["fixed_central"], split["heldout_models"], n_workers=context.workers,
+                                fuel=protocol.v6.fuel_composition(reg6), backend="python")
+        model.pool.shutdown(wait=True, cancel_futures=True)
+        model.pool = ProcessPoolExecutor(max_workers=context.workers, initializer=init_python_worker,
+            initargs=(str(protocol.ROOT), split["heldout_models"], str(output_dir / "workers"), "study_python"))
+        return model
     model = backend.V6Model(reg6["fixed_central"], split["heldout_models"], n_workers=6,
                             fuel=protocol.v6.fuel_composition(reg6), backend=kind)
     # Keep the registered V6Model and solve_task path; initializers add only
@@ -465,7 +479,7 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
         central = protocol.run(model, fit["params"], reg6["fixed_central"], ae3, fuels)
         sync_worker_children(run, out)
         if checkpoint is not None:
-            checkpoint("study-cpp", "central", central)
+            checkpoint("study-python" if getattr(context, "simulator_backend", None) == "python" else "study-cpp", "central", central)
         frames = []
         study = {name: value for name, value in fuels.items() if name != protocol.JETA_ALT}
         for case, row in fixed_draws:
@@ -474,7 +488,7 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
             sync_worker_children(run, out)
             frame.insert(0, "draw", case)
             if checkpoint is not None:
-                checkpoint("study-cpp", case, frame)
+                checkpoint("study-python" if getattr(context, "simulator_backend", None) == "python" else "study-cpp", case, frame)
             frames.append(frame)
             print(f"{case}: {int((frame['status'] != 'converged').sum())} unconverged", flush=True)
         draws = protocol.pd.concat(frames, ignore_index=True)
@@ -483,10 +497,18 @@ def study_stage(protocol, backend, registration, reg6, split, fit, ae3, fuels, f
     validate_coverage(protocol, central, draws, fuels)
     run.assert_current()
     tables, summary = postprocess(protocol, registration, fit["params"], central, draws, fuels)
+    if getattr(context,"simulator_backend",None)=="python":
+        summary.update(backend="python-v6-full-equilibrium", simulator=context.simulator_identity,
+                       simulator_identity_sha256=context.simulator_identity_sha256)
     for name, table in zip(TABLE_NAMES, tables):
         write_frame(out / name, table)
     write_new(out / "p73_blends_v6.json", protocol.v5._json(summary))
-    write_new(out / "README.md", technical_readme())
+    python_profile = getattr(context, "simulator_backend", None) == "python"
+    write_new(out / "README.md", technical_readme() if not python_profile else (
+        "# P7.3-A1 Python-v6 PC study\n\n" + LABEL + "\n\n"
+        "The protected Python full-equilibrium engine produced these rows with all 64 fixed draws. "
+        "The pipeline's fresh20 frozen-row parity is recorded separately. No C++ cross-backend or Mac-chain completion is claimed. "
+        "Sensitivity bands retain the original conditional fixed-calibration interpretation.\n"))
     # Keep the freshly written proof in memory until terminal validation; no
     # self-referential JSON hash and no trust in an independently edited table.
     summary["_sealed_outputs"] = {name: sha256(out / name)

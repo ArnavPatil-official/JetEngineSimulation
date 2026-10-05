@@ -101,6 +101,68 @@ class Verifier:
         return output
 
 
+class PythonVerifier(Verifier):
+    """The protected Python v6 full-equilibrium engine, with full-state outputs."""
+    def __init__(self, root, simulator_identity, properties, public, draws, *, assert_current):
+        assert_current()
+        import contextlib
+        import io
+        import os
+        root = Path(root).resolve()
+        for path in (root, root / "scripts/optimization"):
+            if str(path) not in sys.path:
+                sys.path.insert(0, str(path))
+        import lto_v5 as v5
+        if Path(v5.__file__).resolve() != root / "scripts/optimization/lto_v5.py":
+            raise ValueError("Python-v6 module is from another checkout")
+        with contextlib.redirect_stdout(io.StringIO()):
+            v5._init_worker(v5.load_split()["heldout_models"])
+        self.root, self.simulator_identity = root, simulator_identity
+        self.properties, self.public, self.draws = properties, public, draws
+        self.thermo, self.assert_current, self.engine = Thermo(properties), assert_current, v5._ENGINE
+        assert_current()
+
+    def full_state(self, query):
+        from integrated_engine import LocalFuelBlend, ThrustTargetUnreachable
+        q = query if query.get("in_product_API") is not False else dict(
+            query, f_JetA=1.0, f_HEFA=0.0, f_FT=0.0, f_ATJ=0.0)
+        state = state_for(q, self.public, self.draws)
+        self.engine.design_point.update(mass_flow_core=state["ma"], bypass_ratio=state["bpr"],
+            fpr=state["fpr"], eta_fan=state["eta_fan"], pi_c=state["pi_c"],
+            combustor_pressure_loss=state["pressure_loss"], combustor_heat_loss_fraction=0.0,
+            combustor_air_fraction=1.0, A_combustor_exit=.207, A_nozzle_exit=.340,
+            T_ambient=288.15, P_ambient=101325.0)
+        self.engine.compressor.eta_c = state["eta_c"]
+        self.engine.turbine_design["eta_polytropic"] = state["eta_t"]
+        fuel_text, _ = self.thermo.fuel_args(query)
+        parts = {name.strip(): float(value) for name, value in
+                 (component.split(":", 1) for component in fuel_text.split(","))}
+        try:
+            result = self.engine.run_at_thrust(state["target_kN"], LocalFuelBlend("pc-saf", parts),
+                combustor_efficiency=state["eta_b"], phi_bounds=(.05, 1.0),
+                t4_max_K=3800*5/9, phi_xtol=1e-12, phi_guess=None)
+        except ThrustTargetUnreachable as exc:
+            return {"status": "unreachable", "reason": exc.reason, "input_state": state}
+        comp, burner, match = result["compressor"], result["combustor"], result["thrust_match"]
+        return {"status": "converged", "reason": "", "input_state": state,
+            "ff_kg_s": float(result["performance"]["fuel_mass_flow"]), "T3_K": float(comp["T_out"]),
+            "T4_K": float(burner["T_out"]), "h3_in_J_kg": float(comp["h_in"]),
+            "h3_out_J_kg": float(comp["h_out"]), "h4_out_J_kg": float(burner["h_out"]),
+            "p3_Pa": float(burner["p_out"]), "mcore_kg_s": float(state["ma"]),
+            "cp4_J_kg_K": float(burner["cp_out"]), "R4_J_kg_K": float(burner["R_out"]),
+            "gamma4": float(burner["gamma_out"]), "Y4": burner["Y_out"].tolist(),
+            "phi": float(match["phi"]), "thrust_residual_kN": float(match["residual_kN"]),
+            "n_cycle_evaluations": int(match["n_cycle_evaluations"])}
+
+
+def make_verifier(context, properties, public, draws, *, assert_current):
+    if getattr(context, "simulator_backend", None) == "python":
+        return PythonVerifier(context.root, context.simulator_identity, properties, public, draws,
+                              assert_current=assert_current)
+    return Verifier(context.root, context.binary_path, context.binary_sha256, properties, public, draws,
+                    assert_current=assert_current)
+
+
 def load_verifier(context, bundle_path=None, *, assert_current=None):
     """Verification is authorized only under the caller's fresh shared run lease."""
     if assert_current is None:
@@ -111,10 +173,12 @@ def load_verifier(context, bundle_path=None, *, assert_current=None):
     public, draws = read_json(output / "public_inputs.json"), read_json(output / "fixed_draws.json")
     if bundle_path is not None:
         bundle = read_json(bundle_path)
-        if bundle["binary_sha256"] != context.binary_sha256:
+        if getattr(context,"simulator_backend",None)=="python":
+            if bundle.get("simulator_identity_sha256") != context.simulator_identity_sha256:
+                raise ValueError("Verification Python simulator does not match the product")
+        elif bundle["binary_sha256"] != context.binary_sha256:
             raise ValueError("Verification core does not match the product")
-    return Verifier(root, context.binary_path, context.binary_sha256, properties, public, draws,
-                    assert_current=assert_current)
+    return make_verifier(context, properties, public, draws, assert_current=assert_current)
 
 
 _worker = None
@@ -141,13 +205,18 @@ def _initialize_worker(spec, properties, public, draws):
     check = lambda: check_child_authorization(spec)
     check()
     global _worker
-    _worker = Verifier(spec["root"], Path(spec["root"]) / spec["binary"]["path"],
-                       spec["binary"]["sha256"], properties, public, draws, assert_current=check)
+    if spec.get("simulator", {}).get("name") == "python-v6":
+        _worker = PythonVerifier(spec["root"], spec["simulator"], properties, public, draws, assert_current=check)
+    else:
+        _worker = Verifier(spec["root"], Path(spec["root"]) / spec["binary"]["path"],
+                           spec["binary"]["sha256"], properties, public, draws, assert_current=check)
     check()
-    actual=Path(sys.modules["catjet_core"].__file__).resolve()
+    actual=Path(sys.modules["integrated_engine" if spec.get("simulator") else "catjet_core"].__file__).resolve()
     write_once(Path(spec["output"])/f"proofs/workers/{spec['stage']}_{os.getpid()}_core.json",{
         "pid":os.getpid(),"birth":birth(os.getpid()),"parent_pid":os.getppid(),
-        "actual_core":{"path":str(actual.relative_to(Path(spec["root"]))),"sha256":sha256_file(actual)},
+        **({"actual_simulator": spec["simulator"], "actual_python_module": {
+            "path":str(actual.relative_to(Path(spec["root"]))),"sha256":sha256_file(actual)}} if spec.get("simulator") else {
+            "actual_core":{"path":str(actual.relative_to(Path(spec["root"]))),"sha256":sha256_file(actual)}}),
         "input_source_hashes":spec["input_source_hashes"],
         "spec_sha256":sha256_file(Path(spec["root"])/spec["command_spec_path"]),
         "handshake_sha256":sha256_file(worker_handshake),"go_sha256":sha256_file(go)})

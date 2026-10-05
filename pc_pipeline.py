@@ -309,7 +309,7 @@ def execute(config, *, handlers=None):
     return summary
 
 
-def main(argv=None):
+def legacy_main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Print stage/path plan without imports or writes")
@@ -330,6 +330,12 @@ def main(argv=None):
     print(json.dumps(result, indent=2, allow_nan=False))
     state = result.get("state", "PASS")
     return 0 if state == "PASS" else 2 if state == "ERROR" else 1
+
+
+def main(argv=None):
+    """Compatibility command: use the resumable Python-v6 PC entry point."""
+    from scripts.pc_pipeline import main as python_pc_main
+    return python_pc_main(argv)
 
 
 if __name__ == "__main__":

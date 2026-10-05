@@ -168,3 +168,64 @@ corrected before the final push, with manufactured regression checks.
 - The unavailable-CUDA unit test originally assumed the host had no GPU and
   would fail the PC's focused checks on a CUDA machine. It now simulates that
   branch instead of depending on the host's hardware.
+
+## Shared backend / Python PC implementation review — 2026-10-04
+
+The user requested Torch CPU float64 primary, optional MLX, and a Python v6 PC
+pipeline. The prospective amendment is committed as `d3767dc`, before tiny
+training fixtures. This work is isolated on `phase8-pc-backend-20261004`; the
+original checkout and operational files are untouched. No new P8-S or nozzle
+scientific study results exist. A2 remains deferred and is absent from this PC
+sequence. Historical Mac consumer defects above remain deferred.
+
+Concrete implementation corrections in this task:
+
+- Primary Torch training previously used float32, and checkpoint export could
+  downcast float64 weights. Shared models and training now use CPU float64 and
+  preserve native parameter dtype in neutral NPZ. Optional MLX exports retain
+  float32 until CPU float64 scoring.
+- Backend flags could describe Torch while executing NumPy inference. Primary
+  scoring now executes native Torch float64 on CPU; optional MLX uses NumPy64.
+- Native MLX SiLU/softplus wrappers could invoke the failing CPU JIT noted above.
+  The shared implementation uses equivalent sigmoid/logaddexp expressions.
+  Actual MLX CPU fixtures pass without changing system SDKs or environments.
+- Cross-framework neutral nozzle loading needs activation metadata. Shared NPZ
+  archives now retain the tanh architecture and trained precision.
+- Python-only producers have no C++ binary hash. Their empty CSV binary field is
+  checked as absent, while authenticated generation receipts bind the actual
+  Python simulator identity. Existing scientific property projections remain
+  unchanged; no extra registration columns or fabricated C++ identity are added.
+
+The independent fixture comparison has maximum relative family errors of
+`2.87e-16` for Torch64 versus analytic NumPy64 and `1.92e-7` for Torch32 versus
+actual MLX32, below `1e-10` and `1e-5` respectively. MLX-installed fixtures:
+17 passed. Torch-only environment: 12 passed, 5 skipped. These are manufactured
+checks, not study fits or locked test results.
+- MLX Adam does not accept Torch's zero weight-decay/disabled AMSGrad keyword
+  arguments. The shared adapter accepts those neutral defaults and rejects
+  unsupported non-default variants; real MLX optimizer fixtures pass.
+- Native MLX modules subclass dict. Neutral-weight detection now checks for
+  canonical layers.i keys, preventing a native nozzle model from being mistaken
+  for a parameter archive. Real MLX native scoring/cross-load fixtures cover it.
+- Completed PC learning-curve receipts initially omitted the actual model and
+  selection files. The stage now seals all 24 model/log artifacts and the
+  selection/validation/progress bytes before subsequent stages.
+- The new PC timing route initially inherited a GPU prerequisite, making the
+  requested CPU-only PC fail regardless of CPU measurements. Primary PC timing
+  uses its measured CPU gate; optional GPU availability stays explicit.
+- Publication retries initially collided with the consumed stage marker and
+  existing run branch after a network failure. A retry now verifies and pushes
+  the exact owned recorded commit without repeating scientific stages.
+- The 640,000-row study JSON exceeds GitHub's 100 MiB regular-file limit, so
+  plain output publication would be rejected. Oversized outputs now use lossless
+  gzip chunks of at most 50 MiB with original/chunk SHA256 manifests and a
+  scoped restore command. Originals remain unchanged locally. This transport
+  changes no scientific rows or registration. Source:
+  [GitHub file limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
+- Checkpoint validation initially resolved paths before testing symlinks, which
+  could accept replacement symlinks with identical bytes. It now rejects the
+  original symlink path before resolving; a manufactured resume fixture passes.
+- Git text filters or autocrlf could change sealed artifact bytes during staging.
+  Scoped publication disables autocrlf for its add command and verifies raw
+  staged blobs before commit; retry also verifies the committed bytes. The
+  CRLF fixture passes without changing project/global Git configuration.

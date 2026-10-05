@@ -3,11 +3,12 @@
 The screening API predicts fuel flow, T4, EI-CO2, lifecycle CO2e and in-domain
 Brem nvPM changes from blend mass fractions and thrust. Predictions are
 **conditional on v6 calibration**. The surrogate measures fidelity to the
-v6 C++ simulator and computational speed; real-world accuracy is inherited
+full v6 simulator and computational speed; real-world accuracy is inherited
 from v6. The historical A1 failure on the penalty guard remains disclosed.
 
-The [PC setup guide](PC_SETUP.md) and `pc_pipeline.py` run the screening workflow
-on Linux/WSL2 with PyTorch CPU or CUDA training and CPU64 scoring. A2 is deferred.
+The [PC setup guide](docs/PC_SETUP.md) and `pc_pipeline.py` run the screening workflow
+on Linux/WSL2 with Python v6 simulation, Torch CPU64 training/scoring and optional
+MLX32 training on Mac. The C++ core is optional on Mac. A2 is deferred.
 The historical Mac chain is retired; existing registrations and evidence are
 preserved. No scientific SAF fit or passing product result is supplied yet.
 The default product loader requires passing

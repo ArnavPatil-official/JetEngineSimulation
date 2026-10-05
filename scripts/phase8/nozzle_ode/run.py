@@ -106,9 +106,8 @@ def freeze_case_inputs(out, splits):
                                                for name, cases in splits.items()})
 
 
-def technical_readme(out):
-    with (out / "README.md").open("x") as stream:
-        stream.write("""Smooth nozzle diagnostic artifact schema
+def technical_readme(out, *, portable=False, simulator_backend="cpp", backend=None):
+    text = """Smooth nozzle diagnostic artifact schema
 
 Run command: caffeinate -i nice -n 15 .venv/bin/python -m scripts.phase8.nozzle_ode.run
 
@@ -134,7 +133,21 @@ evaluation. No held-out stopping, checkpoint choice, retries or production claim
 Each physics seed must satisfy every field/case/regime/panel accuracy bar. The
 paired ratio comparison separately tests incremental residual benefit. Original
 shock evidence remains visible; this study does not establish empirical validity.
-""")
+"""
+    if portable:
+        from simulation.ml_backend import resolve_backend
+        text = text.replace(
+            "caffeinate -i nice -n 15 .venv/bin/python -m scripts.phase8.nozzle_ode.run",
+            f"python scripts/pc_pipeline.py --run --resume --stop-after g --backend {resolve_backend(backend)}")
+        text = text.replace(
+            "oracle_gate.json preserves original rung3 shock\nevidence and independent exact-reference checks.",
+            "oracle_gate.json records inherited Track 4 evidence as available or incomplete,\n"
+            "and records independent local exact-reference checks.")
+        text = text.replace("Original\nshock evidence remains visible;", "Available original\nshock evidence remains visible;")
+    if simulator_backend == "python":
+        text = text.replace("frozen C++ burner-state", "frozen Python-v6 burner-state")
+    with (out / "README.md").open("x") as stream:
+        stream.write(text)
 
 
 def validate_score_coverage(reg, splits, values, panels):
@@ -205,7 +218,7 @@ def run(main_root, *, context_factory=None, source_loader=None, portable=False, 
             os.environ[name] = "1"
         for directory in ("training_logs", "checkpoints"):
             (out / directory).mkdir()
-        technical_readme(out)
+        technical_readme(out, portable=portable, simulator_backend=getattr(context,"simulator_backend","cpp"), backend=backend)
         write_json(out / "config.json", reg)
         properties, source_hashes = (source_loader or source_artifacts)(root, reg, context, out)
         frozen.update(source_hashes)
