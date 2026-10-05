@@ -18,8 +18,17 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
+def _native(value):
+    """NumPy scalars (e.g. numpy.bool_) become plain Python values; everything else stays rejected."""
+    import sys
+    numpy = sys.modules.get("numpy")
+    if numpy is not None and isinstance(value, numpy.generic):
+        return value.item()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def json_bytes(value):
-    return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n").encode()
+    return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False, default=_native) + "\n").encode()
 
 
 def read_json(path):
