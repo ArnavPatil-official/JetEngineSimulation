@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "id": "P8-BACKEND-PC-20261004",
+  "state": "PROSPECTIVE_COMMITTED_BEFORE_TRAINING",
+  "authorized_by": "User explicit three-task instruction: switchable Torch-primary backend and resumable Python-v6 PC study",
+  "no_results_exist": true,
+  "results_statement": "No P8-S scientific fit, locked score, or nozzle ODE study result exists in this checkout. This amendment precedes all new training and fixture optimizer runs. Historical studies and running-chain evidence remain unchanged.",
+  "parents_before_sha256": {
+    "docs/phase8_saf_surrogate_registration.json": "024c50c53ef7ec0f145994afc2ea7ad41929ef2d11d82588d166beb2ae47f872",
+    "docs/phase8_nozzle_ode_registration.json": "dbdac7a4f55361483d189f236949d3504af6d909116d22853561797db7d0212b"
+  },
+  "amended_registration_sha256": {
+    "docs/phase8_saf_surrogate_registration.json": "a7b85223874246ffc887314c1c9d4157b649980a333c15c6f6a964aa9b1d3d2a",
+    "docs/phase8_nozzle_ode_registration.json": "09c7fbc4e8e1b9672a9b128f8f37a2f5d22501947e2ff3533fd9bc37f333f74c"
+  },
+  "backend_policy": {
+    "primary": "torch",
+    "optional": "mlx",
+    "selection": "--backend {torch,mlx}, then CATJET_ML_BACKEND, then torch",
+    "torch": {
+      "training_dtype": "float64",
+      "scoring_dtype": "float64",
+      "default_device": "cpu",
+      "optional_device": "cuda when supported and explicitly selected",
+      "optimizer": "Adam; optional L-BFGS polish"
+    },
+    "mlx": {
+      "training_dtype": "float32",
+      "scoring_dtype": "float64 NumPy CPU",
+      "device": "Apple-supported device",
+      "optimizer": "Adam"
+    },
+    "checkpoint": "Framework-neutral NPZ; preserve trained parameter dtype; canonical dense weights/biases transferable between backends"
+  },
+  "saf_train_sizes": [
+    64,
+    256,
+    1024,
+    4096
+  ],
+  "saf_arms": [
+    "Mdata",
+    "Mphys"
+  ],
+  "saf_seeds": [
+    42,
+    43,
+    44
+  ],
+  "saf_fits": 24,
+  "nozzle_optimizer_policy": {
+    "torch": "Existing registered Adam1500 followed by registered L-BFGS caps/tolerances",
+    "mlx": "Adam1500 with registered Adam hyperparameters; L-BFGS polish unavailable; record this distinction and do not label it the primary Torch procedure"
+  },
+  "pc_simulator": "Python v6 full equilibrium; existing frozen G0 equivalence retained; fresh20row parity at rtol1e-9 must pass",
+  "pc_hardware": {
+    "cpu": "Ryzen5 3600",
+    "logical_threads": 12,
+    "workers": 10,
+    "OMP_NUM_THREADS": 1,
+    "OPENBLAS_NUM_THREADS": 1,
+    "torch_device": "cpu",
+    "gpu_note": "RX5700XT is outside official PyTorch ROCm support; use CPU"
+  },
+  "pc_stages": [
+    "environment_hardware",
+    "parity20",
+    "p73_a1",
+    "saf_generate",
+    "learning_curve",
+    "sole_score",
+    "nozzle_ode",
+    "pc_timing_break_even",
+    "commit_push_pc_run"
+  ],
+  "unchanged": "Scientific losses, thresholds, fixed splits, labels, seeds, sole-score order and one-shot targets remain unchanged except the requested four-size schedule and declared backend dtype/optimizer policy. No parent historical results are rewritten.",
+  "provenance": "PC artifacts identify actual Python-v6 source hashes and selected ML backend, dtype, seed, host and worker/thread settings; no Mac C++ binary identity or chain completion is manufactured.",
+  "resume": "Stage checkpoints skip only byte-verified completed stages. Interrupted/consumed score reservations remain protected; resume never trains a different model or reopens locked scoring."
+}
