@@ -102,8 +102,10 @@ through actual local source/core/G0 evidence. Existing registrations are unchang
 - The SAF and nozzle numerical fixture tests error until
   `outputs/phase8/screening_operations/{main_dependency,source_extension_manifest}.json`
   are committed. This is the unchanged historical gate requirement.
-- `test_all20_eligible_families` still requires the old registered full-pytest
-  child identity and rejects standalone checks after the Mac chain's retirement.
+- `test_all20_eligible_families` still uses the historical chain validator.
+  After source integration its original benchmark completion identity differs
+  from the extended current source tree. The post-commit recheck fails before
+  any all-20 solve with `completion source identity differs from current sources`.
   This concrete historical test-gate defect remains deferred.
 
 Final full-suite review: 767 passed, 4 skipped, 1 failed, 16 setup errors and
@@ -113,6 +115,9 @@ because the historical committed context evidence is absent. Preserve these
 results; no registrations or missing receipts are fabricated to turn them green.
 After concrete PC implementation corrections, final focused checks report
 211 passed and one MLX-only skip. Help/dry-run, syntax and protected hashes pass.
+The post-commit all-20 recheck also fails (0.51 s) at the historical benchmark
+completion identity, confirming this remains an inherited consumer defect after
+the task files are committed. No historical evidence was changed.
 
 ## New backend review defects — 2026-10-04
 

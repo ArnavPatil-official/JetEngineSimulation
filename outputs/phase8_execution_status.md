@@ -33,6 +33,8 @@ is the historical all-20 workflow gate; the 16 errors are SAF/nozzle fixtures
 requiring absent historical Mac evidence. These concrete defects remain in
 `docs/FIXES.md` for later repair. Final focused PC/backend/product checks report
 **211 passed, 1 MLX-only skip**, including the CUDA precision refusal fixtures.
+After commit, the single all-20 recheck still fails at the old benchmark/current
+source identity comparison, before any solves; its historical evidence is intact.
 Protected baselines pass (40 original, 134 Phase 7, 184 Phase 8; zero drift).
 Registrations, requirements, data, weights and original C++/Mac-chain sources
 are unchanged. No scientific study fit, G0, rebuild, locked score or A2 was run
