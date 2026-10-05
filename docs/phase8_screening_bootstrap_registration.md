@@ -34,3 +34,11 @@ Blocking evidence remains in the fresh bootstrap output directory. Recovery requ
 The aggregate bootstrap preserves actual scientific failure: a fully computed failed study/freeze produces outer `FAIL`, `execution_complete=true`, `scientific_verdict=FAIL` and exit1, even when the authenticated diagnostic tag was created. A partial or blocked execution has `execution_complete=false`.
 
 Final seven-file verification runs after the studies and before freeze. Its receipt uses the TOOL scientific identity while the exact recorded pytest child runs under OPS parent ownership. The four raw hashes are spec, log, exit and the registered JUnit file; declared test totals, actual cases and raw passed count must agree with zero failures/errors/skips/deselections. The archived export helper and integrated gate share the exact reviewed commit/blob/mode/SHA. Both bootstrap control paths must be declared in OPS before export and bind through `other_declared_files`; pure controls remain independent of the live production config's armed state.
+
+## Prospective waiting and original-artifact clarification — 2026-10-04
+
+Full proofs run before spawn, at GO, after the actual waited exit and between stages. While waiting, only the light AC/priority/live-owner/child/lease heartbeat and small config/driver/provider byte and mode checks run; original raw/source hash scans and Context refresh stay outside child measurements. Consumers retain their registered phase/checkpoint proofs. Exit records publish proof cadence; no final proof uses file timestamps alone.
+
+Strict original export precedes an exact graph-derived original artifact commit. Include current-session records and fresh benchmark trios, present registered A2 outputs and valid complete Track4 hash coverage. Old queue logs, historical directories, retained data, binaries, locks, live leases and unknown extras are excluded. Rehash and strictly revalidate original evidence around that selective commit before G0.
+
+The valid freeze/evidence tag keeps its original commit. An exact later selective commit preserves bootstrap `terminal.json` and `released_lease.json` before lite lease removal; failure retains the lease and nonzero exit, preserving the truthful scientific verdict without a circular hash.

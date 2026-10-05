@@ -5,6 +5,7 @@
   "main_root": "/Users/arnavpatil/Documents/JetEngineSimulation",
   "output_dir": "outputs/phase8/screening_operations/bootstrap_20261004",
   "scientific_lease_path": "outputs/phase8/screening_operations/owner.lease.json",
+  "original_artifact_policy": "STRICT_COMPLETION_OWNED_GRAPH_V1",
   "wait_poll_seconds": 15,
   "original": {
     "registration": "docs/phase8_queue_recovery_registration.json",
@@ -34,5 +35,7 @@
   "extension_commit_message": "Freeze additive screening source identity",
   "usage_commit_message": "Document conditional screening product usage",
   "bootstrap_evidence_commit_message": "Preserve guarded screening execution evidence",
+  "original_artifact_commit_message": "Preserve authenticated original workflow artifacts",
+  "completion_commit_message": "Preserve screening workflow completion records",
   "pending": "Root supplies final governing hashes, source commits/blobs/modes/hashes, actual interpreter hashes, exact commands/output roots/tests/minimum counts, authorized missing package pins, conditional README bytes and local tag authorization. Unarmed validation is static only."
 }
