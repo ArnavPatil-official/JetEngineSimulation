@@ -276,3 +276,37 @@ checks, not study fits or locked test results.
   unchanged main is logged and does not block this recovery; new failures, recovery failures
   or changes to the sealed score still require stopping. Product deployment validation
   versus changed source provenance remains deferred to the separately authorized freeze step.
+
+
+## Timing and publication after the recorded nozzle FAIL (2026-10-05)
+
+- The first recovery (`outputs/phase8/pc_python_recovery_20261005`) completed a and f (scientific verdict FAIL; ranking
+  and precision PASS) and then ended `ERROR` at g with `RuntimeError: Nozzle execution did not complete: FAIL`. The nozzle
+  attempt itself is a genuine scientific result, not a crash: six frozen fits, one full scoring pass, terminal errors empty,
+  `scientific_verdict` FAIL, `execution_complete` false, `outputs_complete` false. No science was fixed or rerun.
+- Missing `source_property_coverage.json`: `load_source_properties` writes that file only in its failure branch
+  (`failures or len(properties) != 4164`), yet the nozzle terminal lists it among `expected_outputs`. The loader instead
+  validated all 4164 properties (4096 TRAIN + 68 named) and wrote `source_manifest.json`; the input manifest, case CSV and
+  report agree (24984 product conditions). The file is therefore absent because no coverage failure occurred, and it is
+  deliberately **not** created now: the retained nozzle bytes, terminal and receipts stay as recorded. The original Track 4
+  hashes/report/nozzle scores are absent from the committed tree, so no historical Mac proof completion is inferred.
+- `scripts/phase8/pc_recover_f_to_i.py --timing-publish-only` (dry-run by default, `--run` once) is the user-authorized
+  continuation. It never constructs or calls the f/g handlers, never imports `score_all`, and leaves `run_timing` and
+  `publish_outputs` byte-identical. It first verifies read-only: original a-e checkpoints under their recorded config
+  hashes, first-recovery a/f under theirs, the pinned score artifacts and reservation targets, both metadata trees, every
+  preexisting SAF file, every nozzle hash (only the known coverage file may be missing), and that the sources differ from
+  the original snapshot only by the reviewed fix plus this script, and from the first-recovery snapshot by this script alone.
+- Standard-pipeline deviation (explicit user instruction): the ordinary pipeline requires COMPLETE checkpoints, so g would
+  block h. Instead the new metadata directory `outputs/phase8/pc_python_timing_publish_20261005` holds a **cost-only**
+  `checkpoints/g.json` marked `INCOMPLETE`, `execution_complete` false, `outputs_complete` false, `scientific_verdict` FAIL,
+  with hashed references to the first-recovery terminal and the nozzle terminal/report/hashes and the actual elapsed time
+  (g start to the recorded ERROR). It is never validated as a completed stage; the unchanged `run_timing` merely reads its
+  `elapsed_seconds`. The existing recovery h adapter and `publish_outputs` are called directly. Setup cost charged to h:
+  c, d, e as originally spent, f including the consumed first attempt, and the failed g attempt.
+- One attempt: the directory is created exclusively with a durable consumed marker before any work, so any later `--run`
+  refuses whether the attempt succeeded, failed or was interrupted. The original, first-recovery, nozzle and SAF trees are
+  re-verified before h, after h and after i; the SAF tree may only gain legitimate h outputs. A scientific FAIL/INCOMPLETE
+  is reported as such, independent of publication success.
+- The six numerical-fixture errors recorded above reproduce unchanged (147 passed, 6 skipped, 6 errors across the requested
+  test files) and were neither fixed nor skipped. Product deployment validation versus the changed source provenance
+  remains deferred to the separately authorized freeze step.

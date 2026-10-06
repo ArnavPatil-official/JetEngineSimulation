@@ -1,3 +1,77 @@
+# Timing and publication after recorded nozzle FAIL — user-authorized continuation
+
+## Objective
+
+Execute the user's 2026-10-05 NEXT request: diagnose the existing nozzle results read-only, implement an explicit h/i-only continuation in scripts/phase8/pc_recover_f_to_i.py, test and review it, commit and push, dry-run on the committed tree, then run timing and publication once in tmux. The current code/execution scope is this plan; the prior plan retained below documents the already consumed f/g recovery and is not permission to repeat those stages.
+
+## Constraints
+
+Single PC agent only; no spawned agents. Use the repository Claude dispatcher to implement this approved scope. All repository edits, scientific execution and tests remain in /home/arnav_patil/projects/JetEngineSimulation on the WSL Linux filesystem, using catjet-pc Python 3.12, torch 2.9.1+cpu, Cantera 3.2.0, CPU float64, workers 10 and all four thread environment variables set to 1.
+
+Do not rerun f or g, invoke score_all, regenerate predictions, retrain, change selection, modify metrics/thresholds/science/data/models/registrations/amendments/protected files, or delete/reset any consumed attempt. Preserve every existing nozzle byte, terminal, receipt and artifact, including the absent source_property_coverage.json: do not fill it in. Preserve both old metadata directories and every existing SAF file byte-identically. Leave product deployment validation versus changed source provenance for the freeze step.
+
+Do not modify h or i logic: scripts/phase8/python_pc.py::run_timing and scripts/pc_pipeline.py::publish_outputs remain byte-identical. The existing recovery h source bridge is retained. Scientific FAIL/INCOMPLETE is recorded as such, never fabricated COMPLETE. Stop on new test failures or execution/recovery errors. The six known numerical-test fixture errors (Required evidence is absent from committed tree) reproduce on unchanged main and remain logged, not fixed or skipped.
+
+During implementation: do not commit, push, run the actual continuation, run timing/scoring/training, or install anything. Root reviews then performs those authorized actions. Fixture tests and the read-only new-mode dry-run are allowed.
+
+## Repo Context
+
+Known original source main: 0d16bcc245e93172aa4b3749bccc877727ce950c. First serialization recovery commit and branch: 3af5cc879b7916bbe9b21074030d065b2704f534 on pc-recovery-20261005. Stage f completed once using its original reservation: recovered test_metrics.json and ranking_metrics.json match crash-time bytes. Its scientific verdict is FAIL; ranking and precision PASS.
+
+First recovery metadata outputs/phase8/pc_python_recovery_20261005 ended ERROR at g: RuntimeError: Nozzle execution did not complete: FAIL. The nozzle attempt has six frozen fits and completed one scoring pass with full reports/predictions; its terminal errors list is empty, scientific_verdict FAIL, outputs_complete false, execution_complete false. Only the required source_property_coverage.json is absent. The source loader validates 4164 properties and writes source_manifest.json, but writes coverage JSON only in its failure branch. Nozzle input manifest/case CSV/report confirm all 4096 TRAIN plus 68 named properties, yielding 24984 product conditions. Original Track 4 hashes/report/nozzle_scores are absent from both HEAD and original committed source tree; CPU float64 exact oracle code is present and its fresh smooth-reference gate PASS. Do not infer historical Mac proof completion.
+
+The ordinary outer pipeline requires COMPLETE checkpoints. Direct unchanged run_timing only reads the g elapsed_seconds entry to charge incurred cost; it does not require g completion. Implement an honest cost-only g entry if needed, explicitly marked INCOMPLETE, execution_complete false, outputs_complete false, scientific_verdict FAIL, with immutable terminal/failed recovery references and actual elapsed time. Never label it a completed g receipt or include it among validated completed checkpoints. Record that the standard pipeline completion gate is bypassed only under this explicit user instruction, while the unchanged h runner is called directly through the existing h adapter. The user permits this deviation and requires it in the recovery record.
+
+## Relevant Files
+
+MODIFY only scripts/phase8/pc_recover_f_to_i.py, tests/test_phase8_pc_recovery.py, docs/FIXES.md. docs/plan.md is already updated by the planner. READ scripts/pc_pipeline.py, scripts/phase8/python_pc.py, pc_python_runtime.py, pc_runtime.py, saf_surrogate/run.py, score.py, timing.py, study.py, nozzle_ode/run.py, score.py, source manifests, original and first recovery metadata. No other file-level edits authorized.
+
+## Implementation Phases
+
+1. Add explicit --timing-publish-only mode, mutually compatible with --dry-run (default) or --run, that never constructs or calls f/g handlers. Retain the original f/g recovery mode and its one-shot refusal behavior unchanged. The new mode uses a fresh dedicated metadata directory outputs/phase8/pc_python_timing_publish_20261005 with its own durable exclusive consumed marker. It may be run exactly once; after any actual failure preserve evidence and refuse another actual attempt.
+2. Read-only verification: validate all original a-e checkpoints using recorded config hashes; validate first recovery completed a/f and any carried checkpoints with their actual recorded config hashes. Verify all original metadata, preexisting SAF manifest entries, completed f artifacts, sealed reservation targets/freeze/selection and exact pinned partial metrics. Verify all first recovery metadata and all nozzle artifact hashes, six checkpoints and score reservation checkpoint/input bindings. Require exactly the known first recovery ERROR at g and no h/i start, receipt, reservation, output or live owner anywhere. Require only the known missing coverage artifact; reject any other incomplete/drift/error condition. Verify source provenance against original source and first recovery snapshot, allowing only the previously approved literal serialization fix and current recovery-script edit; reject any other scientific source change. Current changes since original commit must remain within the previously authorized five files.
+3. Record read-only manifest snapshots of original metadata, first recovery metadata, current pre-timing SAF and nozzle trees; the known missing output and truthful nozzle terminal/report/completion states; old versus current source hashes and the current script hash; exact source commit and first recovery commit; current branch/head; user authorization; carried completed stages; h/i-only plan and deviation; authentic per-stage setup costs including consumed original f cost already charged in f receipt and the actual failed g attempt. Do not mutate previous records or rebaseline any changed protected artifact. Root may supply independently captured hashes if needed; do not silently accept arbitrary current nozzle bytes without checking its recorded hashes.
+4. Prepare only NEW metadata for current sources/config/environment/parity. Carry authentic prior b-e and f checkpoints/proof records byte-for-byte, including producer d/e/f raw reservation/terminal/released-lease files needed by h history. Preserve original checkpoint config hashes and source identities. No fake g completion. A cost-only g reference must remain explicitly incomplete and only be used by unchanged h setup arithmetic, not validated as a completed stage. Call only existing RecoveryWorkflow.h (unchanged bridge + unchanged ScientificWorkflow.h/run_timing) and publish_outputs(config), validating actual h/i outputs and writing authentic new h/i receipts. Recheck all retained trees before h, after h, and after i; SAF may add only legitimate h outputs. g completion, scientific verdict, and missing file remain unchanged. Final summary includes the carried f/nozzle FAIL/INCOMPLETE, independent of publication success.
+5. Add meaningful manufactured regression fixtures proving no f/g calls or score imports/reruns, dry-run no writes, output-drift and source-drift refusals, existing/pending h/i refusal, one-shot consumption, no fabricated COMPLETE g receipt, incomplete g recorded and actual h/i adapter called, honest cost accounting, original/nozzle tree byte preservation, and failure retention/no automatic retries. Document this authorized deviation and existing deployment provenance freeze deferral in FIXES.md.
+
+## File-Level Edits
+
+scripts/phase8/pc_recover_f_to_i.py: additive h/i-only verifier, description, metadata preparation and one-attempt dispatcher; CLI flag. Keep f scoring logic, g scientific code, existing h source adapter and publication logic unchanged. Do not make g silently complete; classify the saved diagnostic explicitly. Prefer reusable existing integrity helpers to duplicating or broadening them.
+
+tests/test_phase8_pc_recovery.py: add manufactured recovery-continuation fixtures covering boundaries above. No real study paths/metric targets used for training/scoring tests.
+
+docs/FIXES.md: explain missing nozzle coverage receipt file, evidence that all input properties loaded, no science fix performed, authentic FAIL/INCOMPLETE retention, explicit timing-only continuation and setup-cost accounting, inherited numerical fixture errors unchanged, freeze issue deferred.
+
+## Commands to Run
+
+source ~/miniforge3/etc/profile.d/conda.sh; conda activate catjet-pc
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 CATJET_ML_BACKEND=torch PYTHONDONTWRITEBYTECODE=1
+python -m pytest tests/test_phase8_pc_recovery.py tests/test_phase8_pc_pipeline.py tests/test_ml_backend.py tests/test_phase8_saf_surrogate.py tests/test_phase8_saf_surrogate_numerical.py tests/test_phase8_saf_surrogate_torch.py -q
+git diff --check
+python scripts/phase8/pc_recover_f_to_i.py --timing-publish-only --dry-run
+
+Root only, after review: commit exactly the four authorized changed files on pc-recovery-20261005, git push origin pc-recovery-20261005, committed-tree --timing-publish-only --dry-run, then --timing-publish-only --run exactly once inside tmux. No ordinary pipeline --resume, no f/g recovery --run, no force push.
+
+## Tests
+
+All new fixtures and existing recovery/backend/pipeline/SAF fixtures pass. Six numerical fixture errors may persist exactly as recorded on unchanged main; do not fix/skip them. Any new failure is an execution stop. Verify h/i runner source file hashes match first recovery commit and original main; registration serialization fix remains byte-identical to its reviewed patch. Verify all preexisting scientific and metadata bytes after executor completion; no unit fixture may touch real attempt files.
+
+## Acceptance Criteria
+
+Read-only nozzle diagnostic reports best physics_on seed by recorded panel RMSE, per-field worst condition max/RMS versus 0.5%/0.1%, full property coverage proof, and missing historical evidence's actual provenance. Only requested four files changed. Committed-tree dry-run VERIFIED, run_ready true, stages h/i only, no write. Actual run consumes a new marker once, invokes no f/g/model training or score_all, preserves every existing score/nozzle byte, records honest g FAIL/INCOMPLETE and missing coverage, leaves h/i logic unchanged, and publishes via existing pc-run-date behavior. Final user report gives publication branch/hash, actual per-query timings at both worker counts/all requested batches, 640000 run, speedup, registered break-even with cost scope, operational verdict and nozzle diagnostic. If actual recovery fails, stop and report exact exception with all outputs retained.
+
+## Rollback Notes
+
+Before actual h/i only, source changes can be reverted with ordinary reviewed commits. After consumption, never delete marker/reservations, mutate retained scientific outputs, re-score or retry automatically. Preserve a failed timing/publishing attempt and report exact failure. A later attempt requires explicit new user scope; existing f/g outputs are permanent.
+
+## Escalation Guidance
+
+Complexity high: provenance-sensitive resume around consumed scoring, sealed failed nozzle evidence and long-running timing. Let existing dispatcher select its configured Claude model. Do not use parallel agents. Stop rather than relax verification or fabricate completion; root reviews diffs, fixture tests and integrity before real execution.
+
+---
+
+The previous approved f/g recovery plan below is retained as historical authorization; it has already been consumed and must not be re-executed by this NEXT task.
+
 # Stage f serialization recovery — user-approved operational plan
 
 ## Objective

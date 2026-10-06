@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -494,3 +495,378 @@ def test_run_refuses_unverified_or_uncommitted_state_before_creating_anything(fx
     with pytest.raises(recovery.RecoveryError, match="Reservation target changed"):
         recover(fx, monkeypatch)
     assert not fx.layout().new.exists()
+
+
+# --------------------------------------------------------------------------- h/i-only continuation after the nozzle FAIL
+
+G_START, G_END = "2026-10-05T22:33:42+00:00", "2026-10-05T23:21:35+00:00"
+G_SECONDS = 47 * 60 + 53.0
+FIRST_SCRIPT = b"first recovery script"
+
+
+class Continuation(Fixture):
+    """Manufactured post-f, post-nozzle-FAIL state: a consumed original, a first recovery ending ERROR at g, a failed nozzle."""
+
+    def __init__(self, tmp_path):
+        super().__init__(tmp_path)
+        root, first, old, saf = self.root, self.layout().new, self.old, self.saf
+        self.first, self.timing = first, root / recovery.TIMING_METADATA
+        self.nozzle_rel = "outputs/nozzle"
+        self.nozzle = root / self.nozzle_rel
+        write(saf / "named_metrics.json", {"done": True})
+        write(saf / "sole_score_summary.json", {"fidelity_pass": False})
+        write(first / "recovery/original_metadata_manifest.json", recovery.tree_manifest(old))
+        write(first / "recovery/preexisting_saf_manifest.json", recovery.tree_manifest(saf))
+        write(first / "recovery/recovery_record.json", {"record": 1})
+        write(first / "recovery/consumed.json", {"pid": 1})
+        write(first / "parity20.json", (old / "parity20.json").read_bytes())
+        config = {"backend": "torch", "device": "cpu", "workers": 10, "metadata_dir": "first"}
+        write(first / "config.json", config)
+        self.first_config_sha = recovery.fingerprint(config)
+        artifact = {f"{self.saf_rel}/selection.json": self.pins["selection.json"]}
+        write(first / "checkpoints/a.json", {"status": "COMPLETE", "config_sha256": self.first_config_sha, "artifacts": artifact,
+                                             "elapsed_seconds": 2.0})
+        write(first / "checkpoints/f.json", {"status": "COMPLETE", "config_sha256": self.first_config_sha, "artifacts": artifact,
+              "elapsed_seconds": 178.0, "original_attempt_elapsed_seconds": 97.0, "recovery_elapsed_seconds": 81.0,
+              "scientific_verdict": "FAIL"})
+        for letter in "bcde":
+            write(first / f"checkpoints/{letter}.json", (old / f"checkpoints/{letter}.json").read_bytes())
+        write(first / "checkpoints/g.started.json", {"stage": "g", "started_utc": G_START})
+        for letter in "def":
+            for name in ("reservation.json", "terminal.json", "released_lease.json"):
+                write(first / f"runs/{letter}/{name}", {"identity": self.identity, "first": letter})
+        self.terminal_path = first / "terminals/summary.json"
+        write(self.terminal_path, {"status": "ERROR", "stopped_at": "g", "error": recovery.KNOWN_G_ERROR, "finished_utc": G_END,
+                                   "stages": [{"stage": "a"}, {"stage": "f"}]})
+        self.build_nozzle()
+        self.first_sources = recovery.read_json(old / "scientific_sources.json") | {FIX: SHA(self.fix_new), recovery.SELF_PATH: SHA(FIRST_SCRIPT)}
+        write(first / "scientific_sources.json", self.first_sources)
+
+    def build_nozzle(self):
+        nz, rel = self.nozzle, self.nozzle_rel
+        fits = {f"{rel}/checkpoints/fit{i}.npz": write(nz / f"checkpoints/fit{i}.npz", f"fit{i}".encode()) for i in range(6)}
+        manifest = write(nz / "input_manifest.json", {"inputs": 1})
+        write(nz / "report.json", {"status": "FAIL", "registered_status": "INCOMPLETE"})
+        write(nz / "score_reservation.json", {"checkpoint_hashes": fits, "input_manifest_sha256": manifest})
+        hashes = {f"{rel}/{name}": SHA((nz / name).read_bytes()) for name in ("input_manifest.json", "report.json", "score_reservation.json")}
+        write(nz / "hashes.json", {**fits, **hashes})
+        write(nz / "terminal.json", {"status": "FAIL", "scientific_verdict": "FAIL", "execution_complete": False, "outputs_complete": False,
+              "errors": [], "wall_s": 2872.0, "artifact_hashes": {**fits, **hashes},
+              "expected_outputs": [*fits, *hashes, f"{rel}/{recovery.MISSING_NOZZLE_OUTPUT}"]})
+
+    def new_sources(self):
+        return dict(self.first_sources) | {recovery.SELF_PATH: "c" * 64}
+
+    def blob(self, name):
+        return FIRST_SCRIPT
+
+    def verify_continuation(self, **kwargs):
+        kwargs = {"new_sources": self.new_sources(), "old_bytes": self.old_bytes, "blob": self.blob, "git": continuation_git(),
+                  "pins": self.pins} | kwargs
+        return recovery.verify_continuation(self.root, **kwargs)
+
+
+def continuation_git(*, dirty="", branch=recovery.BRANCH, run_branch_exists=False):
+    def git(root, *args):
+        if args[0] == "branch":
+            return ("pc-run-existing" if run_branch_exists else "") if args[1] == "--list" else branch
+        return {"cat-file": "commit", "rev-parse": "h" * 40, "merge-base": "", "diff": "", "ls-files": "", "status": dirty}[args[0]]
+    return git
+
+
+@pytest.fixture
+def cx(tmp_path, monkeypatch):
+    monkeypatch.setattr(recovery, "active_owner_processes", lambda *a, **k: [])
+    monkeypatch.setattr(recovery, "H_RUNNER_PATHS", ("scripts/a.py",))
+    return Continuation(tmp_path)
+
+
+def test_continuation_verifies_read_only_and_describes_only_h_and_i(cx):
+    before = snapshot(cx.root)
+    v = cx.verify_continuation()
+    info = recovery.describe_continuation(v)
+    assert snapshot(cx.root) == before and not cx.timing.exists()
+    assert info["status"] == "VERIFIED" and info["run_ready"] is True and info["stages"] == ["h", "i"]
+    assert info["f_g_handlers_called"] is False and info["carried_f"]["scientific_verdict"] == "FAIL"
+    assert info["nozzle"]["missing_outputs"] == [f"{cx.nozzle_rel}/{recovery.MISSING_NOZZLE_OUTPUT}"]
+    assert info["setup_cost_seconds"]["g_failed_attempt"] == pytest.approx(G_SECONDS)
+    assert info["setup_cost_seconds"]["f"] == pytest.approx(178.0) and info["setup_cost_seconds"]["f_original_attempt"] == pytest.approx(97.0)
+    assert v["bridge"]["added"] == [recovery.SELF_PATH] and v["bridge"]["changed"] == [FIX]
+
+
+def test_continuation_reports_run_blockers_without_failing_the_dry_run(cx):
+    for kwargs, expected in (({"dirty": " M x"}, "uncommitted"), ({"branch": "main"}, "not on branch"),
+                             ({"run_branch_exists": True}, "publication branch")):
+        blockers = cx.verify_continuation(git=continuation_git(**kwargs))["git"]["run_blockers"]
+        assert len(blockers) == 1 and expected in blockers[0]
+
+
+def drop_nozzle_file(f):
+    (f.nozzle / "checkpoints/fit3.npz").unlink()
+
+
+def nozzle_terminal(f, **changes):
+    path = f.nozzle / "terminal.json"
+    write(path, recovery.read_json(path) | changes)
+
+
+@pytest.mark.parametrize("mutate,message", [
+    (lambda f: write(f.nozzle / "checkpoints/fit2.npz", b"changed"), "Nozzle (artifact|frozen fit) changed"),
+    (drop_nozzle_file, "Nozzle outputs missing other than"),
+    (lambda f: write(f.nozzle / recovery.MISSING_NOZZLE_OUTPUT, {}), "Nozzle outputs missing other than"),
+    (lambda f: nozzle_terminal(f, status="COMPLETE"), "known FAIL/INCOMPLETE"),
+    (lambda f: nozzle_terminal(f, outputs_complete=True), "known FAIL/INCOMPLETE"),
+    (lambda f: nozzle_terminal(f, errors=["boom"]), "known FAIL/INCOMPLETE"),
+    (lambda f: write(f.nozzle / "input_manifest.json", {"inputs": 2}), "Nozzle artifact changed|binding"),
+    (lambda f: write(f.timing / "recovery/consumed.json", {}), "one-shot"),
+    (lambda f: write(f.first / "checkpoints/h.started.json", {}), "Stage h already started"),
+    (lambda f: write(f.first / "checkpoints/i.json", {}), "Stage i already started"),
+    (lambda f: write(f.first / "runs/h/terminal.json", {}), "Stage h already started"),
+    (lambda f: write(f.saf / "timing.json", {}), "Stage h output already exists"),
+    (lambda f: write(f.saf / "deployment_receipt.json", {}), "Stage h output already exists"),
+    (lambda f: write(f.first / "checkpoints/g.json", {}), "stage g is not in its recorded"),
+    (lambda f: write(f.first / "owner.json", {}), "owner record"),
+    (lambda f: write(f.first / "terminals/other.json", {"status": "ERROR"}), "exactly one terminal"),
+    (lambda f: write(f.terminal_path, {"status": "ERROR", "stopped_at": "h", "error": "x", "stages": []}), "known nozzle ERROR"),
+    (lambda f: write(f.old / "checkpoints/g.json", {}), "Original stage g already started"),
+    (lambda f: write(f.old / "terminals/summary.json", {"status": "changed"}), "Consumed files changed"),
+    (lambda f: write(f.old / "terminals/extra.json", {}), "Unexpected files added"),
+    (lambda f: write(f.saf / "named_metrics.json", {"done": False}), "Consumed files changed"),
+    (lambda f: write(f.saf / "test_metrics.json", b'{"a": 9}\n'), "Pinned artifact changed|Consumed files changed"),
+    (lambda f: write(f.root / "outputs/p73/draws.csv", b"changed"), "Reservation target changed"),
+    (lambda f: write(f.first / "checkpoints/f.json", {"status": "COMPLETE", "config_sha256": "0" * 64, "artifacts": {}}),
+     "another configuration"),
+    (lambda f: write(f.first / "checkpoints/c.json", {"status": "COMPLETE"}), "Carried checkpoint c differs"),
+    (lambda f: write(f.first / "scientific_sources.json", f.first_sources | {"scripts/a.py": "9" * 64}), "Unauthorized source drift"),
+])
+def test_continuation_refuses_drift_pending_stages_and_foreign_state(cx, mutate, message):
+    mutate(cx)
+    with pytest.raises((recovery.RecoveryError, RuntimeError, ValueError), match=message):
+        cx.verify_continuation()
+
+
+def test_continuation_source_scope_is_exact(cx):
+    changed_runner = cx.new_sources() | {"scripts/a.py": "9" * 64}
+    with pytest.raises(recovery.RecoveryError, match="Unauthorized source drift"):
+        cx.verify_continuation(new_sources=changed_runner)
+    extra = cx.new_sources() | {"scripts/extra.py": "d" * 64}
+    with pytest.raises(recovery.RecoveryError, match="Source additions"):
+        cx.verify_continuation(new_sources=extra)
+    unreviewed_fix = cx.new_sources() | {FIX: SHA(b"other fix")}
+    with pytest.raises(recovery.RecoveryError, match="exactly the authorized"):
+        cx.verify_continuation(new_sources=unreviewed_fix)
+    with pytest.raises(recovery.RecoveryError, match="not the first recovery commit's script"):
+        cx.verify_continuation(blob=lambda name: b"some other script")
+
+
+def test_continuation_refuses_unrelated_git_changes_and_missing_ancestry(cx):
+    def foreign(root, *args):
+        return "simulation/runtime.py" if args[0] == "diff" and "--cached" not in args else continuation_git()(root, *args)
+    with pytest.raises(recovery.RecoveryError, match="outside the authorized"):
+        cx.verify_continuation(git=foreign)
+
+    def orphan(root, *args):
+        if args[0] == "merge-base" and recovery.FIRST_RECOVERY_COMMIT in args:
+            raise recovery.RecoveryError("not an ancestor")
+        return continuation_git()(root, *args)
+    with pytest.raises(recovery.RecoveryError, match="first recovery commit"):
+        cx.verify_continuation(git=orphan)
+
+
+class FakeTiming:
+    seen, fail_at, during_h, setup = [], None, None, None
+
+    def __init__(self, root, metadata, *, original, bridge, current_sources, workers, backend, device):
+        self.root, self.metadata = Path(root), Path(metadata)
+
+    def _stage(self, letter):
+        assert (self.metadata / "recovery/consumed.json").is_file()  # the marker precedes all work
+        FakeTiming.seen.append(letter)
+        if letter == FakeTiming.fail_at:
+            raise RuntimeError("boom " + letter)
+        return {"status": "COMPLETE", "execution_complete": True, "scientific_verdict": "PASS", "artifacts": {}}
+
+    def a(self):
+        return self._stage("a")
+
+    def h(self):
+        # The unchanged run_timing charges these checkpoints; the g entry must be readable but is cost-only.
+        FakeTiming.setup = sum(recovery.read_json(self.metadata / "checkpoints" / f"{letter}.json")["elapsed_seconds"] for letter in "cdefg")
+        write(self.root / "outputs/phase8/saf_surrogate/attempt_001/timing.json", {"state": "COMPLETE"})
+        if FakeTiming.during_h:
+            FakeTiming.during_h(self)
+        return self._stage("h")
+
+    def f(self):
+        pytest.fail("stage f must never run in the continuation")
+
+    def g(self):
+        pytest.fail("stage g must never run in the continuation")
+
+
+@pytest.fixture
+def no_scoring(monkeypatch):
+    for name in ("score_all", "seal_predictions"):
+        monkeypatch.setattr(score, name, lambda *a, _name=name, **k: pytest.fail(f"{_name} must never be called"))
+
+
+def publish_ok():
+    FakeTiming.seen.append("i")
+    return {"status": "COMPLETE", "execution_complete": True, "branch": "pc-run-x", "commit": "c" * 40, "artifacts": {}}
+
+
+def continue_run(cx, monkeypatch, **kwargs):
+    for key in recovery.THREAD_ENV:
+        monkeypatch.setenv(key, "1")
+    monkeypatch.setenv("CATJET_SIMULATOR_BACKEND", "python")
+    kwargs = {"workflow_class": FakeTiming, "publish": publish_ok, "new_sources": cx.new_sources(), "old_bytes": cx.old_bytes,
+              "blob": cx.blob, "git": continuation_git(), "sleep_inhibitor": fake_inhibitor, "pins": cx.pins} | kwargs
+    return recovery.run_timing_publish(cx.root, **kwargs)
+
+
+def reset_fake(fail_at=None, during_h=None):
+    FakeTiming.seen, FakeTiming.fail_at, FakeTiming.during_h, FakeTiming.setup = [], fail_at, during_h, None
+
+
+def trees(cx):
+    return snapshot(cx.old), snapshot(cx.first), snapshot(cx.nozzle)
+
+
+def test_continuation_run_runs_only_h_and_i_and_keeps_every_retained_byte(cx, monkeypatch, no_scoring):
+    reset_fake()
+    saf_before, kept = snapshot(cx.saf), trees(cx)
+    summary = continue_run(cx, monkeypatch)
+    assert summary["status"] == "COMPLETE" and FakeTiming.seen == ["a", "h", "i"]  # a is only the source/environment snapshot
+    assert [entry["stage"] for entry in summary["stages"]] == ["a", "h", "i"]
+    assert trees(cx) == kept and all(snapshot(cx.saf)[k] == v for k, v in saf_before.items())
+    assert "timing.json" in {Path(name).name for name in summary["saf_files_added"]}
+    assert not (cx.nozzle / recovery.MISSING_NOZZLE_OUTPUT).exists()
+    assert summary["carried"]["f"] == "FAIL" and summary["carried"]["g"]["status"] == "INCOMPLETE"
+    assert summary["scientific_verdict"] == "FAIL" and summary["publication"] == {"branch": "pc-run-x", "commit": "c" * 40}
+    new = cx.timing
+    for letter in "bcde":
+        assert (new / f"checkpoints/{letter}.json").read_bytes() == (cx.old / f"checkpoints/{letter}.json").read_bytes()
+    assert (new / "checkpoints/f.json").read_bytes() == (cx.first / "checkpoints/f.json").read_bytes()
+    for letter, source in (("d", cx.old), ("e", cx.old), ("f", cx.first)):
+        for name in ("reservation.json", "terminal.json", "released_lease.json"):
+            assert (new / f"runs/{letter}/{name}").read_bytes() == (source / f"runs/{letter}/{name}").read_bytes()
+    record = recovery.read_json(new / "recovery/continuation_record.json")
+    assert record["original_config_sha256"] == cx.config_sha != record["new_config_sha256"]
+    assert record["first_recovery_config_sha256"] == cx.first_config_sha
+    assert record["source_mapping"]["added"] == [recovery.SELF_PATH] and "deferred to the freeze" in record["deployment_validation"]
+    assert not (new / "owner.json").exists() and list((new / "terminals").glob("*.json"))
+    assert recovery.read_json(new / "checkpoints/h.json")["config_sha256"] == recovery.fingerprint(recovery.read_json(new / "config.json"))
+    assert not (new / "checkpoints/f.started.json").exists() and not (new / "checkpoints/g.started.json").exists()
+    assert not (cx.first / "checkpoints/h.json").exists()
+
+
+def test_cost_only_g_is_honest_incomplete_and_never_a_completed_checkpoint(cx, monkeypatch, no_scoring):
+    from scripts.pc_pipeline import validate_checkpoint
+    reset_fake()
+    continue_run(cx, monkeypatch)
+    entry = recovery.read_json(cx.timing / "checkpoints/g.json")
+    assert (entry["status"], entry["execution_complete"], entry["outputs_complete"], entry["scientific_verdict"]) == (
+        "INCOMPLETE", False, False, "FAIL") and entry["cost_only"] is True
+    assert entry["elapsed_seconds"] == pytest.approx(G_SECONDS) and entry["started_utc"] == G_START and entry["finished_utc"] == G_END
+    assert set(entry["references"]) >= {"first_recovery_terminal", "nozzle_terminal", "first_recovery_g_started"}
+    assert entry["references"]["nozzle_terminal"]["sha256"] == SHA((cx.nozzle / "terminal.json").read_bytes())
+    with pytest.raises(RuntimeError, match="incomplete or uses another configuration"):
+        validate_checkpoint(cx.root, entry, "any")
+    assert "g" not in {e["stage"] for e in recovery.read_json(next((cx.timing / "terminals").glob("*.json")))["stages"]}
+    # Honest accounting: c, d, e as originally spent, f including the consumed first attempt, plus the failed g attempt.
+    assert FakeTiming.setup == pytest.approx(3.0 + 4.0 + 5.0 + 178.0 + G_SECONDS)
+    f_record = recovery.read_json(cx.timing / "checkpoints/f.json")
+    assert f_record["elapsed_seconds"] == pytest.approx(f_record["original_attempt_elapsed_seconds"] + f_record["recovery_elapsed_seconds"])
+
+
+def test_cost_only_g_check_rejects_a_completed_looking_entry():
+    good = {"status": "INCOMPLETE", "execution_complete": False, "outputs_complete": False, "scientific_verdict": "FAIL", "cost_only": True}
+    recovery.check_cost_only_g(good)
+    for change in ({"status": "COMPLETE"}, {"execution_complete": True}, {"outputs_complete": True},
+                   {"scientific_verdict": "PASS"}, {"cost_only": False}):
+        with pytest.raises(recovery.RecoveryError, match="honest cost-only"):
+            recovery.check_cost_only_g(good | change)
+
+
+def test_failed_h_keeps_every_output_and_a_second_run_refuses_without_retrying(cx, monkeypatch, no_scoring):
+    reset_fake(fail_at="h")
+    failed = continue_run(cx, monkeypatch)
+    assert failed["status"] == "ERROR" and failed["stopped_at"] == "h" and "boom h" in failed["traceback"]
+    assert FakeTiming.seen == ["a", "h"]  # no i after a failed h
+    assert (cx.timing / "recovery/consumed.json").is_file() and (cx.timing / "checkpoints/h.started.json").is_file()
+    assert not (cx.timing / "checkpoints/h.json").exists() and (cx.timing / "checkpoints/g.json").is_file()
+    kept = snapshot(cx.timing)
+    reset_fake()
+    with pytest.raises(recovery.RecoveryError, match="one-shot"):
+        continue_run(cx, monkeypatch)
+    assert FakeTiming.seen == [] and snapshot(cx.timing) == kept
+
+
+def test_failed_publication_is_recorded_and_never_retried(cx, monkeypatch, no_scoring):
+    reset_fake()
+
+    def publish_fails():
+        raise RuntimeError("push rejected")
+    failed = continue_run(cx, monkeypatch, publish=publish_fails)
+    assert failed["status"] == "ERROR" and failed["stopped_at"] == "i" and (cx.timing / "checkpoints/h.json").is_file()
+    assert not (cx.timing / "checkpoints/i.json").exists()
+    reset_fake()
+    with pytest.raises(recovery.RecoveryError, match="one-shot"):
+        continue_run(cx, monkeypatch)
+    assert FakeTiming.seen == []
+
+
+def test_marker_alone_blocks_a_second_attempt_and_run_blockers_create_nothing(cx, monkeypatch):
+    with pytest.raises(recovery.RecoveryError, match="Run blocked"):
+        continue_run(cx, monkeypatch, git=continuation_git(dirty=" M x"))
+    assert not cx.timing.exists()
+    write(cx.timing / "recovery/consumed.json", {"pid": 1})
+    reset_fake()
+    with pytest.raises(recovery.RecoveryError, match="one-shot"):
+        continue_run(cx, monkeypatch)
+    assert FakeTiming.seen == []
+
+
+def test_missing_thread_limits_refuse_before_anything_is_created(cx, monkeypatch):
+    for key in recovery.THREAD_ENV:
+        monkeypatch.setenv(key, "1")
+    monkeypatch.setenv("OMP_NUM_THREADS", "4")
+    with pytest.raises(recovery.RecoveryError, match="OMP_NUM_THREADS=1"):
+        recovery.run_timing_publish(cx.root, workflow_class=FakeTiming, new_sources=cx.new_sources(), old_bytes=cx.old_bytes,
+                                    blob=cx.blob, git=continuation_git(), pins=cx.pins)
+    assert not cx.timing.exists()
+
+
+@pytest.mark.parametrize("target,message", [
+    (lambda cx: cx.nozzle / "report.json", "Consumed files changed"),
+    (lambda cx: cx.saf / "named_metrics.json", "Consumed files changed"),
+    (lambda cx: cx.first / "checkpoints/f.json", "Consumed files changed|incomplete or uses another"),
+    (lambda cx: cx.old / "checkpoints/b.json", "Consumed files changed|incomplete or uses another"),
+    (lambda cx: cx.nozzle / recovery.MISSING_NOZZLE_OUTPUT, "Unexpected files added|must stay absent"),
+])
+def test_output_drift_during_h_is_detected_and_stops_before_publication(cx, monkeypatch, no_scoring, target, message):
+    reset_fake(during_h=lambda fake: write(target(cx), b"tampered during h"))
+    summary = continue_run(cx, monkeypatch)
+    assert summary["status"] == "ERROR" and summary["stopped_at"] == "h" and re.search(message, summary["error"])
+    assert "i" not in FakeTiming.seen  # publication never starts after retained-byte drift
+    assert (cx.timing / "checkpoints/h.started.json").is_file()
+
+
+def test_cli_modes(cx, monkeypatch, capsys):
+    calls, verified = [], cx.verify_continuation()
+    monkeypatch.setattr(recovery, "verify_continuation", lambda root, **k: verified)
+    monkeypatch.setattr(recovery, "run_timing_publish", lambda root, **k: calls.append("timing-run") or {"status": "COMPLETE"})
+    monkeypatch.setattr(recovery, "run_recovery", lambda *a, **k: calls.append("f-g-recovery") or {"status": "COMPLETE"})
+    before = snapshot(cx.root)
+    assert recovery.main(["--timing-publish-only"]) == 0 and recovery.main(["--timing-publish-only", "--dry-run"]) == 0
+    printed = capsys.readouterr().out
+    assert printed.count('"mode": "timing-publish-only dry-run"') == 2
+    assert calls == [] and snapshot(cx.root) == before  # dry-run never executes anything or writes
+    assert recovery.main(["--timing-publish-only", "--run"]) == 0 and calls == ["timing-run"]  # never the f/g recovery
+    with pytest.raises(SystemExit):
+        recovery.main(["--timing-publish-only", "--dry-run", "--run"])
+
+
+def test_original_recovery_mode_still_refuses_once_the_first_recovery_exists(cx):
+    with pytest.raises(recovery.RecoveryError, match="recovery is one-shot"):
+        cx.verify()
